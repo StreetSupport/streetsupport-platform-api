@@ -43,21 +43,20 @@ jobs:
           npm run build --if-present
           npm run test --if-present
 # To think about reverting this part
-      - name: Create dedicated publish folder
-        run: |
-          mkdir -p publish
-          cp -r dist publish/
-          cp package.json publish/
-          cp package-lock.json publish/
-# To think about reverting this part
-      - name: Zip artifact for deployment
-        run: (cd publish && zip -r ../release.zip .)
-# To think about reverting this part
+#       - name: Create dedicated publish folder
+#         run: |
+#           mkdir -p publish
+#           cp -r dist publish/
+#           cp package.json publish/
+#           cp package-lock.json publish/
+# # To think about reverting this part
+#       - name: Zip artifact for deployment
+#         run: (cd publish && zip -r ../release.zip .)
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
         with:
           name: node-app
-          path: release.zip
+          path: .
 
   deploy:
     runs-on: ubuntu-latest
@@ -87,6 +86,7 @@ jobs:
         with:
           app-name: ${{ vars.AZURE_APP_NAME }}
           # To think about reverting this part
-          package: release.zip
-          startup-command: 'npm start'
+          package: .
+          # package: release.zip
+          # startup-command: 'npm start'
           clean: true
