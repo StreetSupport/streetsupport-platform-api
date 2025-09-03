@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 import { OpeningTimeSchema } from "../types/IOpeningTime.js";
 import { AddressSchema } from "../types/IAddress.js";
-import { IService } from "types/IService.js";
+import { IService } from "../types/IService.js";
 
 const serviceSchema = new mongoose.Schema<IService>({
     _id: {
