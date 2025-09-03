@@ -77,5 +77,5 @@ jobs:
         uses: azure/webapps-deploy@v3
         with:
           app-name: ${{ secrets.AZURE_APP_NAME }}
-          slot-name: 'production'
+          slot-name: 'Staging'
           package: .
