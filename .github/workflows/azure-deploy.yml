@@ -43,8 +43,8 @@ jobs:
     # Update to 'Production' || 'Staging' when configure additional environment
     environment: ${{ github.ref_name == 'main' && 'Staging' || 'Staging' }}
     permissions:
-      id-token: write #This is required for requesting the JWT
-      contents: read #This is required for actions/checkout
+      id-token: write # Required for OIDC
+      contents: read  # Required for actions/checkout
 
     steps:
       - name: Download artifact from build job
@@ -64,7 +64,7 @@ jobs:
         uses: azure/webapps-deploy@v3
         with:
           # Current: Using slots in a single web app
-          app-name: 'streetsupport-platform-api'
+          app-name: ${{ vars.AZURE_APP_NAME }}
           # Update to 'Production' || 'Staging' when configure additional environment
           slot-name: ${{ github.ref_name == 'main' && 'Production' || 'Production' }}
           
