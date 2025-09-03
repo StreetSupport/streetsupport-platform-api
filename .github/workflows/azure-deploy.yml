@@ -43,8 +43,16 @@ jobs:
           npm run build --if-present
           npm run test --if-present
 
+      - name: Create dedicated publish folder
+        run: |
+          mkdir -p publish
+          cp -r dist publish/
+          cp -r node_modules publish/
+          cp package.json publish/
+          cp package-lock.json publish/
+
       - name: Zip artifact for deployment
-        run: zip -r release.zip . -x "src/*" ".git*" "*.md"
+        run: (cd publish && zip -r ../release.zip .)
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
