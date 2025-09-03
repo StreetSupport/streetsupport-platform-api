@@ -78,8 +78,7 @@ jobs:
         with:
           # Current: Using slots in a single web app
           app-name: ${{ secrets.AZURE_APP_NAME }}
-          # Update to 'Production' || 'Staging' when configure additional environment
-          slot-name: ${{ github.ref_name == 'main' && 'Production' || 'Production' }}
+          # slot-name: ${{ github.ref_name == 'main' && 'Production' || 'Staging' }}
           
           # Alternative: For separate web apps (uncomment and modify as needed)
           # app-name: ${{ github.ref_name == 'main' && 'streetsupport-platform-api' || 'streetsupport-platform-api-staging' }}
