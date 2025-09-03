@@ -8,7 +8,7 @@ import serviceProviderRoutes from './routes/serviceProviderRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import { errorHandler, notFound } from './middleware/errorMiddleware.js';
 import checkJwt from './middleware/checkJwt.js';
-import '../instrument.js';
+import './instrument.js';
 import * as Sentry from "@sentry/node"
 
 const app = express();
