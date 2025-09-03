@@ -19,8 +19,8 @@ jobs:
 
     env:
       SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
-      SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
-      SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
+      SENTRY_ORG: ${{ vars.SENTRY_ORG }}
+      SENTRY_PROJECT: ${{ vars.SENTRY_PROJECT }}
       SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
       SENTRY_ENV: ${{ github.ref_name == 'main' && 'staging' || 'staging' }}
 
@@ -76,6 +76,5 @@ jobs:
         id: deploy-to-webapp
         uses: azure/webapps-deploy@v3
         with:
-          app-name: ${{ secrets.AZURE_APP_NAME }}
-          slot-name: ${{ github.ref_name == 'main' && 'production' || 'production' }}
+          app-name: ${{ vars.AZURE_APP_NAME }}
           package: .
