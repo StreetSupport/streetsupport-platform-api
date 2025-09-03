@@ -37,21 +37,13 @@ jobs:
           npm install -g @sentry/cli
           sentry-cli --auth-token $SENTRY_AUTH_TOKEN info
           
-      - name: npm install, build, and test
+      - name: npm install and test
         run: |
           npm install
-          npm run build --if-present
           npm run test --if-present
 
-      - name: Create dedicated publish folder
-        run: |
-          mkdir -p publish
-          cp -r dist publish/
-          cp package.json publish/
-          cp package-lock.json publish/
-
       - name: Zip artifact for deployment
-        run: (cd publish && zip -r ../release.zip .)
+        run: zip -r release.zip . -x "node_modules/*"
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
