@@ -90,3 +90,4 @@ jobs:
           # To think about reverting this part
           package: release.zip
           startup-command: 'npm start'
+          clean: true
