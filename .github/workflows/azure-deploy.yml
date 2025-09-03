@@ -47,7 +47,6 @@ jobs:
         run: |
           mkdir -p publish
           cp -r dist publish/
-          cp -r node_modules publish/
           cp package.json publish/
           cp package-lock.json publish/
 # To think about reverting this part
