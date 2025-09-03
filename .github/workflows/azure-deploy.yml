@@ -72,15 +72,10 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: 'Deploy to Azure Web App Slot'
+      - name: 'Deploy to Azure Web App'
         id: deploy-to-webapp
         uses: azure/webapps-deploy@v3
         with:
-          # Current: Using slots in a single web app
           app-name: ${{ secrets.AZURE_APP_NAME }}
-          # slot-name: ${{ github.ref_name == 'main' && 'Production' || 'Staging' }}
-          
-          # Alternative: For separate web apps (uncomment and modify as needed)
-          # app-name: ${{ github.ref_name == 'main' && 'streetsupport-platform-api' || 'streetsupport-platform-api-staging' }}
-          # Remove or comment out slot-name when using separate apps
+          slot-name: 'production'
           package: .
