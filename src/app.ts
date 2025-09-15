@@ -6,6 +6,9 @@ import faqRoutes from './routes/faqRoutes.js';
 import serviceRoutes from './routes/serviceRoutes.js';
 import serviceProviderRoutes from './routes/serviceProviderRoutes.js';
 import userRoutes from './routes/userRoutes.js';
+import bannerRoutes from './routes/bannerRoutes.js';
+import swepBannerRoutes from './routes/swepBannerRoutes.js';
+import resourceRoutes from './routes/resourceRoutes.js';
 import { errorHandler, notFound } from './middleware/errorMiddleware.js';
 import checkJwt from './middleware/checkJwt.js';
 import './instrument.js';
@@ -30,6 +33,9 @@ app.use('/api/faqs', faqRoutes);
 app.use('/api/services', serviceRoutes);
 app.use('/api/service-providers', serviceProviderRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/banners', bannerRoutes);
+app.use('/api/swep-banners', swepBannerRoutes);
+app.use('/api/resources', resourceRoutes);
 
 // The error handler must be registered before any other error middleware and after all controllers
 Sentry.setupExpressErrorHandler(app);

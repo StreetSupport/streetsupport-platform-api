@@ -1,9 +1,13 @@
 import { Router } from 'express';
-import { getCities } from '../controllers/cityController.js';
-import checkJwt from '../middleware/checkJwt.js';
+import { getCities, getCityById, createCity, updateCity, deleteCity } from '../controllers/cityController.js';
+import { citiesAuth } from '../middleware/authMiddleware.js';
 
 const router = Router();
 
-router.get('/', getCities);
+router.get('/', citiesAuth, getCities);
+router.get('/:id', citiesAuth, getCityById);
+router.post('/', citiesAuth, createCity);
+router.put('/:id', citiesAuth, updateCity);
+router.delete('/:id', citiesAuth, deleteCity);
 
 export default router;

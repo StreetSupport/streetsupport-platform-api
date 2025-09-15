@@ -22,6 +22,14 @@ export const getFaqById = asyncHandler(async (req: Request, res: Response) => {
     res.status(200).json({ success: true, data: faq });
 });
 
+// @desc    Get FAQs by location
+// @route   GET /api/faqs/location/:locationId
+// @access  Private
+export const getFaqsByLocation = asyncHandler(async (req: Request, res: Response) => {
+    const faqs = await Faq.find({ Location: req.params.locationId }).sort('SortPosition');
+    res.status(200).json({ success: true, data: faqs });
+});
+
 // @desc    Create new FAQ
 // @route   POST /api/faqs
 // @access  Private
