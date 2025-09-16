@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
-import Faq from '../models/faqsModel.js';
-import { asyncHandler } from '../utils/asyncHandler.js';
+import Faq from '@/models/faqsModel.js';
+import { asyncHandler } from '@/utils/asyncHandler.js';
 
 // @desc    Get all FAQs
 // @route   GET /api/faqs

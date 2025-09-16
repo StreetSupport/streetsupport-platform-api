@@ -1,6 +1,5 @@
 import mongoose, { Schema } from "mongoose";
-import { SubCategorySchema } from "../types/ISubCategory.js";
-import { ICategory } from "../types/ICategory.js";``
+import { SubCategorySchema, ICategory } from "@/types/index.js";
 
 const categorySchema = new Schema<ICategory>({
     _id: {

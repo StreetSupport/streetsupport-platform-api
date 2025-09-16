@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
-import User from '../models/userModel.js';
-import { asyncHandler } from '../utils/asyncHandler.js';
+import User from '@/models/userModel.js';
+import { asyncHandler } from '@/utils/asyncHandler.js';
 
 // @desc    Get all users
 // @route   GET /api/users

@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
-import Category from '../models/categoryModel.js';
-import { asyncHandler } from '../utils/asyncHandler.js';
+import Category from '@/models/categoryModel.js';
+import { asyncHandler } from '@/utils/asyncHandler.js';
 
 // @desc    Get all categories
 // @route   GET /api/categories
