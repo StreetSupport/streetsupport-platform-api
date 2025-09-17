@@ -1,6 +1,5 @@
 import mongoose from "mongoose";
-import { LocationSchema } from "../types/ILocation.js";
-import { ICity } from "../types/ICity.js";
+import { LocationSchema, ICity } from "@/types/index.js";
 
 const citySchema = new mongoose.Schema({
     _id: {

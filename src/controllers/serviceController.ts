@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
-import Service from '../models/serviceModel.js';
-import { asyncHandler } from '../utils/asyncHandler.js';
+import Service from '@/models/serviceModel.js';
+import { asyncHandler } from '@/utils/asyncHandler.js';
 
 // @desc    Get all services
 // @route   GET /api/services

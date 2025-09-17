@@ -1,6 +1,5 @@
 import mongoose from "mongoose";
-import { AddressSchema } from "../types/IAddress.js";
-import { IServiceProvider } from "../types/IServiceProvider.js";
+import { AddressSchema, IServiceProvider } from "@/types/index.js";
 
 const serviceProviderSchema = new mongoose.Schema<IServiceProvider>({
     _id: {

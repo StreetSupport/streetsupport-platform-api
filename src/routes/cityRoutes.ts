@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import { getCities, getCityById, createCity, updateCity, deleteCity } from '../controllers/cityController.js';
-import { citiesAuth } from '../middleware/authMiddleware.js';
+import { getCities, getCityById, createCity, updateCity, deleteCity } from '@/controllers/cityController.js';
+import { citiesAuth } from '@/middleware/authMiddleware.js';
 
 const router = Router();
 

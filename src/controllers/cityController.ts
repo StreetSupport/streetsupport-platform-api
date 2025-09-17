@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
-import Cities from '../models/cityModel.js';
-import { asyncHandler } from '../utils/asyncHandler.js';
+import Cities from '@/models/cityModel.js';
+import { asyncHandler } from '@/utils/asyncHandler.js';
 import mongoose from 'mongoose';
 
 /**

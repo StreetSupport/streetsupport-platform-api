@@ -1,10 +1,10 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import User from '../models/userModel.js';
-import { IUser } from '../types/IUser.js';
-import ServiceProvider from '../models/serviceProviderModel.js';
-import Faq from '../models/faqsModel.js';
-import Service from '../models/serviceModel.js';
+import User from '@/models/userModel.js';
+import { IUser } from '@/types/index.js';
+import ServiceProvider from '@/models/serviceProviderModel.js';
+import Faq from '@/models/faqsModel.js';
+import Service from '@/models/serviceModel.js';
 
 // Extend Request interface to include user
 declare global {

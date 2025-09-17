@@ -1,7 +1,7 @@
 {
   // Visit https://aka.ms/tsconfig to read more about this file
   "compilerOptions": {
-    "baseUrl": "./",
+    "baseUrl": "src",
     "module": "nodenext",
     "target": "es2020",
     "lib": ["es2020"],
@@ -27,6 +27,14 @@
     // Set `sourceRoot` to  "/" to strip the build path prefix
     // from generated source code references.
     // This improves issue grouping in Sentry.
-    "sourceRoot": "/"
+    "sourceRoot": "/",
+    "paths": {
+      "@/*": [
+        "*"
+      ],
+      "@/types": [
+        "types/index.ts"
+      ]
+    },
   }
 }

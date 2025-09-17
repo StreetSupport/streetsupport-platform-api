@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { asyncHandler } from '../utils/asyncHandler.js';
+import { asyncHandler } from '@/utils/asyncHandler.js';
 
 // Stub CRUD handlers for Resources
 export const getResources = asyncHandler(async (req: Request, res: Response) => {
