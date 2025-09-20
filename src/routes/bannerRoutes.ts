@@ -27,7 +27,7 @@ router.get('/stats', bannersAuth, getBannerStats);
 router.get('/:id', bannersAuth, getBannerById);
 router.post('/', bannersAuth, uploadMiddleware, createBanner);
 router.put('/:id', bannersAuth, uploadMiddleware, updateBanner);
-router.patch('/:id/toggle', bannersAuth, toggleBannerStatus);
+router.patch('/:id/toggle', bannersByLocationAuth, toggleBannerStatus);
 router.delete('/:id', bannersAuth, deleteBanner);
 
 export default router;

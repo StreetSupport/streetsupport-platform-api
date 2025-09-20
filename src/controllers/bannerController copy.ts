@@ -32,7 +32,7 @@ function extractFileUrls(banner: any): string[] {
 }
 
 // Helper function to transform form data to IBanner type with proper nested object parsing
-function transformToBannerData(data: any, isCreate: boolean): { data: IBanner; errors: string[] } {
+function transformToBannerData(data: any): { data: IBanner; errors: string[] } {
   // Start with a copy of the data and transform it step by step
   const transformed: any = { ...data };
   const errors: string[] = [];
@@ -196,21 +196,10 @@ function transformToBannerData(data: any, isCreate: boolean): { data: IBanner; e
   if (!transformed.IsActive && transformed.IsActive !== false) transformed.IsActive = true;
   if (!transformed.Priority && transformed.Priority !== 0) transformed.Priority = 1;
 
-  transformed.DocumentModifiedDate = new Date();
-
-  try {
-    if (isCreate) {
-      transformed._id = new Types.ObjectId();
-      transformed.DocumentCreationDate = new Date();
-    } else {
-      transformed._id = new Types.ObjectId(transformed._id);
-      transformed.DocumentCreationDate = new Date(transformed.DocumentCreationDate);
-    }
-  } catch (e) {
-    console.error('Failed to transform banner data:', e);
-    errors.push('Failed to transform banner data');
-  }
-
+  // Return as IBanner type (TypeScript will enforce the interface at compile time)
+  transformed._id = new Types.ObjectId();
+  delete transformed['DocumentCreationDate'];
+  delete transformed['DocumentModifiedDate'];
   return { data: transformed as IBanner, errors };
 }
 
@@ -404,7 +393,7 @@ export const createBanner = asyncHandler(async (req: Request, res: Response) => 
   const processedData = processMediaFields(req);
 
   // Convert to IBanner with proper type transformation
-  const { data: transformedBannerData, errors: transformErrors } = transformToBannerData(processedData, true);
+  const { data: transformedBannerData, errors: transformErrors } = transformToBannerData(processedData);
 
   // Fail fast if transformation produced errors
   if (transformErrors.length > 0) {
@@ -458,7 +447,7 @@ export const updateBanner = asyncHandler(async (req: Request, res: Response) => 
   const processedData = processMediaFields(req);
 
   // Transform and validate updated data
-  const { data: transformedBannerData, errors: transformErrors } = transformToBannerData(processedData, false);
+  const { data: transformedBannerData, errors: transformErrors } = transformToBannerData(processedData);
 
   // Fail fast if transformation produced errors
   if (transformErrors.length > 0) {

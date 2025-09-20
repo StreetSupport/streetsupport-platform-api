@@ -10,3 +10,12 @@ export * from './ISubCategory.js';
 export * from './ILocation.js';
 export * from './IUser.js';
 export * from './INeedCategory.js';
+
+// Banner related types
+export * from './IBanner.js';
+export * from './IAccentGraphic.js';
+export * from './IBannerBackground.js';
+export * from './ICTAButton.js';
+export * from './IDonationGoal.js';
+export * from './IMediaAssetSchema.js';
+export * from './IResourceFile.js';

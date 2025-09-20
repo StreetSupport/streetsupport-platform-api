@@ -5,6 +5,7 @@ import { IUser } from '@/types/index.js';
 import ServiceProvider from '@/models/serviceProviderModel.js';
 import Faq from '@/models/faqsModel.js';
 import Service from '@/models/serviceModel.js';
+import Banner from '@/models/bannerModel.js';
 
 // Extend Request interface to include user
 declare global {
@@ -50,8 +51,8 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
     }
 
     // Find user in database by Auth0 ID
-    const user = await User.findOne({ Auth0Id: decoded.sub });
-    debugger
+    const user = await User.findOne({ Auth0Id: decoded.sub.replace('auth0|', '') });
+
     if (!user) {
       return res.status(401).json({
         success: false,
@@ -686,14 +687,14 @@ export const requireBannerAccess = async (req: Request, res: Response, next: Nex
   if (bannerId && (req.method === 'GET' || req.method === 'PUT' || req.method === 'DELETE')) {
     // TODO: When Banner model is created with LocationId field, validate against user's CityAdminFor claims
     // For now, allow any CityAdmin to access
-    // const banner = await Banner.findById(bannerId).lean();
-    // const locationId = banner.LocationId;
-    // const cityAdminClaim = `CityAdminFor:${locationId}`;
-    // if (!userAuthClaims.includes(cityAdminClaim)) { return 403; }
+    const banner = await Banner.findById(bannerId).lean();
+    const locationId = banner?.LocationSlug;
+    const cityAdminClaim = `CityAdminFor:${locationId}`;
+    if (!userAuthClaims.includes(cityAdminClaim)) { return 403; }
   }
 
   if (req.method === 'POST' && userAuthClaims.includes('CityAdmin')) {
-    const locationId = req.body.LocationId;
+    const locationId = req.body.LocationSlug;
     const cityAdminClaim = `CityAdminFor:${locationId}`;
     if (userAuthClaims.includes(cityAdminClaim)) {
       return next();
@@ -741,7 +742,7 @@ export const requireBannerLocationAccess = (req: Request, res: Response, next: N
   }
 
   // For location-based access, check the locationId param
-  const locationId = req.params.locationId;
+  const locationId = req.params.locationSlug;
   if (locationId) {
     const cityAdminClaim = `CityAdminFor:${locationId}`;
     if (!userAuthClaims.includes(cityAdminClaim)) {

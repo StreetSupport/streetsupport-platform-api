@@ -1,22 +1,30 @@
 import multer from 'multer';
 import { BlobServiceClient } from '@azure/storage-blob';
-import { Request, Response, NextFunction } from 'express';
-import { validateFileUpload } from '../utils/bannerValidation.js';
+import type { NextFunction, Request, Response } from 'express';
+import { IResourceFile, getFileTypeFromMimeType, isValidResourceFileType, SUPPORTED_RESOURCE_FILE_TYPES } from '@/types/IResourceFile.js';
+import { validateFileUpload } from '@/utils/bannerValidation.js';
 import path from 'path';
+import fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 // Azure Blob Storage configuration
 const AZURE_STORAGE_CONNECTION_STRING = process.env.AZURE_STORAGE_CONNECTION_STRING;
-const CONTAINER_NAME = process.env.AZURE_CONTAINER_NAME || 'banner-assets';
+const CONTAINER_NAME = process.env.AZURE_CONTAINER_NAME || 'banners';
 
 let blobServiceClient: BlobServiceClient | null = null;
-
 if (AZURE_STORAGE_CONNECTION_STRING) {
   try {
     blobServiceClient = BlobServiceClient.fromConnectionString(AZURE_STORAGE_CONNECTION_STRING);
+    console.log('Azure Blob Storage configured successfully');
   } catch (error) {
-    console.warn('Azure Blob Storage not configured, falling back to local storage');
+    console.warn('Failed to initialize Azure Blob Storage:', error);
+    console.warn('Falling back to local storage');
   }
+} else {
+  console.log('Azure Storage connection string not provided, using local storage');
 }
 
 // Multer configuration for memory storage
@@ -29,17 +37,10 @@ const upload = multer({
     files: 10 // Maximum 10 files
   },
   fileFilter: (req, file, cb) => {
-    // Allow images and videos
-    const allowedMimeTypes = [
-      'image/jpeg',
-      'image/jpg', 
-      'image/png',
-      'image/webp',
-      'image/svg+xml',
-      'video/mp4',
-      'video/webm',
-      'video/ogg'
-    ];
+    // Combine banner image types with resource file types
+    const bannerImageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/svg+xml'];
+    const resourceFileTypes = Object.keys(SUPPORTED_RESOURCE_FILE_TYPES);
+    const allowedMimeTypes = [...new Set([...bannerImageTypes, ...resourceFileTypes])];
 
     if (allowedMimeTypes.includes(file.mimetype)) {
       cb(null, true);
@@ -65,7 +66,7 @@ async function uploadToAzure(file: Express.Multer.File): Promise<string> {
   // Generate unique filename
   const fileExtension = path.extname(file.originalname);
   const fileName = `${uuidv4()}${fileExtension}`;
-  const blobName = `banners/${fileName}`;
+  const blobName = fileName;
 
   const blockBlobClient = containerClient.getBlockBlobClient(blobName);
 
@@ -85,13 +86,12 @@ async function uploadToAzure(file: Express.Multer.File): Promise<string> {
 
 // Fallback: Save to local uploads directory
 function saveToLocal(file: Express.Multer.File): string {
-  const uploadsDir = path.join(process.cwd(), 'uploads', 'banners');
+  const uploadsDir = path.join(process.cwd(), 'public', 'uploads', 'banners');
   const fileExtension = path.extname(file.originalname);
   const fileName = `${uuidv4()}${fileExtension}`;
   const filePath = path.join(uploadsDir, fileName);
 
   // Create directory if it doesn't exist
-  const fs = require('fs');
   if (!fs.existsSync(uploadsDir)) {
     fs.mkdirSync(uploadsDir, { recursive: true });
   }
@@ -100,7 +100,7 @@ function saveToLocal(file: Express.Multer.File): string {
   fs.writeFileSync(filePath, file.buffer);
 
   // Return relative URL
-  return `/uploads/banners/${fileName}`;
+  return `/public/uploads/banners/${fileName}`;
 }
 
 // Process uploaded files and add URLs to request body
@@ -145,11 +145,11 @@ async function processUploads(req: Request, res: Response, next: NextFunction) {
 
             // Create asset object
             const asset = {
-              url: fileUrl,
-              alt: file.originalname.replace(/\.[^/.]+$/, ''), // Remove extension for alt text
-              filename: file.originalname,
-              size: file.size,
-              mimeType: file.mimetype
+              Url: fileUrl,
+              Alt: file.originalname.replace(/\.[^/.]+$/, ''), // Remove extension for alt text
+              Filename: file.originalname,
+              Size: file.size,
+              MimeType: file.mimetype
             };
 
             // Add dimensions for images
@@ -159,22 +159,29 @@ async function processUploads(req: Request, res: Response, next: NextFunction) {
             }
 
             // Store in appropriate field
-            if (fieldName === 'logo') {
-              uploadedAssets.logo = asset;
-            } else if (fieldName === 'image' || fieldName === 'backgroundImage') {
-              uploadedAssets.image = asset;
-            } else if (fieldName === 'video') {
-              uploadedAssets.video = {
-                ...asset,
-                title: file.originalname.replace(/\.[^/.]+$/, ''),
-                poster: '', // Could be generated from video
-                captions: ''
-              };
-            } else if (fieldName === 'partnerLogos') {
-              if (!uploadedAssets.partnerLogos) {
-                uploadedAssets.partnerLogos = [];
+            if (fieldName === 'Logo' || fieldName === 'new_Logo' || fieldName === 'BackgroundImage' || fieldName === 'new_BackgroundImage' || fieldName === 'SplitImage' || fieldName === 'new_SplitImage') {
+              uploadedAssets[fieldName] = asset;
+            } else if (fieldName === 'PartnerLogos' || fieldName === 'new_PartnerLogos') {
+              if (!uploadedAssets[fieldName]) {
+                uploadedAssets[fieldName] = [];
               }
-              uploadedAssets.partnerLogos.push(asset);
+              uploadedAssets[fieldName].push(asset);
+            } else if (fieldName === 'ResourceFile' || fieldName === 'new_ResourceFile') {
+              // Validate resource file type
+              if (!isValidResourceFileType(file.mimetype)) {
+                throw new Error(`Unsupported resource file type: ${file.mimetype}. Please upload a valid resource file.`);
+              }
+              
+              // For resource files, create a simplified resource file object reusing IResourceFile
+              const resourceFile: IResourceFile = {
+                FileUrl: fileUrl,
+                FileSize: formatFileSize(file.size),
+                FileType: getFileTypeFromMimeType(file.mimetype),
+                DownloadCount: 0,
+                LastUpdated: new Date()
+                // ResourceType will be set by the user in the form
+              };
+              uploadedAssets[fieldName] = resourceFile;
             }
           } catch (error: any) {
             console.error('Upload error:', error);
@@ -206,14 +213,21 @@ async function processUploads(req: Request, res: Response, next: NextFunction) {
   }
 }
 
-// Middleware that handles multiple file fields
+// Middleware that handles multiple file fields with new naming convention
 export const uploadMiddleware = [
   upload.fields([
-    { name: 'logo', maxCount: 1 },
-    { name: 'image', maxCount: 1 },
-    { name: 'backgroundImage', maxCount: 1 },
-    { name: 'video', maxCount: 1 },
-    { name: 'partnerLogos', maxCount: 10 }
+    // Original field names for backward compatibility
+    { name: 'Logo', maxCount: 1 },
+    { name: 'BackgroundImage', maxCount: 1 },
+    { name: 'SplitImage', maxCount: 1 },
+    { name: 'PartnerLogos', maxCount: 5 },
+    { name: 'ResourceFile', maxCount: 1 },
+    // New field names for separated uploads
+    { name: 'new_Logo', maxCount: 1 },
+    { name: 'new_BackgroundImage', maxCount: 1 },
+    { name: 'new_SplitImage', maxCount: 1 },
+    { name: 'new_PartnerLogos', maxCount: 5 },
+    { name: 'new_ResourceFile', maxCount: 1 }
   ]),
   processUploads
 ];
@@ -223,6 +237,19 @@ export const uploadSingle = (fieldName: string) => [
   upload.single(fieldName),
   processUploads
 ];
+
+// Utility functions
+function formatFileSize(bytes: number): string {
+  if (bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+function getFileExtension(filename: string): string {
+  return filename.split('.').pop() || '';
+}
 
 // Delete file from storage
 export async function deleteFile(fileUrl: string): Promise<void> {
@@ -236,7 +263,7 @@ export async function deleteFile(fileUrl: string): Promise<void> {
       const blockBlobClient = containerClient.getBlockBlobClient(blobName);
       
       await blockBlobClient.deleteIfExists();
-    } else if (fileUrl.startsWith('/uploads/')) {
+    } else if (fileUrl.startsWith('/public/uploads/')) {
       // Local file deletion
       const fs = require('fs');
       const filePath = path.join(process.cwd(), fileUrl);
