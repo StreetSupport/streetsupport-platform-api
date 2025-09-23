@@ -15,6 +15,23 @@ import {
 } from "@/types/index.js";
 import mongoose, { Schema } from 'mongoose';
 
+// Template-specific nested schemas
+const GivingCampaignSchema = new Schema({
+  UrgencyLevel: { type: String, enum: Object.values(UrgencyLevel) },
+  CampaignEndDate: { type: Date },
+  DonationGoal: DonationGoalSchema
+}, { _id: false });
+
+const PartnershipCharterSchema = new Schema({
+  PartnerLogos: [MediaAssetSchema],
+  CharterType: { type: String, enum: Object.values(CharterType) },
+  SignatoriesCount: { type: Number, min: 0 }
+}, { _id: false });
+
+const ResourceProjectSchema = new Schema({
+  ResourceFile: ResourceFileSchema
+}, { _id: false });
+
 // Main Banner Schema
 export const BannerSchema = new Schema({
   _id: {
@@ -50,16 +67,17 @@ export const BannerSchema = new Schema({
   Logo: MediaAssetSchema,
   BackgroundImage: MediaAssetSchema,
   SplitImage: MediaAssetSchema, // Separate image for split layout (not background)
-  
+  AccentGraphic: AccentGraphicSchema,
+
   // Actions
   CtaButtons: {
     type: [CTAButtonSchema],
-    required: true,
+    required: false,
     validate: {
       validator: function(buttons: any[]) {
-        return buttons && buttons.length > 0 && buttons.length <= 3;
+        return !buttons || (buttons.length >= 0 && buttons.length <= 3);
       },
-      message: 'Must have between 1 and 3 CTA buttons'
+      message: 'Must have not more than 3 CTA buttons'
     }
   },
   
@@ -67,27 +85,17 @@ export const BannerSchema = new Schema({
   Background: { type: BannerBackgroundSchema, required: true },
   TextColour: { type: String, enum: Object.values(TextColour), required: true },
   LayoutStyle: { type: String, enum: Object.values(LayoutStyle), required: true },
-  AccentGraphic: AccentGraphicSchema,
-  
+
   // Optional features
   ShowDates: { type: Boolean, default: false },
   StartDate: { type: Date },
   EndDate: { type: Date },
   BadgeText: { type: String, maxlength: 50 },
   
-  // Template-specific fields
-  // Giving Campaign
-  DonationGoal: DonationGoalSchema,
-  UrgencyLevel: { type: String, enum: Object.values(UrgencyLevel) },
-  CampaignEndDate: { type: Date },
-  
-  // Partnership Charter
-  PartnerLogos: [MediaAssetSchema],
-  CharterType: { type: String, enum: Object.values(CharterType) },
-  SignatoriesCount: { type: Number, min: 0 },
-  
-  // Resource Project
-  ResourceFile: ResourceFileSchema,
+  // Template-specific fields - using nested objects
+  GivingCampaign: GivingCampaignSchema,
+  PartnershipCharter: PartnershipCharterSchema,
+  ResourceProject: ResourceProjectSchema,
   
   // CMS metadata
   IsActive: { type: Boolean, default: true },
@@ -134,13 +142,13 @@ BannerSchema.pre('save', function(next) {
 
 // Instance methods
 BannerSchema.methods.CalculateProgress = function() {
-  if (!this.DonationGoal) return 0;
-  return Math.min(Math.round((this.DonationGoal.Current / this.DonationGoal.Target) * 100), 100);
+  if (!this.GivingCampaign?.DonationGoal) return 0;
+  return Math.min(Math.round((this.GivingCampaign.DonationGoal.Current / this.GivingCampaign.DonationGoal.Target) * 100), 100);
 };
 
 BannerSchema.methods.IncrementDownloadCount = function() {
-  if (this.TemplateType === BannerTemplateType.RESOURCE_PROJECT && this.ResourceFile) {
-    this.ResourceFile.DownloadCount = (this.ResourceFile.DownloadCount || 0) + 1;
+  if (this.TemplateType === BannerTemplateType.RESOURCE_PROJECT && this.ResourceProject?.ResourceFile) {
+    this.ResourceProject.ResourceFile.DownloadCount = (this.ResourceProject.ResourceFile.DownloadCount || 0) + 1;
     return this.save();
   }
 };

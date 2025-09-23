@@ -2,7 +2,7 @@ import { Schema } from "mongoose";
 import { ResourceType } from "./IBanner.js";
 
 export interface IResourceFile {
-  FileUrl: string;
+  FileUrl?: string;
   ResourceType?: ResourceType;
   DownloadCount?: number;
   LastUpdated?: Date;

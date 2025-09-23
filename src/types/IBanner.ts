@@ -6,6 +6,23 @@ import { ICTAButton } from "./ICTAButton.js";
 import { IDonationGoal } from "./IDonationGoal.js";
 import { IResourceFile } from "./IResourceFile.js";
 
+// Template-specific interfaces
+export interface IGivingCampaign {
+  UrgencyLevel?: UrgencyLevel;
+  CampaignEndDate?: Date;
+  DonationGoal?: IDonationGoal;
+}
+
+export interface IPartnershipCharter {
+  PartnerLogos?: IMediaAsset[];
+  CharterType?: CharterType;
+  SignatoriesCount?: number;
+}
+
+export interface IResourceProject {
+  ResourceFile?: IResourceFile;
+}
+
 export interface IBanner extends Document {
   // Audit fields
   _id: Types.ObjectId;
@@ -23,15 +40,15 @@ export interface IBanner extends Document {
   Logo?: IMediaAsset;
   BackgroundImage?: IMediaAsset;
   SplitImage?: IMediaAsset; // Separate image for split layout (not background)
+  AccentGraphic?: IAccentGraphic;
   
   // Actions
-  CtaButtons: ICTAButton[];
+  CtaButtons?: ICTAButton[];
   
   // Styling
   Background: IBannerBackground;
   TextColour: TextColour;
   LayoutStyle: LayoutStyle;
-  AccentGraphic?: IAccentGraphic;
   
   // Scheduling
   ShowDates?: boolean;
@@ -39,28 +56,15 @@ export interface IBanner extends Document {
   EndDate?: Date;
   BadgeText?: string;
   
-  // Template-specific fields
-  // Giving Campaign
-  UrgencyLevel?: UrgencyLevel;
-  CampaignEndDate?: Date;
-  DonationGoal?: IDonationGoal;
-  
-  // Partnership Charter
-  PartnerLogos?: IMediaAsset[];
-  CharterType?: CharterType;
-  SignatoriesCount?: number;
-  
-  // Resource Project
-  ResourceFile?: IResourceFile;
+  // Template-specific fields - using nested objects for better organization
+  GivingCampaign?: IGivingCampaign;
+  PartnershipCharter?: IPartnershipCharter;
+  ResourceProject?: IResourceProject;
   
   // CMS metadata
   IsActive: boolean;
   LocationSlug?: string;
   Priority: number;
-  
-  // Analytics
-  TrackingContext?: string;
-  AnalyticsId?: string;
   
   // Virtuals
   IsExpired: boolean;

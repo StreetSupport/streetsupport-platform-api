@@ -1,11 +1,47 @@
 import { Request, Response } from 'express';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { BannerTemplateType, IBanner } from '@/types/index.js';
-import { validateBannerData } from '../utils/bannerValidation.js';
+import { validateBanner } from '../schemas/bannerSchema.js';
 import Banner from '@/models/bannerModel.js';
 import { deleteFile } from '../middleware/uploadMiddleware.js';
 import { IMediaAsset } from '@/types/IMediaAssetSchema.js';
 import { Types } from 'mongoose';
+
+// Create new banner
+export const createBanner = asyncHandler(async (req: Request, res: Response) => {
+  debugger
+  
+  // Process media fields (existing assets + new uploads)
+  const processedData = processMediaFields(req);
+
+  // Validate and transform banner data using Zod
+  const validation = validateBanner(processedData);
+  
+  if (!validation.success) {
+    return res.status(400).json({
+      success: false,
+      message: 'Validation failed',
+      errors: validation.errors
+    });
+  }
+
+  // Add creator information and system fields
+  const bannerData = {
+    ...validation.data,
+    CreatedBy: req.user?.id || validation.data?.CreatedBy,
+    DocumentCreationDate: new Date(),
+    DocumentModifiedDate: new Date(),
+    _id: new Types.ObjectId()
+  };
+
+  const banner = await Banner.create(bannerData);
+
+  res.status(201).json({
+    success: true,
+    data: banner,
+    message: 'Banner created successfully'
+  });
+});
 
 // Helper function to extract all file URLs from a banner
 function extractFileUrls(banner: any): string[] {
@@ -15,246 +51,116 @@ function extractFileUrls(banner: any): string[] {
   if (banner.Logo?.Url) urls.push(banner.Logo.Url);
   if (banner.BackgroundImage?.Url) urls.push(banner.BackgroundImage.Url);
   if (banner.SplitImage?.Url) urls.push(banner.SplitImage.Url);
+  if (banner.AccentGraphic?.Url) urls.push(banner.AccentGraphic.Url);
   
-  // Partner logos for partnership charter banners
-  if (banner.PartnerLogos && Array.isArray(banner.PartnerLogos)) {
-    banner.PartnerLogos.forEach((logo: any) => {
+  // Partner logos for partnership charter banners (nested structure)
+  if (banner.PartnershipCharter?.PartnerLogos && Array.isArray(banner.PartnershipCharter.PartnerLogos)) {
+    banner.PartnershipCharter.PartnerLogos.forEach((logo: any) => {
       if (logo.Url) urls.push(logo.Url);
     });
   }
   
-  // Resource files for resource project banners
-  if (banner.ResourceFile && banner.ResourceFile.FileUrl) {
-    urls.push(banner.ResourceFile.FileUrl);
+  // Resource files for resource project banners (nested structure)
+  if (banner.ResourceProject?.ResourceFile && banner.ResourceProject.ResourceFile.FileUrl) {
+    urls.push(banner.ResourceProject.ResourceFile.FileUrl);
   }
   
   return urls;
-}
-
-// Helper function to transform form data to IBanner type with proper nested object parsing
-function transformToBannerData(data: any, isCreate: boolean): { data: IBanner; errors: string[] } {
-  // Start with a copy of the data and transform it step by step
-  const transformed: any = { ...data };
-  const errors: string[] = [];
-
-  // Parse JSON string fields
-  const jsonFields = ['Background', 'CtaButtons', 'DonationGoal', 'ResourceFile', 'AccentGraphic'];
-  for (const field of jsonFields) {
-    if (typeof data[field] === 'string') {
-      try {
-        transformed[field] = JSON.parse(data[field]);
-      } catch (e) {
-        console.warn(`Failed to parse ${field}:`, e);
-        errors.push(`Failed to parse ${field} as JSON`);
-        // Keep original value for transparency; we will fail fast on errors
-        transformed[field] = data[field];
-      }
-    }
-  }
-
-  // Convert boolean strings to booleans
-  if (data.IsActive === 'true') transformed.IsActive = true;
-  if (data.IsActive === 'false') transformed.IsActive = false;
-  if (data.ShowDates === 'true') transformed.ShowDates = true;
-  if (data.ShowDates === 'false') transformed.ShowDates = false;
-
-  // Convert numeric strings to numbers
-  if (data.Priority && typeof data.Priority === 'string') {
-    const parsed = parseInt(data.Priority, 10);
-    if (Number.isNaN(parsed)) {
-      errors.push('Priority must be a number');
-    } else {
-      transformed.Priority = parsed;
-    }
-  }
-  if (data.SignatoriesCount && typeof data.SignatoriesCount === 'string') {
-    const parsed = parseInt(data.SignatoriesCount, 10);
-    if (Number.isNaN(parsed)) {
-      errors.push('SignatoriesCount must be a number');
-    } else {
-      transformed.SignatoriesCount = parsed;
-    }
-  }
-
-  // Convert date strings to Date objects
-  if (data.StartDate && typeof data.StartDate === 'string') {
-    try {
-      const dateStr = data.StartDate.replace(/^"|"$/g, '');
-      const d = new Date(dateStr);
-      if (isNaN(d.getTime())) {
-        errors.push('StartDate must be a valid date');
-      } else {
-        transformed.StartDate = d;
-      }
-    } catch (e) {
-      console.warn('Failed to parse StartDate:', e);
-      errors.push('Failed to parse StartDate');
-    }
-  }
-  if (data.EndDate && typeof data.EndDate === 'string') {
-    try {
-      const dateStr = data.EndDate.replace(/^"|"$/g, '');
-      const d = new Date(dateStr);
-      if (isNaN(d.getTime())) {
-        errors.push('EndDate must be a valid date');
-      } else {
-        transformed.EndDate = d;
-      }
-    } catch (e) {
-      console.warn('Failed to parse EndDate:', e);
-      errors.push('Failed to parse EndDate');
-    }
-  }
-  if (data.CampaignEndDate && typeof data.CampaignEndDate === 'string') {
-    try {
-      const dateStr = data.CampaignEndDate.replace(/^"|"$/g, '');
-      const d = new Date(dateStr);
-      if (isNaN(d.getTime())) {
-        errors.push('CampaignEndDate must be a valid date');
-      } else {
-        transformed.CampaignEndDate = d;
-      }
-    } catch (e) {
-      console.warn('Failed to parse CampaignEndDate:', e);
-      errors.push('Failed to parse CampaignEndDate');
-    }
-  }
-
-  // Transform nested objects if they exist
-  if (transformed.DonationGoal && typeof transformed.DonationGoal === 'object') {
-    const goal = transformed.DonationGoal;
-    if (typeof goal.Target === 'string') {
-      const n = parseFloat(goal.Target);
-      if (Number.isNaN(n)) {
-        errors.push('DonationGoal.Target must be a number');
-      } else {
-        goal.Target = n;
-      }
-    }
-    if (typeof goal.Current === 'string') {
-      const n = parseFloat(goal.Current);
-      if (Number.isNaN(n)) {
-        errors.push('DonationGoal.Current must be a number');
-      } else {
-        goal.Current = n;
-      }
-    }
-  }
-
-  if (transformed.Background && typeof transformed.Background === 'object') {
-    const bg = transformed.Background;
-    if (bg.Overlay && typeof bg.Overlay === 'object') {
-      if (typeof bg.Overlay.Opacity === 'string') {
-        const n = parseFloat(bg.Overlay.Opacity);
-        if (Number.isNaN(n)) {
-          errors.push('Background.Overlay.Opacity must be a number');
-        } else {
-          bg.Overlay.Opacity = n;
-        }
-      }
-    }
-  }
-
-  // Transform CTA buttons array
-  if (transformed.CtaButtons && Array.isArray(transformed.CtaButtons)) {
-    transformed.CtaButtons = transformed.CtaButtons.map((button: any) => {
-      if (typeof button.External === 'string') {
-        button.External = button.External === 'true';
-      }
-      return button;
-    });
-  }
-
-  // Transform resource file if it exists
-  if (transformed.ResourceFile && typeof transformed.ResourceFile === 'object') {
-    const resource = transformed.ResourceFile;
-    if (typeof resource.DownloadCount === 'string') {
-      const parsed = parseInt(resource.DownloadCount, 10);
-      if (Number.isNaN(parsed)) {
-        errors.push('ResourceFile.DownloadCount must be a number');
-      } else {
-        resource.DownloadCount = parsed;
-      }
-    }
-    if (resource.LastUpdated && typeof resource.LastUpdated === 'string') {
-      try {
-        const d = new Date(resource.LastUpdated);
-        if (isNaN(d.getTime())) {
-          errors.push('ResourceFile.LastUpdated must be a valid date');
-        } else {
-          resource.LastUpdated = d;
-        }
-      } catch (e) {
-        console.warn('Failed to parse ResourceFile.LastUpdated:', e);
-        errors.push('Failed to parse ResourceFile.LastUpdated');
-      }
-    }
-  }
-
-  // Ensure required fields have default values if missing
-  if (!transformed.CtaButtons) transformed.CtaButtons = [];
-  if (!transformed.IsActive && transformed.IsActive !== false) transformed.IsActive = true;
-  if (!transformed.Priority && transformed.Priority !== 0) transformed.Priority = 1;
-
-  transformed.DocumentModifiedDate = new Date();
-
-  try {
-    if (isCreate) {
-      transformed._id = new Types.ObjectId();
-      transformed.DocumentCreationDate = new Date();
-    } else {
-      transformed._id = new Types.ObjectId(transformed._id);
-      transformed.DocumentCreationDate = new Date(transformed.DocumentCreationDate);
-    }
-  } catch (e) {
-    console.error('Failed to transform banner data:', e);
-    errors.push('Failed to transform banner data');
-  }
-
-  return { data: transformed as IBanner, errors };
 }
 
 // Helper function to process mixed media fields (existing assets + new files)
 function processMediaFields(req: Request): any {
   const processedData = { ...req.body };
   
-  // Process single media fields
-  const singleMediaFields = ['Logo', 'BackgroundImage', 'SplitImage'];
-  
-  for (const fieldName of singleMediaFields) {
-    const existingKey = `existing_${fieldName}`;
-    const newKey = `new_${fieldName}`;
-    
-    if (req.body[existingKey]) {
-      // Keep existing asset
-      processedData[fieldName] = JSON.parse(req.body[existingKey]);
-    } else if (req.body[newKey]) {
-      // New file was uploaded and processed by middleware
-      processedData[fieldName] = req.body[newKey];
+  // Process single media assets: Logo, BackgroundImage, SplitImage, AccentGraphic
+  ['Logo', 'BackgroundImage', 'SplitImage', 'AccentGraphic'].forEach(field => {
+    const newFileData = processedData[`newfile_${field}`];
+    const newMetadata = processedData[`newmetadata_${field}`] 
+      ? JSON.parse(processedData[`newmetadata_${field}`]) 
+      : null;
+    const existingMetadata = processedData[`existing_${field}`] 
+      ? JSON.parse(processedData[`existing_${field}`]) 
+      : null;
+
+    let finalAsset = null;
+    if (newFileData) {
+      // New file uploaded, merge with its metadata
+      finalAsset = {
+        ...(newMetadata || {}), // Contains Position, Opacity, etc.
+        ...newFileData // Contains Url, Filename, Size from upload
+      };
+    } else if (existingMetadata) {
+      // No new file, use existing metadata
+      finalAsset = existingMetadata;
     }
-    
-    // Clean up form data keys
-    delete processedData[existingKey];
-    delete processedData[newKey];
-  }
-  
+
+    // If finalAsset is null (removed by user), set to undefined to satisfy Zod's optional schema
+    // Otherwise, assign the processed asset object.
+    processedData[field] = finalAsset;// === null ? undefined : finalAsset;
+  });
+
+
+
   // Process PartnerLogos array field
-  const existingPartnerLogos = req.body.existing_PartnerLogos 
-    ? JSON.parse(req.body.existing_PartnerLogos) 
+  const existingPartnerLogos = processedData.existing_PartnerLogos
+    ? JSON.parse(processedData.existing_PartnerLogos)
     : [];
-  
-  const newPartnerLogos = req.body.new_PartnerLogos || [];
-  
-  // Combine existing and new partner logos
-  processedData.PartnerLogos = [
-    ...existingPartnerLogos, 
+  const newPartnerLogos = processedData.newfile_PartnerLogos || [];
+  const combinedPartnerLogos = [
+    ...existingPartnerLogos,
     ...(Array.isArray(newPartnerLogos) ? newPartnerLogos : [newPartnerLogos])
   ].filter(Boolean);
-  
-  // Clean up form data keys
-  delete processedData.existing_PartnerLogos;
-  delete processedData.new_PartnerLogos;
-  
+
+  if (processedData.PartnershipCharter) {
+    const partnershipCharter = typeof processedData.PartnershipCharter === 'string'
+      ? JSON.parse(processedData.PartnershipCharter)
+      : processedData.PartnershipCharter;
+
+    partnershipCharter.PartnerLogos = combinedPartnerLogos;
+    processedData.PartnershipCharter = partnershipCharter;
+  } else if (combinedPartnerLogos.length > 0) {
+    processedData.PartnershipCharter = { PartnerLogos: combinedPartnerLogos };
+  }
+
+
+
+  // Process ResourceFile
+  const newResourceFileData = processedData.newfile_ResourceFile;
+  const newResourceFileMetadata = processedData.newmetadata_ResourceFile
+    ? JSON.parse(processedData.newmetadata_ResourceFile)
+    : null;
+  const existingResourceFile = processedData.existing_ResourceFile
+    ? JSON.parse(processedData.existing_ResourceFile)
+    : null;
+
+  let finalResourceFile = null;
+  if (newResourceFileData) {
+    finalResourceFile = {
+      ...(newResourceFileMetadata || {}),
+      ...newResourceFileData
+    };
+  } else if (existingResourceFile) {
+    finalResourceFile = existingResourceFile;
+  }
+
+  if (processedData.ResourceProject) {
+    const resourceProject = typeof processedData.ResourceProject === 'string'
+      ? JSON.parse(processedData.ResourceProject)
+      : processedData.ResourceProject;
+
+    resourceProject.ResourceFile = finalResourceFile;
+    processedData.ResourceProject = resourceProject;
+  } else if (finalResourceFile) {
+    processedData.ResourceProject = { ResourceFile: finalResourceFile };
+  }
+
+  // Clean up all temporary form data keys before validation
+  Object.keys(processedData).forEach(key => {
+    if (key.startsWith('newfile_') || key.startsWith('newmetadata_') || key.startsWith('existing_')) {
+      delete processedData[key];
+    }
+  });
+
   return processedData;
 }
 
@@ -396,50 +302,6 @@ export const getBannersByLocation = asyncHandler(async (req: Request, res: Respo
   });
 });
 
-// Create new banner
-export const createBanner = asyncHandler(async (req: Request, res: Response) => {
-  debugger
-  
-  // Process media fields (existing assets + new uploads)
-  const processedData = processMediaFields(req);
-
-  // Convert to IBanner with proper type transformation
-  const { data: transformedBannerData, errors: transformErrors } = transformToBannerData(processedData, true);
-
-  // Fail fast if transformation produced errors
-  if (transformErrors.length > 0) {
-    return res.status(400).json({
-      success: false,
-      message: 'Invalid data format', 
-      errors: transformErrors
-    });
-  }
-
-  // Validate banner data
-  const validation = validateBannerData(transformedBannerData);
-  if (!validation.isValid) {
-    return res.status(400).json({
-      success: false,
-      message: 'Validation failed',
-      errors: validation.errors
-    });
-  }
-
-  // Add creator information
-  const bannerData = {
-    ...transformedBannerData,
-    CreatedBy: req.user?.id || transformedBannerData.CreatedBy
-  };
-
-  const banner = await Banner.create(bannerData);
-
-  res.status(201).json({
-    success: true,
-    data: banner,
-    message: 'Banner created successfully'
-  });
-});
-
 // Update banner
 export const updateBanner = asyncHandler(async (req: Request, res: Response) => {
   debugger
@@ -457,20 +319,10 @@ export const updateBanner = asyncHandler(async (req: Request, res: Response) => 
   // Process media fields (existing assets + new uploads)
   const processedData = processMediaFields(req);
 
-  // Transform and validate updated data
-  const { data: transformedBannerData, errors: transformErrors } = transformToBannerData(processedData, false);
-
-  // Fail fast if transformation produced errors
-  if (transformErrors.length > 0) {
-    return res.status(400).json({
-      success: false,
-      message: 'Invalid data format',
-      errors: transformErrors
-    });
-  }
-
-  const validation = validateBannerData(transformedBannerData);
-  if (!validation.isValid) {
+  // Validate and transform banner data using Zod
+  const validation = validateBanner(processedData);
+  
+  if (!validation.success) {
     return res.status(400).json({
       success: false,
       message: 'Validation failed',
@@ -485,7 +337,7 @@ export const updateBanner = asyncHandler(async (req: Request, res: Response) => 
   const updatedBanner = await Banner.findByIdAndUpdate(
     id,
     {
-      ...transformedBannerData,
+      ...validation.data,
       DocumentModifiedDate: new Date()
     },
     { new: true, runValidators: true }
@@ -589,7 +441,7 @@ export const incrementDownloadCount = asyncHandler(async (req: Request, res: Res
 
   res.status(200).json({
     success: true,
-    data: { DownloadCount: banner.ResourceFile?.DownloadCount || 0 },
+    data: { DownloadCount: banner.ResourceProject?.ResourceFile?.DownloadCount || 0 },
     message: 'Download count incremented'
   });
 });

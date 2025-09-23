@@ -1,8 +1,7 @@
 import multer from 'multer';
 import { BlobServiceClient } from '@azure/storage-blob';
 import type { NextFunction, Request, Response } from 'express';
-import { IResourceFile, getFileTypeFromMimeType, isValidResourceFileType, SUPPORTED_RESOURCE_FILE_TYPES } from '@/types/IResourceFile.js';
-import { validateFileUpload } from '@/utils/bannerValidation.js';
+import { getFileTypeFromMimeType, isValidResourceFileType, SUPPORTED_RESOURCE_FILE_TYPES } from '@/types/IResourceFile.js';
 import path from 'path';
 import fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
@@ -33,7 +32,7 @@ const storage = multer.memoryStorage();
 const upload = multer({
   storage,
   limits: {
-    fileSize: 10 * 1024 * 1024, // 10MB limit
+    fileSize: 5 * 1024 * 1024, // 10MB limit
     files: 10 // Maximum 10 files
   },
   fileFilter: (req, file, cb) => {
@@ -122,13 +121,11 @@ async function processUploads(req: Request, res: Response, next: NextFunction) {
       if (!Array.isArray(fileArray)) continue;
 
       for (const file of fileArray) {
-        // Validate file
-        const validation = validateFileUpload(file);
-        if (!validation.isValid) {
+        // Basic file validation (detailed validation handled by Zod schemas)
+        if (!file || file.size === 0) {
           return res.status(400).json({
             success: false,
-            message: 'File validation failed',
-            errors: validation.errors
+            message: 'Invalid file upload'
           });
         }
 
@@ -159,29 +156,27 @@ async function processUploads(req: Request, res: Response, next: NextFunction) {
             }
 
             // Store in appropriate field
-            if (fieldName === 'Logo' || fieldName === 'new_Logo' || fieldName === 'BackgroundImage' || fieldName === 'new_BackgroundImage' || fieldName === 'SplitImage' || fieldName === 'new_SplitImage') {
+            if (fieldName === 'newfile_Logo' || fieldName === 'newfile_BackgroundImage' || fieldName === 'newfile_SplitImage' || fieldName === 'newfile_AccentGraphic') {
               uploadedAssets[fieldName] = asset;
-            } else if (fieldName === 'PartnerLogos' || fieldName === 'new_PartnerLogos') {
+            } else if (fieldName === 'newfile_PartnerLogos') {
               if (!uploadedAssets[fieldName]) {
                 uploadedAssets[fieldName] = [];
               }
               uploadedAssets[fieldName].push(asset);
-            } else if (fieldName === 'ResourceFile' || fieldName === 'new_ResourceFile') {
+            } else if (fieldName === 'newfile_ResourceFile') {
               // Validate resource file type
               if (!isValidResourceFileType(file.mimetype)) {
                 throw new Error(`Unsupported resource file type: ${file.mimetype}. Please upload a valid resource file.`);
               }
               
-              // For resource files, create a simplified resource file object reusing IResourceFile
-              const resourceFile: IResourceFile = {
+              // Store the uploaded file URL - metadata will be merged in processMediaFields
+              uploadedAssets[fieldName] = {
                 FileUrl: fileUrl,
-                FileSize: formatFileSize(file.size),
-                FileType: getFileTypeFromMimeType(file.mimetype),
-                DownloadCount: 0,
-                LastUpdated: new Date()
-                // ResourceType will be set by the user in the form
+                // File metadata will be preserved from frontend and merged later
+                _uploadedFileUrl: fileUrl, // Temporary field to track the new URL
+                _uploadedFileSize: formatFileSize(file.size),
+                _uploadedFileType: getFileTypeFromMimeType(file.mimetype)
               };
-              uploadedAssets[fieldName] = resourceFile;
             }
           } catch (error: any) {
             console.error('Upload error:', error);
@@ -216,18 +211,13 @@ async function processUploads(req: Request, res: Response, next: NextFunction) {
 // Middleware that handles multiple file fields with new naming convention
 export const uploadMiddleware = [
   upload.fields([
-    // Original field names for backward compatibility
-    { name: 'Logo', maxCount: 1 },
-    { name: 'BackgroundImage', maxCount: 1 },
-    { name: 'SplitImage', maxCount: 1 },
-    { name: 'PartnerLogos', maxCount: 5 },
-    { name: 'ResourceFile', maxCount: 1 },
     // New field names for separated uploads
-    { name: 'new_Logo', maxCount: 1 },
-    { name: 'new_BackgroundImage', maxCount: 1 },
-    { name: 'new_SplitImage', maxCount: 1 },
-    { name: 'new_PartnerLogos', maxCount: 5 },
-    { name: 'new_ResourceFile', maxCount: 1 }
+    { name: 'newfile_Logo', maxCount: 1 },
+    { name: 'newfile_BackgroundImage', maxCount: 1 },
+    { name: 'newfile_SplitImage', maxCount: 1 },
+    { name: 'newfile_AccentGraphic', maxCount: 1 },
+    { name: 'newfile_PartnerLogos', maxCount: 5 },
+    { name: 'newfile_ResourceFile', maxCount: 1 }
   ]),
   processUploads
 ];
