@@ -1,23 +1,23 @@
 import { Request, Response } from 'express';
 import { asyncHandler } from '../utils/asyncHandler.js';
-import { BannerTemplateType, IBanner } from '@/types/index.js';
+import { BannerTemplateType } from '@/types/index.js';
 import { validateBanner } from '../schemas/bannerSchema.js';
 import Banner from '@/models/bannerModel.js';
 import { deleteFile } from '../middleware/uploadMiddleware.js';
-import { IMediaAsset } from '@/types/IMediaAssetSchema.js';
 import { Types } from 'mongoose';
 
 // Create new banner
 export const createBanner = asyncHandler(async (req: Request, res: Response) => {
-  debugger
-  
   // Process media fields (existing assets + new uploads)
   const processedData = processMediaFields(req);
 
-  // Validate and transform banner data using Zod
+  // Validate and transform banner data using Zod (final validation after upload)
   const validation = validateBanner(processedData);
   
   if (!validation.success) {
+    // Clean up any uploaded files since validation failed
+    await cleanupUploadedFiles(processedData);
+    
     return res.status(400).json({
       success: false,
       message: 'Validation failed',
@@ -70,7 +70,9 @@ function extractFileUrls(banner: any): string[] {
 
 // Helper function to process mixed media fields (existing assets + new files)
 function processMediaFields(req: Request): any {
-  const processedData = { ...req.body };
+  // Start with the clean, pre-validated data and merge the raw body to get file info
+  // Note: I still not sure if it makes sense to use this merging instead of req.body
+  const processedData = { ...req.body, ...req.preValidatedData };
   
   // Process single media assets: Logo, BackgroundImage, SplitImage, AccentGraphic
   ['Logo', 'BackgroundImage', 'SplitImage', 'AccentGraphic'].forEach(field => {
@@ -180,6 +182,22 @@ async function cleanupUnusedFiles(oldBanner: any, newBanner: any): Promise<void>
     } catch (error) {
       console.error(`Failed to delete file ${url}:`, error);
       // Don't throw error - file cleanup failure shouldn't break the update
+    }
+  }
+}
+
+// Helper function to clean up uploaded files when validation fails
+async function cleanupUploadedFiles(processedData: any): Promise<void> {
+  const urls = extractFileUrls(processedData);
+
+  // Delete all uploaded files since validation failed
+  for (const url of urls) {
+    try {
+      await deleteFile(url);
+      console.log(`Cleaned up uploaded file after validation failure: ${url}`);
+    } catch (error) {
+      console.error(`Failed to delete uploaded file ${url}:`, error);
+      // Don't throw error - file cleanup failure shouldn't break the response
     }
   }
 }
@@ -319,13 +337,16 @@ export const updateBanner = asyncHandler(async (req: Request, res: Response) => 
   // Process media fields (existing assets + new uploads)
   const processedData = processMediaFields(req);
 
-  // Validate and transform banner data using Zod
+  // Validate and transform banner data using Zod (final validation after upload)
   const validation = validateBanner(processedData);
   
   if (!validation.success) {
+    // Clean up any newly uploaded files since validation failed
+    await cleanupUploadedFiles(processedData);
+    
     return res.status(400).json({
       success: false,
-      message: 'Validation failed',
+      message: 'Validation failed after file upload',
       errors: validation.errors
     });
   }

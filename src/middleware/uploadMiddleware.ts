@@ -2,6 +2,7 @@ import multer from 'multer';
 import { BlobServiceClient } from '@azure/storage-blob';
 import type { NextFunction, Request, Response } from 'express';
 import { getFileTypeFromMimeType, isValidResourceFileType, SUPPORTED_RESOURCE_FILE_TYPES } from '@/types/IResourceFile.js';
+import { validateBannerPreUpload } from '../schemas/bannerSchema.js';
 import path from 'path';
 import fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
@@ -208,19 +209,41 @@ async function processUploads(req: Request, res: Response, next: NextFunction) {
   }
 }
 
-// Middleware that handles multiple file fields with new naming convention
-export const uploadMiddleware = [
-  upload.fields([
-    // New field names for separated uploads
-    { name: 'newfile_Logo', maxCount: 1 },
-    { name: 'newfile_BackgroundImage', maxCount: 1 },
-    { name: 'newfile_SplitImage', maxCount: 1 },
-    { name: 'newfile_AccentGraphic', maxCount: 1 },
-    { name: 'newfile_PartnerLogos', maxCount: 5 },
-    { name: 'newfile_ResourceFile', maxCount: 1 }
-  ]),
-  processUploads
-];
+// Combined middleware for validation and upload
+const handleMultipartData = upload.fields([
+  { name: 'newfile_Logo', maxCount: 1 },
+  { name: 'newfile_BackgroundImage', maxCount: 1 },
+  { name: 'newfile_SplitImage', maxCount: 1 },
+  { name: 'newfile_AccentGraphic', maxCount: 1 },
+  { name: 'newfile_PartnerLogos', maxCount: 5 },
+  { name: 'newfile_ResourceFile', maxCount: 1 }
+]);
+
+export const uploadMiddleware = (req: Request, res: Response, next: NextFunction) => {
+  handleMultipartData(req, res, (err) => {
+    if (err) {
+      // Handle Multer errors (e.g., file size limit)
+      return res.status(400).json({ success: false, message: 'File upload error', error: err.message });
+    }
+
+    // 1. Perform Pre-upload validation on req.body (now populated by Multer).
+    const validation = validateBannerPreUpload(req.body);
+    if (!validation.success) {
+      // Stop the process if validation fails before uploading files.
+      return res.status(400).json({
+        success: false,
+        message: 'Validation failed',
+        errors: validation.errors,
+      });
+    }
+
+    // Attach the validated data for the next steps.
+    req.preValidatedData = validation.data;
+
+    // 2. Proceed to process and upload files.
+    processUploads(req, res, next);
+  });
+};
 
 // Single file upload middleware
 export const uploadSingle = (fieldName: string) => [
@@ -267,5 +290,6 @@ export async function deleteFile(fileUrl: string): Promise<void> {
     // Don't throw error - file deletion failure shouldn't break the application
   }
 }
+
 
 export default uploadMiddleware;

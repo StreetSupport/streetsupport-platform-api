@@ -8,10 +8,16 @@ import Service from '@/models/serviceModel.js';
 import Banner from '@/models/bannerModel.js';
 
 // Extend Request interface to include user
+import { z } from 'zod';
+import { BannerPreUploadApiSchema } from '../schemas/bannerSchema.js';
+
+type PreValidatedBannerData = z.output<typeof BannerPreUploadApiSchema>;
+
 declare global {
   namespace Express {
     interface Request {
       user?: IUser;
+      preValidatedData?: PreValidatedBannerData;
     }
   }
 }

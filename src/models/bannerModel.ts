@@ -99,7 +99,7 @@ export const BannerSchema = new Schema({
   
   // CMS metadata
   IsActive: { type: Boolean, default: true },
-  LocationSlug: { type: String }, // null means all locations
+  LocationSlug: { type: String, required: true },
   Priority: { type: Number, min: 1, max: 10, default: 5 },
   
   // Analytics

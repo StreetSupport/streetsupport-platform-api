@@ -1,3 +1,4 @@
+// We should keep the same version of this file for APi and Admin to avoid conflicts
 import { z } from 'zod';
 import { 
     BannerTemplateType, 
@@ -21,7 +22,7 @@ export const MediaAssetSchemaCore = z.object({
   Filename: z.string().optional(),
   Size: z.number().positive().optional(),
   MimeType: z.string().optional()
-}).optional();
+}).nullable().optional();
 
 // Core Accent Graphic Schema - extends MediaAsset with position and opacity
 export const AccentGraphicSchemaCore = z.object({
@@ -34,7 +35,7 @@ export const AccentGraphicSchemaCore = z.object({
   MimeType: z.string().optional(),
   Position: z.enum(ACCENT_POSITIONS).optional().default('top-left' as AccentPosition),
   Opacity: z.number().min(0).max(1).optional().default(0.6)
-}).optional();
+}).nullable().optional();
 
 // Core Banner Background Schema - shared validation rules
 export const BannerBackgroundSchemaCore = z.object({
@@ -106,6 +107,19 @@ export const BannerSchemaCore = z.object({
   // Actions
   CtaButtons: z.array(CTAButtonSchemaCore)
     .max(3, 'Maximum 3 CTA buttons allowed'),
+
+  // Media Assets
+  // We initialize these media properties only after uploading to BlobStorage on the API side
+  // For new uploaded files we add prefix newfile_ (newfile_Logo, newfile_BackgroundImage, newfile_SplitImage, newfile_AccentGraphic, newfile_PartnerLogos, newfile_ResourceFile) to original property name, 
+  // and prefix newmeta_ (newmeta_AccentGraphic, newmeta_ResourceFile) to additional metadata. 
+  // or existing media assets (not true, because for existing files we add prefix existing_ to original property name) 
+  // Fields described above aren't files, they contain information about file.
+  // I don't know if we should validate fields with prefixes because they are created automatically for new uploaded files and 
+  // taken from database for existing files.
+  Logo: MediaAssetSchemaCore,
+  BackgroundImage: MediaAssetSchemaCore,
+  SplitImage: MediaAssetSchemaCore,
+  AccentGraphic: AccentGraphicSchemaCore,
 
   // Styling
   Background: BannerBackgroundSchemaCore,
@@ -201,10 +215,10 @@ export const sharedBannerRefinements = [
 ];
 
 // Helper function to apply shared refinements to a schema
-export function applySharedRefinements<T extends z.ZodType>(schema: T): T {
+export function applySharedRefinements<T extends z.ZodType>(schema: T, refinements: any[] = sharedBannerRefinements): T {
   let refinedSchema = schema;
   
-  for (const { refinement, message, path } of sharedBannerRefinements) {
+  for (const { refinement, message, path } of refinements) {
     refinedSchema = refinedSchema.refine(refinement, { message, path }) as T;
   }
   
@@ -215,7 +229,7 @@ export function applySharedRefinements<T extends z.ZodType>(schema: T): T {
 export interface ValidationResult<T> {
   success: boolean;
   errors: Array<{ path: string; message: string; code: string }>;
-  data: T | null;
+  data: T | undefined;
 }
 
 // Helper function to create validation result from Zod result
@@ -230,7 +244,7 @@ export function createValidationResult<T>(result: any): ValidationResult<T> {
     return {
       success: false,
       errors,
-      data: null
+      data: undefined
     };
   }
   
