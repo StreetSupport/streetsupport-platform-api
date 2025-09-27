@@ -50,7 +50,7 @@ function extractFileUrls(banner: any): string[] {
   // Main media assets
   if (banner.Logo?.Url) urls.push(banner.Logo.Url);
   if (banner.BackgroundImage?.Url) urls.push(banner.BackgroundImage.Url);
-  if (banner.SplitImage?.Url) urls.push(banner.SplitImage.Url);
+  if (banner.MainImage?.Url) urls.push(banner.MainImage.Url);
   if (banner.AccentGraphic?.Url) urls.push(banner.AccentGraphic.Url);
   
   // Partner logos for partnership charter banners (nested structure)
@@ -74,8 +74,8 @@ function processMediaFields(req: Request): any {
   // Note: I still not sure if it makes sense to use this merging instead of req.body
   const processedData = { ...req.body, ...req.preValidatedData };
   
-  // Process single media assets: Logo, BackgroundImage, SplitImage, AccentGraphic
-  ['Logo', 'BackgroundImage', 'SplitImage', 'AccentGraphic'].forEach(field => {
+  // Process single media assets: Logo, BackgroundImage, MainImage, AccentGraphic
+  ['Logo', 'BackgroundImage', 'MainImage', 'AccentGraphic'].forEach(field => {
     const newFileData = processedData[`newfile_${field}`];
     const newMetadata = processedData[`newmetadata_${field}`] 
       ? JSON.parse(processedData[`newmetadata_${field}`]) 

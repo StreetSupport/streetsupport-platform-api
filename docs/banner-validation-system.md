@@ -42,7 +42,7 @@ Validates these fields before file upload:
 - CMS metadata: IsActive, LocationSlug, Priority
 
 **Excluded from pre-upload validation:**
-- Logo, BackgroundImage, SplitImage, AccentGraphic
+- Logo, BackgroundImage, MainImage, AccentGraphic
 - PartnerLogos array
 - ResourceFile
 

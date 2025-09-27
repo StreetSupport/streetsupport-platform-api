@@ -110,15 +110,15 @@ export const BannerSchemaCore = z.object({
 
   // Media Assets
   // We initialize these media properties only after uploading to BlobStorage on the API side
-  // For new uploaded files we add prefix newfile_ (newfile_Logo, newfile_BackgroundImage, newfile_SplitImage, newfile_AccentGraphic, newfile_PartnerLogos, newfile_ResourceFile) to original property name, 
-  // and prefix newmeta_ (newmeta_AccentGraphic, newmeta_ResourceFile) to additional metadata. 
+  // For new uploaded files we add prefix newfile_ (newfile_Logo, newfile_BackgroundImage, newfile_MainImage, newfile_AccentGraphic, newfile_PartnerLogos, newfile_ResourceFile) to original property name, 
+  // and prefix newmetadata_ (newmetadata_AccentGraphic, newmetadata_ResourceFile) to additional metadata. 
   // or existing media assets (not true, because for existing files we add prefix existing_ to original property name) 
   // Fields described above aren't files, they contain information about file.
   // I don't know if we should validate fields with prefixes because they are created automatically for new uploaded files and 
   // taken from database for existing files.
   Logo: MediaAssetSchemaCore,
   BackgroundImage: MediaAssetSchemaCore,
-  SplitImage: MediaAssetSchemaCore,
+  MainImage: MediaAssetSchemaCore,
   AccentGraphic: AccentGraphicSchemaCore,
 
   // Styling
@@ -143,11 +143,19 @@ export const BannerSchemaCore = z.object({
   Priority: z.number().min(1).max(10, 'Priority must be between 1 and 10').default(1),
 });
 
+// Strong types for shared refinements and validation utilities
+type BannerCore = z.infer<typeof BannerSchemaCore>;
+interface RefinementEntry<T> {
+  refinement: (data: T) => boolean;
+  message: string;
+  path: (string | number)[];
+}
+
 // Shared cross-field validation refinements
-export const sharedBannerRefinements = [
+export const sharedBannerRefinements: RefinementEntry<BannerCore>[] = [
   // Date validation: EndDate must be after StartDate
   {
-    refinement: (data: any) => {
+    refinement: (data: BannerCore) => {
       if (data.StartDate && data.EndDate) {
         return data.EndDate > data.StartDate;
       }
@@ -158,7 +166,7 @@ export const sharedBannerRefinements = [
   },
   // Campaign end date must be in the future for giving campaigns
   {
-    refinement: (data: any) => {
+    refinement: (data: BannerCore) => {
       if (data.TemplateType === BannerTemplateType.GIVING_CAMPAIGN && data.GivingCampaign?.CampaignEndDate) {
         return data.GivingCampaign.CampaignEndDate > new Date();
       }
@@ -169,7 +177,7 @@ export const sharedBannerRefinements = [
   },
   // Donation target must be positive ONLY for giving campaigns
   {
-    refinement: (data: any) => {
+    refinement: (data: BannerCore) => {
       if (data.TemplateType === BannerTemplateType.GIVING_CAMPAIGN) {
         const target = data.GivingCampaign?.DonationGoal?.Target;
         return typeof target === 'number' && target > 0;
@@ -181,9 +189,9 @@ export const sharedBannerRefinements = [
   },
   // GivingCampaign object and its DonationGoal are required for giving campaigns
   {
-    refinement: (data: any) => {
+    refinement: (data: BannerCore) => {
       if (data.TemplateType === BannerTemplateType.GIVING_CAMPAIGN) {
-        return data.GivingCampaign && data.GivingCampaign.DonationGoal;
+        return !!(data.GivingCampaign && data.GivingCampaign.DonationGoal);
       }
       return true;
     },
@@ -192,9 +200,9 @@ export const sharedBannerRefinements = [
   },
   // PartnershipCharter object and its CharterType are required for partnership charter banners
   {
-    refinement: (data: any) => {
+    refinement: (data: BannerCore) => {
       if (data.TemplateType === BannerTemplateType.PARTNERSHIP_CHARTER) {
-        return data.PartnershipCharter && data.PartnershipCharter.CharterType;
+        return !!(data.PartnershipCharter && data.PartnershipCharter.CharterType !== undefined);
       }
       return true;
     },
@@ -203,9 +211,9 @@ export const sharedBannerRefinements = [
   },
   // ResourceProject object and its ResourceFile are required for resource project banners
   {
-    refinement: (data: any) => {
+    refinement: (data: BannerCore) => {
       if (data.TemplateType === BannerTemplateType.RESOURCE_PROJECT) {
-        return data.ResourceProject && data.ResourceProject.ResourceFile;
+        return !!(data.ResourceProject && data.ResourceProject.ResourceFile);
       }
       return true;
     },
@@ -215,7 +223,10 @@ export const sharedBannerRefinements = [
 ];
 
 // Helper function to apply shared refinements to a schema
-export function applySharedRefinements<T extends z.ZodType>(schema: T, refinements: any[] = sharedBannerRefinements): T {
+export function applySharedRefinements<T extends z.ZodTypeAny>(
+  schema: T,
+  refinements: Array<RefinementEntry<z.infer<T>>> = sharedBannerRefinements as unknown as Array<RefinementEntry<z.infer<T>>>
+): T {
   let refinedSchema = schema;
   
   for (const { refinement, message, path } of refinements) {
@@ -233,21 +244,26 @@ export interface ValidationResult<T> {
 }
 
 // Helper function to create validation result from Zod result
-export function createValidationResult<T>(result: any): ValidationResult<T> {
+// Define a local type compatible with Zod's safeParse result to avoid depending on non-exported classic types
+type ZodSafeParseResult<T> =
+  | { success: true; data: T }
+  | { success: false; error: z.ZodError };
+
+export function createValidationResult<T>(result: ZodSafeParseResult<T>): ValidationResult<T> {
   if (!result.success) {
-    const errors = result.error.issues.map((issue: any) => ({
+    const errors = result.error.issues.map((issue: z.ZodIssue) => ({
       path: issue.path.join('.'),
       message: issue.message,
       code: issue.code
     }));
-    
+
     return {
       success: false,
       errors,
       data: undefined
     };
   }
-  
+
   return {
     success: true,
     errors: [],

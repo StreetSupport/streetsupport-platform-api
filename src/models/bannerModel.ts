@@ -66,7 +66,7 @@ export const BannerSchema = new Schema({
   // Media
   Logo: MediaAssetSchema,
   BackgroundImage: MediaAssetSchema,
-  SplitImage: MediaAssetSchema, // Separate image for split layout (not background)
+  MainImage: MediaAssetSchema, // Separate image for split layout (not background)
   AccentGraphic: AccentGraphicSchema,
 
   // Actions

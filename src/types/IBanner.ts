@@ -39,7 +39,7 @@ export interface IBanner extends Document {
   // Media
   Logo?: IMediaAsset;
   BackgroundImage?: IMediaAsset;
-  SplitImage?: IMediaAsset; // Separate image for split layout (not background)
+  MainImage?: IMediaAsset;
   AccentGraphic?: IAccentGraphic;
   
   // Actions

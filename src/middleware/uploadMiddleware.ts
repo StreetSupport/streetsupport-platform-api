@@ -157,7 +157,7 @@ async function processUploads(req: Request, res: Response, next: NextFunction) {
             }
 
             // Store in appropriate field
-            if (fieldName === 'newfile_Logo' || fieldName === 'newfile_BackgroundImage' || fieldName === 'newfile_SplitImage' || fieldName === 'newfile_AccentGraphic') {
+            if (fieldName === 'newfile_Logo' || fieldName === 'newfile_BackgroundImage' || fieldName === 'newfile_MainImage' || fieldName === 'newfile_AccentGraphic') {
               uploadedAssets[fieldName] = asset;
             } else if (fieldName === 'newfile_PartnerLogos') {
               if (!uploadedAssets[fieldName]) {
@@ -213,7 +213,7 @@ async function processUploads(req: Request, res: Response, next: NextFunction) {
 const handleMultipartData = upload.fields([
   { name: 'newfile_Logo', maxCount: 1 },
   { name: 'newfile_BackgroundImage', maxCount: 1 },
-  { name: 'newfile_SplitImage', maxCount: 1 },
+  { name: 'newfile_MainImage', maxCount: 1 },
   { name: 'newfile_AccentGraphic', maxCount: 1 },
   { name: 'newfile_PartnerLogos', maxCount: 5 },
   { name: 'newfile_ResourceFile', maxCount: 1 }

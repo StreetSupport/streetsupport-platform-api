@@ -128,7 +128,7 @@ const BannerApiBaseSchema = BannerSchemaCore.omit({
 });
 
 // Pre-upload validation schema - validates non-file fields before upload (API-specific)
-// I don't know if we should validate fields with prefixes (newfile_, newmeta_, existing_) because they are created automatically for new uploaded files and 
+// I don't know if we should validate fields with prefixes (newfile_, newmetadata_, existing_) because they are created automatically for new uploaded files and 
 // taken from database for existing files.
 export const BannerPreUploadApiSchema = z.object({
   // Core content
