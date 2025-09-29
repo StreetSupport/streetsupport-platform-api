@@ -3,6 +3,7 @@ import { ResourceType } from "./IBanner.js";
 
 export interface IResourceFile {
   FileUrl?: string;
+  FileName?: string;
   ResourceType?: ResourceType;
   DownloadCount?: number;
   LastUpdated?: Date;
@@ -12,6 +13,7 @@ export interface IResourceFile {
 
 export const ResourceFileSchema = new Schema<IResourceFile>({
   FileUrl: { type: String },
+  FileName: { type: String },
   ResourceType: { type: String, enum: Object.values(ResourceType) },
   DownloadCount: { type: Number, min: 0, default: 0 },
   LastUpdated: { type: Date },

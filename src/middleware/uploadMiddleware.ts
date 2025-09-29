@@ -173,10 +173,6 @@ async function processUploads(req: Request, res: Response, next: NextFunction) {
               // Store the uploaded file URL - metadata will be merged in processMediaFields
               uploadedAssets[fieldName] = {
                 FileUrl: fileUrl,
-                // File metadata will be preserved from frontend and merged later
-                _uploadedFileUrl: fileUrl, // Temporary field to track the new URL
-                _uploadedFileSize: formatFileSize(file.size),
-                _uploadedFileType: getFileTypeFromMimeType(file.mimetype)
               };
             }
           } catch (error: any) {

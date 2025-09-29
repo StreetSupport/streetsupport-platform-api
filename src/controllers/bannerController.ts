@@ -25,10 +25,13 @@ export const createBanner = asyncHandler(async (req: Request, res: Response) => 
     });
   }
 
+  // Handle resource project specific logic
+  const finalBannerData = _handleResourceProjectBannerLogic({ ...validation.data });
+
   // Add creator information and system fields
   const bannerData = {
-    ...validation.data,
-    CreatedBy: req.user?.id || validation.data?.CreatedBy,
+    ...finalBannerData,
+    CreatedBy: req.user?.id || finalBannerData?.CreatedBy,
     DocumentCreationDate: new Date(),
     DocumentModifiedDate: new Date(),
     _id: new Types.ObjectId()
@@ -208,6 +211,7 @@ export const getBanners = asyncHandler(async (req: Request, res: Response) => {
     location, 
     templateType, 
     isActive, 
+    search,
     page = 1, 
     limit = 10,
     sortBy = 'Priority',
@@ -216,13 +220,36 @@ export const getBanners = asyncHandler(async (req: Request, res: Response) => {
 
   const query: any = {};
   
+  // Apply search filter
+  if (search && typeof search === 'string') {
+    const searchRegex = new RegExp(search, 'i'); // Case-insensitive search
+    query.$or = [
+      { Title: searchRegex },
+      { Description: searchRegex },
+      { Subtitle: searchRegex }
+    ];
+  }
+  
   // Apply filters
   if (location) {
-    query.$or = [
-      { LocationSlug: location },
-      { LocationSlug: { $exists: false } },
-      { LocationSlug: null }
-    ];
+    const locationQuery = {
+      $or: [
+        { LocationSlug: location },
+        { LocationSlug: { $exists: false } },
+        { LocationSlug: null }
+      ]
+    };
+    
+    // Combine with search query if it exists
+    if (query.$or) {
+      query.$and = [
+        { $or: query.$or }, // Search conditions
+        locationQuery       // Location conditions
+      ];
+      delete query.$or;
+    } else {
+      query.$or = locationQuery.$or;
+    }
   }
   
   if (templateType) {
@@ -354,11 +381,14 @@ export const updateBanner = asyncHandler(async (req: Request, res: Response) => 
   // Store old banner data for file cleanup
   const oldBannerData = banner.toObject();
 
+  // Handle resource project specific logic
+  const finalBannerData = _handleResourceProjectBannerLogic({ ...validation.data });
+
   // Update banner
   const updatedBanner = await Banner.findByIdAndUpdate(
     id,
     {
-      ...validation.data,
+      ...finalBannerData,
       DocumentModifiedDate: new Date()
     },
     { new: true, runValidators: true }
@@ -466,6 +496,30 @@ export const incrementDownloadCount = asyncHandler(async (req: Request, res: Res
     message: 'Download count incremented'
   });
 });
+
+// Private helper to handle resource project specific logic
+function _handleResourceProjectBannerLogic(bannerData: any): any {
+  if (bannerData.TemplateType === BannerTemplateType.RESOURCE_PROJECT && bannerData.ResourceProject?.ResourceFile) {
+    const resourceFile = bannerData.ResourceProject.ResourceFile;
+
+    // If a new file was uploaded, its URL is in `Url`. We make this the permanent `FileUrl`.
+    if (resourceFile.Url && !resourceFile.FileUrl) {
+      bannerData.ResourceProject.ResourceFile.FileUrl = resourceFile.Url;
+    }
+    // Add foreach to populate Url depending on AutomaticallyPopulatedUrl
+    // Update the 'Download' CTA button URL to use the file URL
+    const fileUrl = bannerData.ResourceProject.ResourceFile.FileUrl;
+    if (bannerData.CtaButtons && bannerData.CtaButtons.length > 0 && fileUrl) {
+      const downloadButtonIndex = 0;
+
+      const button = bannerData.CtaButtons[downloadButtonIndex];
+        if (button && button.AutomaticallyPopulatedUrl) {
+          button.Url = fileUrl;
+        }
+    }
+  }
+  return bannerData;
+}
 
 // Get banner statistics
 export const getBannerStats = asyncHandler(async (req: Request, res: Response) => {
