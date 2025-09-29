@@ -1,5 +1,6 @@
 // We should keep the same version of this file for APi and Admin to avoid conflicts
 import { z } from 'zod';
+// TODO: Uncomment if AccentGraphic is needed. In the other case, remove.
 import { 
     BannerTemplateType, 
     TextColour, 
@@ -9,8 +10,8 @@ import {
     ResourceType,
     BackgroundType,
     CTAVariant,
-    ACCENT_POSITIONS,
-    AccentPosition
+    // ACCENT_POSITIONS,
+    // AccentPosition
   } from '@/types/index.js';
 
 // Core Media Asset Schema - shared structure
@@ -24,18 +25,19 @@ export const MediaAssetSchemaCore = z.object({
   MimeType: z.string().optional()
 }).nullable().optional();
 
+// TODO: Uncomment if AccentGraphic is needed. In the other case, remove.
 // Core Accent Graphic Schema - extends MediaAsset with position and opacity
-export const AccentGraphicSchemaCore = z.object({
-  Url: z.string().optional(),
-  Alt: z.string().optional(),
-  Width: z.number().positive().optional(),
-  Height: z.number().positive().optional(),
-  Filename: z.string().optional(),
-  Size: z.number().positive().optional(),
-  MimeType: z.string().optional(),
-  Position: z.enum(ACCENT_POSITIONS).optional().default('top-left' as AccentPosition),
-  Opacity: z.number().min(0).max(1).optional().default(0.6)
-}).nullable().optional();
+// export const AccentGraphicSchemaCore = z.object({
+//   Url: z.string().optional(),
+//   Alt: z.string().optional(),
+//   Width: z.number().positive().optional(),
+//   Height: z.number().positive().optional(),
+//   Filename: z.string().optional(),
+//   Size: z.number().positive().optional(),
+//   MimeType: z.string().optional(),
+//   Position: z.enum(ACCENT_POSITIONS).optional().default('top-left' as AccentPosition),
+//   Opacity: z.number().min(0).max(1).optional().default(0.6)
+// }).nullable().optional();
 
 // Core Banner Background Schema - shared validation rules
 export const BannerBackgroundSchemaCore = z.object({
@@ -122,7 +124,8 @@ export const BannerSchemaCore = z.object({
   Logo: MediaAssetSchemaCore,
   BackgroundImage: MediaAssetSchemaCore,
   MainImage: MediaAssetSchemaCore,
-  AccentGraphic: AccentGraphicSchemaCore,
+  // TODO: Uncomment if AccentGraphic is needed. In the other case, remove.
+  // AccentGraphic: AccentGraphicSchemaCore,
 
   // Styling
   Background: BannerBackgroundSchemaCore,

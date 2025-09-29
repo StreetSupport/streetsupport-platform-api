@@ -1,3 +1,4 @@
+// TODO: Uncomment if AccentGraphic is needed. In the other case, remove.
 import { 
   BannerTemplateType, 
   CharterType, 
@@ -6,7 +7,7 @@ import {
   LayoutStyle, 
   TextColour, 
   UrgencyLevel,
-  AccentGraphicSchema,
+  // AccentGraphicSchema,
   BannerBackgroundSchema,
   CTAButtonSchema,
   DonationGoalSchema,
@@ -67,7 +68,8 @@ export const BannerSchema = new Schema({
   Logo: MediaAssetSchema,
   BackgroundImage: MediaAssetSchema,
   MainImage: MediaAssetSchema, // Separate image for split layout (not background)
-  AccentGraphic: AccentGraphicSchema,
+  // TODO: Uncomment if AccentGraphic is needed. In the other case, remove.
+  // AccentGraphic: AccentGraphicSchema,
 
   // Actions
   CtaButtons: {

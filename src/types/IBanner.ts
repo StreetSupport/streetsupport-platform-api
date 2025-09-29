@@ -1,6 +1,7 @@
 import mongoose, { Document, Types } from "mongoose";
 import { IMediaAsset } from "./IMediaAssetSchema.js";
-import { IAccentGraphic } from "./IAccentGraphic.js";
+// TODO: Uncomment if AccentGraphic is needed. In the other case, remove.
+// import { IAccentGraphic } from "./IAccentGraphic.js";
 import { IBannerBackground } from "./IBannerBackground.js";
 import { ICTAButton } from "./ICTAButton.js";
 import { IDonationGoal } from "./IDonationGoal.js";
@@ -40,7 +41,8 @@ export interface IBanner extends Document {
   Logo?: IMediaAsset;
   BackgroundImage?: IMediaAsset;
   MainImage?: IMediaAsset;
-  AccentGraphic?: IAccentGraphic;
+  // TODO: Uncomment if AccentGraphic is needed. In the other case, remove.
+  // AccentGraphic?: IAccentGraphic;
   
   // Actions
   CtaButtons?: ICTAButton[];
