@@ -5,7 +5,6 @@ export interface ICTAButton {
   Url: string;
   Variant?: CTAVariant;
   External?: boolean;
-  TrackingContext?: string;
   AutomaticallyPopulatedUrl?: boolean;
 }
 
@@ -23,6 +22,5 @@ export const CTAButtonSchema = new Schema<ICTAButton>({
     enum: Object.values(CTAVariant), 
     default: CTAVariant.PRIMARY 
   },
-  External: { type: Boolean, default: false },
-  TrackingContext: { type: String }
+  External: { type: Boolean, default: false }
 }, { _id: false });

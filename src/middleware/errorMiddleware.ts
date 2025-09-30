@@ -1,9 +1,8 @@
 import { ErrorRequestHandler } from 'express';
 import { UnauthorizedError } from 'express-oauth2-jwt-bearer';
 
-export const errorHandler: ErrorRequestHandler = (err, req, res, next) => {
+export const errorHandler: ErrorRequestHandler = (err, req, res) => {
   console.error('Error:', err);
-  debugger
   if (err instanceof UnauthorizedError) {
     return res.status(401).json({
       success: false,

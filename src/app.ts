@@ -12,7 +12,7 @@ import resourceRoutes from './routes/resourceRoutes.js';
 import { errorHandler, notFound } from './middleware/errorMiddleware.js';
 import checkJwt from './middleware/checkJwt.js';
 import './instrument.js';
-import * as Sentry from "@sentry/node"
+import * as Sentry from "@sentry/node";
 
 const app = express();
 
@@ -22,10 +22,10 @@ app.use(express.json());
 app.use(checkJwt);
 
 // TODO: We will remove this route after testing
-app.get("/debug-sentry", function mainHandler(req, res) {
-    const { message = 'Test error message' } = req.query;
-    throw new Error(`Sentry Test Error: ${message}`);
-  });
+app.get("/debug-sentry", function mainHandler(req) {
+  const { message = 'Test error message' } = req.query;
+  throw new Error(`Sentry Test Error: ${message}`);
+});
 
 app.use('/api/cities', cityRoutes);
 app.use('/api/categories', categoryRoutes);

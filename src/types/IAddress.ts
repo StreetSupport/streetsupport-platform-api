@@ -20,26 +20,26 @@ export interface IAddress extends Document {
 }
 
 export const AddressSchema = new mongoose.Schema<IAddress>({
-    Primary: {
-        type: Boolean,
-        required: true,
-    },
-    Key: {
-        type: String,
-        required: true,
-    },
-    Street: {
-        type: String,
-        required: true,
-    },
-    Street1: String,
-    Street2: String,
-    Street3: String,
-    City: String,
-    Postcode: String,
-    Telephone: String,
-    IsOpen247: Boolean,
-    IsAppointmentOnly: Boolean,
-    Location: LocationSchema,
-    OpeningTimes: [OpeningTimeSchema]
+  Primary: {
+    type: Boolean,
+    required: true,
+  },
+  Key: {
+    type: String,
+    required: true,
+  },
+  Street: {
+    type: String,
+    required: true,
+  },
+  Street1: String,
+  Street2: String,
+  Street3: String,
+  City: String,
+  Postcode: String,
+  Telephone: String,
+  IsOpen247: Boolean,
+  IsAppointmentOnly: Boolean,
+  Location: LocationSchema,
+  OpeningTimes: [OpeningTimeSchema]
 }, { _id: false });

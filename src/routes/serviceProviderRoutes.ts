@@ -1,11 +1,11 @@
 import { Router } from 'express';
 import { 
-    getServiceProviders, 
-    getServiceProviderById, 
-    getServiceProvidersByLocation,
-    createServiceProvider, 
-    updateServiceProvider, 
-    deleteServiceProvider 
+  getServiceProviders, 
+  getServiceProviderById, 
+  getServiceProvidersByLocation,
+  createServiceProvider, 
+  updateServiceProvider, 
+  deleteServiceProvider 
 } from '@/controllers/serviceProviderController.js';
 import { serviceProvidersAuth, serviceProvidersByLocationAuth } from '@/middleware/authMiddleware.js';
 

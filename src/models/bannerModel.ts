@@ -36,20 +36,20 @@ const ResourceProjectSchema = new Schema({
 // Main Banner Schema
 export const BannerSchema = new Schema({
   _id: {
-      type: mongoose.Schema.Types.ObjectId,
-      required: true,
+    type: mongoose.Schema.Types.ObjectId,
+    required: true,
   },
   DocumentCreationDate: {
-      type: Date,
-      default: Date.now,
+    type: Date,
+    default: Date.now,
   },
   DocumentModifiedDate: {
-      type: Date,
-      default: Date.now,
+    type: Date,
+    default: Date.now,
   },
   CreatedBy: {
-      type: String,
-      required: true,
+    type: String,
+    required: true,
   },
 
   // Core content
@@ -173,8 +173,8 @@ BannerSchema.statics.findActive = function(locationSlug?: string) {
 };
 
 BannerSchema.statics.findByTemplate = function(templateType: BannerTemplateType) {
-return this.find({ TemplateType: templateType, IsActive: true })
-  .sort({ Priority: -1, DocumentCreationDate: -1 });
+  return this.find({ TemplateType: templateType, IsActive: true })
+    .sort({ Priority: -1, DocumentCreationDate: -1 });
 };
 
 // Create and export the model

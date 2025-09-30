@@ -7,7 +7,7 @@ import {
   deleteSwepBanner,
   getSwepBannersByLocation
 } from '@/controllers/swepBannerController.js';
-import { swepBannersAuth, swepBannersByLocationAuth, swepBannersActivationAuth, authenticate } from '@/middleware/authMiddleware.js';
+import { swepBannersAuth, swepBannersByLocationAuth, swepBannersActivationAuth } from '@/middleware/authMiddleware.js';
 
 const router = Router();
 

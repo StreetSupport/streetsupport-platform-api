@@ -1,11 +1,11 @@
 import { Router } from 'express';
 import { 
-    getFaqs, 
-    getFaqById, 
-    getFaqsByLocation,
-    createFaq, 
-    updateFaq, 
-    deleteFaq 
+  getFaqs, 
+  getFaqById, 
+  getFaqsByLocation,
+  createFaq, 
+  updateFaq, 
+  deleteFaq 
 } from '@/controllers/faqController.js';
 import { faqsAuth } from '@/middleware/authMiddleware.js';
 

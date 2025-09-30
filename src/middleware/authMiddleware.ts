@@ -13,12 +13,10 @@ import { BannerPreUploadApiSchema } from '../schemas/bannerSchema.js';
 
 type PreValidatedBannerData = z.output<typeof BannerPreUploadApiSchema>;
 
-declare global {
-  namespace Express {
-    interface Request {
-      user?: IUser;
-      preValidatedData?: PreValidatedBannerData;
-    }
+declare module 'express' {
+  interface Request {
+    user?: IUser;
+    preValidatedData?: PreValidatedBannerData;
   }
 }
 
@@ -178,6 +176,7 @@ export const requireServiceProviderAccess = async (req: Request, res: Response, 
         error: 'Access denied - insufficient permissions for this service provider'
       });
     } catch (error) {
+      console.error('Error validating service provider access:', error);
       return res.status(500).json({
         success: false,
         error: 'Error validating service provider access'
@@ -334,6 +333,7 @@ export const requireServiceAccess = async (req: Request, res: Response, next: Ne
         error: 'Access denied - insufficient permissions for this service'
       });
     } catch (error) {
+      console.error('Error validating service access:', error);
       return res.status(500).json({
         success: false,
         error: 'Error validating service access'
@@ -515,6 +515,7 @@ export const requireFaqAccess = async (req: Request, res: Response, next: NextFu
         });
       }
     } catch (error) {
+      console.error('Error validating FAQ access:', error);
       return res.status(500).json({
         success: false,
         error: 'Error validating FAQ access'
@@ -614,6 +615,7 @@ export const requireUserCreationAccess = async (req: Request, res: Response, nex
           });
         }
       } catch (error) {
+        console.error('Error validating organization access:', error);
         return res.status(500).json({
           success: false,
           error: 'Error validating organization access'

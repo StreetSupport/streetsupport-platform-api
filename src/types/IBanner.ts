@@ -67,6 +67,7 @@ export interface IBanner extends Document {
   IsActive: boolean;
   LocationSlug?: string;
   Priority: number;
+  TrackingContext?: string;
   
   // Virtuals
   IsExpired: boolean;

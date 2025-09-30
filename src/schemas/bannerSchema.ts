@@ -19,16 +19,16 @@ import {
 import { BannerTemplateType, UrgencyLevel, CharterType, LayoutStyle, TextColour, BackgroundType } from '@/types/index.js';
 
 // Helper function to preprocess FormData strings to proper types
-const preprocessString = (val: unknown) => {
-  if (typeof val === 'string') {
-    // Handle quoted JSON strings from FormData
-    if (val.startsWith('"') && val.endsWith('"')) {
-      return val.slice(1, -1);
-    }
-    return val;
-  }
-  return val;
-};
+// const preprocessString = (val: unknown) => {
+//   if (typeof val === 'string') {
+//     // Handle quoted JSON strings from FormData
+//     if (val.startsWith('"') && val.endsWith('"')) {
+//       return val.slice(1, -1);
+//     }
+//     return val;
+//   }
+//   return val;
+// };
 
 const preprocessNumber = (val: unknown) => {
   if (typeof val === 'string') {

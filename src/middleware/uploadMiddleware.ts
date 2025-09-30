@@ -1,7 +1,7 @@
 import multer from 'multer';
 import { BlobServiceClient } from '@azure/storage-blob';
-import type { NextFunction, Request, Response } from 'express';
-import { getFileTypeFromMimeType, isValidResourceFileType, SUPPORTED_RESOURCE_FILE_TYPES } from '@/types/IResourceFile.js';
+import { NextFunction, Request, Response, Express } from 'express';
+import { isValidResourceFileType, SUPPORTED_RESOURCE_FILE_TYPES } from '@/types/IResourceFile.js';
 import { validateBannerPreUpload } from '../schemas/bannerSchema.js';
 import path from 'path';
 import fs from 'fs';
@@ -250,17 +250,17 @@ export const uploadSingle = (fieldName: string) => [
 ];
 
 // Utility functions
-function formatFileSize(bytes: number): string {
-  if (bytes === 0) return '0 Bytes';
-  const k = 1024;
-  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-}
+// function formatFileSize(bytes: number): string {
+//   if (bytes === 0) return '0 Bytes';
+//   const k = 1024;
+//   const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+//   const i = Math.floor(Math.log(bytes) / Math.log(k));
+//   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+// }
 
-function getFileExtension(filename: string): string {
-  return filename.split('.').pop() || '';
-}
+// function getFileExtension(filename: string): string {
+//   return filename.split('.').pop() || '';
+// }
 
 // Delete file from storage
 export async function deleteFile(fileUrl: string): Promise<void> {
@@ -288,7 +288,6 @@ export async function deleteFile(fileUrl: string): Promise<void> {
       }
     } else if (fileUrl.startsWith('/public/uploads/')) {
       // Local file deletion
-      const fs = require('fs');
       const filePath = path.join(process.cwd(), fileUrl);
       
       if (fs.existsSync(filePath)) {

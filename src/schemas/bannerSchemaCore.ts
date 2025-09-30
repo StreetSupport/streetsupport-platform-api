@@ -2,17 +2,17 @@
 import { z } from 'zod';
 // TODO: Uncomment if AccentGraphic is needed. In the other case, remove.
 import { 
-    BannerTemplateType, 
-    TextColour, 
-    LayoutStyle, 
-    UrgencyLevel, 
-    CharterType, 
-    ResourceType,
-    BackgroundType,
-    CTAVariant,
-    // ACCENT_POSITIONS,
-    // AccentPosition
-  } from '@/types/index.js';
+  BannerTemplateType, 
+  TextColour, 
+  LayoutStyle, 
+  UrgencyLevel, 
+  CharterType, 
+  ResourceType,
+  BackgroundType,
+  CTAVariant,
+  // ACCENT_POSITIONS,
+  // AccentPosition
+} from '@/types/index.js';
 
 // Core Media Asset Schema - shared structure
 export const MediaAssetSchemaCore = z.object({
@@ -69,7 +69,6 @@ export const CTAButtonSchemaCore = z.object({
   ),
   Variant: z.nativeEnum(CTAVariant).default(CTAVariant.PRIMARY),
   External: z.boolean().optional().default(false),
-  TrackingContext: z.string().optional(),
   AutomaticallyPopulatedUrl: z.boolean().optional(),
 }).optional();
 
@@ -158,6 +157,7 @@ export const BannerSchemaCore = z.object({
   IsActive: z.boolean().default(true),
   LocationSlug: z.string(),
   Priority: z.number().min(1).max(10, 'Priority must be between 1 and 10').default(1),
+  TrackingContext: z.string().optional(),
 });
 
 // Strong types for shared refinements and validation utilities

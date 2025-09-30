@@ -290,7 +290,6 @@ export const getBanners = asyncHandler(async (req: Request, res: Response) => {
 
 // Get active banners for public display
 export const getActiveBanners = asyncHandler(async (req: Request, res: Response) => {
-  debugger
   const { location, maxDisplay = 3 } = req.query;
   
   const banners = await Banner.findActive(location as string)
@@ -323,7 +322,6 @@ export const getBannerById = asyncHandler(async (req: Request, res: Response) =>
 
 // Get banners by location
 export const getBannersByLocation = asyncHandler(async (req: Request, res: Response) => {
-  debugger
   const { locationSlug } = req.params;
   const { isActive = true } = req.query;
   
@@ -351,7 +349,6 @@ export const getBannersByLocation = asyncHandler(async (req: Request, res: Respo
 
 // Update banner
 export const updateBanner = asyncHandler(async (req: Request, res: Response) => {
-  debugger
   const { id } = req.params;
   
   const banner = await Banner.findById(id);
@@ -410,7 +407,6 @@ export const updateBanner = asyncHandler(async (req: Request, res: Response) => 
 
 // Delete banner
 export const deleteBanner = asyncHandler(async (req: Request, res: Response) => {
-  debugger
   const { id } = req.params;
   
   const banner = await Banner.findById(id);
@@ -447,7 +443,6 @@ export const deleteBanner = asyncHandler(async (req: Request, res: Response) => 
 
 // Toggle banner active status
 export const toggleBannerStatus = asyncHandler(async (req: Request, res: Response) => {
-  debugger
   const { id } = req.params;
   
   const banner = await Banner.findById(id);
@@ -471,7 +466,6 @@ export const toggleBannerStatus = asyncHandler(async (req: Request, res: Respons
 
 // Increment download count for resource banners
 export const incrementDownloadCount = asyncHandler(async (req: Request, res: Response) => {
-  debugger
   const { id } = req.params;
   
   const banner = await Banner.findById(id);
@@ -513,11 +507,10 @@ function _handleResourceProjectBannerLogic(bannerData: any): any {
     const fileUrl = bannerData.ResourceProject.ResourceFile.FileUrl;
     if (bannerData.CtaButtons && bannerData.CtaButtons.length > 0 && fileUrl) {
       const downloadButtonIndex = 0;
-
       const button = bannerData.CtaButtons[downloadButtonIndex];
-        if (button && button.AutomaticallyPopulatedUrl) {
-          button.Url = fileUrl;
-        }
+      if (button && button.AutomaticallyPopulatedUrl) {
+        button.Url = fileUrl;
+      }
     }
   }
   return bannerData;
@@ -525,7 +518,6 @@ function _handleResourceProjectBannerLogic(bannerData: any): any {
 
 // Get banner statistics
 export const getBannerStats = asyncHandler(async (req: Request, res: Response) => {
-  debugger
   const stats = await Banner.aggregate([
     {
       $group: {

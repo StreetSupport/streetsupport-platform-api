@@ -7,7 +7,7 @@ export interface IOpeningTime {
 }
 
 export const OpeningTimeSchema = new mongoose.Schema<IOpeningTime>({
-    StartTime: Number,
-    EndTime: Number,
-    Day: Number
+  StartTime: Number,
+  EndTime: Number,
+  Day: Number
 }, { _id: false });
