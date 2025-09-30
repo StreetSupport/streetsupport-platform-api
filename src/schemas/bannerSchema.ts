@@ -1,7 +1,8 @@
 import { z } from 'zod';
 import {
   MediaAssetSchemaCore,
-  AccentGraphicSchemaCore,
+  // TODO: Uncomment if AccentGraphic is needed. In the other case, remove.
+  // AccentGraphicSchemaCore,
   BannerBackgroundSchemaCore,
   CTAButtonSchemaCore,
   DonationGoalSchemaCore,
@@ -68,7 +69,8 @@ const preprocessJSON = (val: unknown) => {
 
 // API-specific schemas with preprocessing for FormData
 export const MediaAssetSchema = MediaAssetSchemaCore;
-export const AccentGraphicSchema = AccentGraphicSchemaCore;
+// TODO: Uncomment if AccentGraphic is needed. In the other case, remove.
+// export const AccentGraphicSchema = AccentGraphicSchemaCore;
 export const BannerBackgroundSchema = BannerBackgroundSchemaCore;
 export const CTAButtonSchema = CTAButtonSchemaCore;
 
@@ -152,7 +154,7 @@ export const BannerPreUploadApiSchema = z.object({
   CtaButtons: z.preprocess(
     preprocessJSON,
     z.array(CTAButtonSchema).max(3, 'Maximum 3 CTA buttons allowed').optional()
-  ).optional(),
+  ).optional().default([]),
 
   // Styling (excluding file-based background)
   Background: z.preprocess(preprocessJSON, z.object({

@@ -266,14 +266,26 @@ function getFileExtension(filename: string): string {
 export async function deleteFile(fileUrl: string): Promise<void> {
   try {
     if (blobServiceClient && fileUrl.includes('blob.core.windows.net')) {
-      // Extract blob name from URL
-      const urlParts = fileUrl.split('/');
-      const blobName = urlParts.slice(-2).join('/'); // Get last two parts (folder/filename)
-      
+      // Robustly extract blob name relative to the container
       const containerClient = blobServiceClient.getContainerClient(CONTAINER_NAME);
+
+      // Use URL API to avoid issues with query strings
+      const url = new URL(fileUrl);
+      // pathname is like: /<container>/<blobName>
+      let pathname = url.pathname; // e.g. /banners/uuid.ext
+      if (pathname.startsWith('/')) pathname = pathname.slice(1);
+
+      // Remove the container segment from the start, leaving only the blob name
+      let blobName = pathname;
+      if (blobName.toLowerCase().startsWith(`${CONTAINER_NAME.toLowerCase()}/`)) {
+        blobName = blobName.slice(CONTAINER_NAME.length + 1);
+      }
+
       const blockBlobClient = containerClient.getBlockBlobClient(blobName);
-      
-      await blockBlobClient.deleteIfExists();
+      const result = await blockBlobClient.deleteIfExists();
+      if (!result.succeeded) {
+        console.warn(`deleteFile: Blob not found or already deleted: container=${CONTAINER_NAME}, blobName=${blobName}`);
+      }
     } else if (fileUrl.startsWith('/public/uploads/')) {
       // Local file deletion
       const fs = require('fs');
@@ -282,6 +294,9 @@ export async function deleteFile(fileUrl: string): Promise<void> {
       if (fs.existsSync(filePath)) {
         fs.unlinkSync(filePath);
       }
+    } else {
+      // Unknown storage target, log for visibility
+      console.warn(`deleteFile: Unrecognized file URL, no deletion performed: ${fileUrl}`);
     }
   } catch (error) {
     console.error('File deletion error:', error);

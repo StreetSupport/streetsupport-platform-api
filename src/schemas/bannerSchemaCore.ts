@@ -42,12 +42,23 @@ export const MediaAssetSchemaCore = z.object({
 // Core Banner Background Schema - shared validation rules
 export const BannerBackgroundSchemaCore = z.object({
   Type: z.nativeEnum(BackgroundType),
-  Value: z.string().min(1, 'Background value is required'),
+  Value: z.string().optional(), // Made optional, requirement handled by refinement
   Overlay: z.object({
     Colour: z.string().optional(),
     Opacity: z.number().min(0).max(1).optional()
   }).optional()
-});
+}).refine(
+  (data) => {
+    if (data.Type === BackgroundType.SOLID || data.Type === BackgroundType.GRADIENT) {
+      return typeof data.Value === 'string' && data.Value.length > 0;
+    }
+    return true;
+  },
+  {
+    message: 'Background value is required for solid or gradient types',
+    path: ['Value'],
+  }
+);
 
 // Core CTA Button Schema - shared validation rules
 export const CTAButtonSchemaCore = z.object({

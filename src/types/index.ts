@@ -13,7 +13,8 @@ export * from './INeedCategory.js';
 
 // Banner related types
 export * from './IBanner.js';
-export * from './IAccentGraphic.js';
+// TODO: Uncomment if AccentGraphic is needed. In the other case, remove.
+// export * from './IAccentGraphic.js';
 export * from './IBannerBackground.js';
 export * from './ICTAButton.js';
 export * from './IDonationGoal.js';
