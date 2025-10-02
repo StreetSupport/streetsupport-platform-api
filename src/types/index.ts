@@ -12,11 +12,11 @@ export * from './IUser.js';
 export * from './INeedCategory.js';
 
 // Banner related types
-export * from './IBanner.js';
+export * from './banners/IBanner.js';
 // TODO: Uncomment if AccentGraphic is needed. In the other case, remove.
 // export * from './IAccentGraphic.js';
-export * from './IBannerBackground.js';
-export * from './ICTAButton.js';
-export * from './IDonationGoal.js';
-export * from './IMediaAssetSchema.js';
-export * from './IResourceFile.js';
+export * from './banners/IBannerBackground.js';
+export * from './banners/ICTAButton.js';
+export * from './banners/IDonationGoal.js';
+export * from './banners/IMediaAsset.js';
+export * from './banners/IResourceFile.js';

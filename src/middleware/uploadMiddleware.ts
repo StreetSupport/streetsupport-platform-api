@@ -1,7 +1,7 @@
 import multer from 'multer';
 import { BlobServiceClient } from '@azure/storage-blob';
 import { NextFunction, Request, Response, Express } from 'express';
-import { isValidResourceFileType, SUPPORTED_RESOURCE_FILE_TYPES } from '@/types/IResourceFile.js';
+import { isValidResourceFileType, SUPPORTED_RESOURCE_FILE_TYPES } from '@/types/banners/IResourceFile.js';
 import { validateBannerPreUpload } from '../schemas/bannerSchema.js';
 import path from 'path';
 import fs from 'fs';

@@ -1,5 +1,5 @@
 import mongoose, { Document, Types } from "mongoose";
-import { IMediaAsset } from "./IMediaAssetSchema.js";
+import { IMediaAsset } from "./IMediaAsset.js";
 // TODO: Uncomment if AccentGraphic is needed. In the other case, remove.
 // import { IAccentGraphic } from "./IAccentGraphic.js";
 import { IBannerBackground } from "./IBannerBackground.js";
