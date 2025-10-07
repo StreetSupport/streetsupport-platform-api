@@ -17,8 +17,9 @@ import { uploadMiddleware } from '../middleware/uploadMiddleware.js';
 const router = Router();
 
 // Public routes
-router.get('/active', getActiveBanners);
-router.get('/location/:locationSlug', getBannersByLocation);
+// I'm not sure if we need it
+// router.get('/active', getActiveBanners);
+// router.get('/location/:locationSlug', getBannersByLocation);
 router.post('/:id/download', incrementDownloadCount);
 
 // Protected routes
@@ -27,7 +28,7 @@ router.get('/stats', bannersAuth, getBannerStats);
 router.get('/:id', bannersAuth, getBannerById);
 router.post('/', bannersAuth, uploadMiddleware, createBanner);
 router.put('/:id', bannersAuth, uploadMiddleware, updateBanner);
-router.patch('/:id/toggle', bannersByLocationAuth, toggleBannerStatus);
+router.patch('/:id/toggle', bannersAuth, toggleBannerStatus);
 router.delete('/:id', bannersAuth, deleteBanner);
 
 export default router;

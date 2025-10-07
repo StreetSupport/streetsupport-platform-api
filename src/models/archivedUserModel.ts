@@ -1,7 +1,7 @@
 import { Schema, model } from 'mongoose';
 import { IUser } from '@/types/index.js';
 
-const userSchema = new Schema<IUser>({
+const archivedUserSchema = new Schema<IUser>({
   DocumentCreationDate: {
     type: Date,
     default: Date.now,
@@ -26,7 +26,6 @@ const userSchema = new Schema<IUser>({
     type: Buffer,
     required: true,
   },
-  // We don't use this property
   AssociatedAreaId: {
     type: String,
     required: false,
@@ -34,14 +33,13 @@ const userSchema = new Schema<IUser>({
   Auth0Id: {
     type: String,
     required: false,
-    unique: true,
   },
   AssociatedProviderLocationIds: {
     type: [String],
     default: [],
   },
-}, { collection: 'Users', versionKey: false });
+}, { collection: 'ArchivedUsers', versionKey: false });
 
-const User = model<IUser>('Users', userSchema);
+const ArchivedUser = model<IUser>('ArchivedUsers', archivedUserSchema);
 
-export default User;
+export default ArchivedUser;

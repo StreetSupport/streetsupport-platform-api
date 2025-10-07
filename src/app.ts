@@ -1,7 +1,6 @@
 import express from 'express';
 import cors from 'cors';
 import cityRoutes from './routes/cityRoutes.js';
-import categoryRoutes from './routes/categoryRoutes.js';
 import faqRoutes from './routes/faqRoutes.js';
 import serviceRoutes from './routes/serviceRoutes.js';
 import serviceProviderRoutes from './routes/serviceProviderRoutes.js';
@@ -28,7 +27,6 @@ app.get("/debug-sentry", function mainHandler(req) {
 });
 
 app.use('/api/cities', cityRoutes);
-app.use('/api/categories', categoryRoutes);
 app.use('/api/faqs', faqRoutes);
 app.use('/api/services', serviceRoutes);
 app.use('/api/service-providers', serviceProviderRoutes);

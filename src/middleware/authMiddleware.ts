@@ -112,7 +112,7 @@ export const requireRole = (allowedRoles: string[]) => {
  */
 export const citiesAuth = [
   authenticate,
-  requireRole(['SuperAdmin'])
+  requireRole(['SuperAdmin', 'VolunteerAdmin', 'CityAdmin', 'OrgAdmin'])
 ];
 
 /**
@@ -128,14 +128,16 @@ export const requireServiceProviderAccess = async (req: Request, res: Response, 
 
   const userAuthClaims = req.user.AuthClaims || [];
   
-  // SuperAdmin has access to everything
-  if (userAuthClaims.includes('SuperAdmin')) {
+  // SuperAdmin has access to everything. VolunteerAdmin has access to everything except delete
+  if (userAuthClaims.includes('SuperAdmin') || (req.method !== 'DELETE' && userAuthClaims.includes('VolunteerAdmin'))) {
     return next();
   }
 
-  // VolunteerAdmin has full access
-  if (userAuthClaims.includes('VolunteerAdmin')) {
-    return next();
+  if (userAuthClaims.includes('VolunteerAdmin') && req.method === 'DELETE') {
+    return res.status(403).json({
+      success: false,
+      error: 'VolunteerAdmin cannot delete'
+    });
   }
 
   // For operations on specific service providers, check access based on role
@@ -210,7 +212,6 @@ export const serviceProvidersAuth = [
   requireServiceProviderAccess
 ];
 
-
 /**
  * Middleware for service provider location-based access (GET /service-providers/location/:locationId)
  */
@@ -224,9 +225,16 @@ export const requireServiceProviderLocationAccess = (req: Request, res: Response
 
   const userAuthClaims = req.user.AuthClaims || [];
   
-  // SuperAdmin has access to everything
-  if (userAuthClaims.includes('SuperAdmin')) {
+  // SuperAdmin has access to everything. VolunteerAdmin has access to everything except delete
+  if (userAuthClaims.includes('SuperAdmin') || (req.method !== 'DELETE' && userAuthClaims.includes('VolunteerAdmin'))) {
     return next();
+  }
+
+  if (userAuthClaims.includes('VolunteerAdmin') && req.method === 'DELETE') {
+    return res.status(403).json({
+      success: false,
+      error: 'VolunteerAdmin cannot delete'
+    });
   }
 
   // Check if user is a CityAdmin
@@ -273,16 +281,17 @@ export const requireServiceAccess = async (req: Request, res: Response, next: Ne
 
   const userAuthClaims = req.user.AuthClaims || [];
   
-  // SuperAdmin has access to everything
-  if (userAuthClaims.includes('SuperAdmin')) {
+  // SuperAdmin has access to everything. VolunteerAdmin has access to everything except delete
+  if (userAuthClaims.includes('SuperAdmin') || (req.method !== 'DELETE' && userAuthClaims.includes('VolunteerAdmin'))) {
     return next();
   }
 
-  // VolunteerAdmin has full access
-  if (userAuthClaims.includes('VolunteerAdmin')) {
-    return next();
+  if (userAuthClaims.includes('VolunteerAdmin') && req.method === 'DELETE') {
+    return res.status(403).json({
+      success: false,
+      error: 'VolunteerAdmin cannot delete'
+    });
   }
-
   // For operations on specific services, check access based on role
   const serviceId = req.params.id;
   if (serviceId && (req.method === 'GET' || req.method === 'PUT' || req.method === 'DELETE')) {
@@ -411,9 +420,16 @@ export const requireServicesByProviderAccess = async (req: Request, res: Respons
 
   const userAuthClaims = req.user.AuthClaims || [];
 
-  // SuperAdmin and VolunteerAdmin have full access
-  if (userAuthClaims.includes('SuperAdmin') || userAuthClaims.includes('VolunteerAdmin')) {
+  // SuperAdmin has access to everything. VolunteerAdmin has access to everything except delete
+  if (userAuthClaims.includes('SuperAdmin') || (req.method !== 'DELETE' && userAuthClaims.includes('VolunteerAdmin'))) {
     return next();
+  }
+
+  if (userAuthClaims.includes('VolunteerAdmin') && req.method === 'DELETE') {
+    return res.status(403).json({
+      success: false,
+      error: 'VolunteerAdmin cannot delete'
+    });
   }
 
   const providerId = req.params.providerId;
@@ -473,9 +489,16 @@ export const requireFaqAccess = async (req: Request, res: Response, next: NextFu
 
   const userAuthClaims = req.user.AuthClaims || [];
   
-  // SuperAdmin has access to everything
-  if (userAuthClaims.includes('SuperAdmin')) {
+  // SuperAdmin has access to everything. VolunteerAdmin has access to everything except delete
+  if (userAuthClaims.includes('SuperAdmin') || (req.method !== 'DELETE' && userAuthClaims.includes('VolunteerAdmin'))) {
     return next();
+  }
+
+  if (userAuthClaims.includes('VolunteerAdmin') && req.method === 'DELETE') {
+    return res.status(403).json({
+      success: false,
+      error: 'VolunteerAdmin cannot delete'
+    });
   }
 
   // Check if user is a CityAdmin
@@ -558,90 +581,143 @@ export const requireUserCreationAccess = async (req: Request, res: Response, nex
     });
   }
 
-  // TODO: Check if user exists. We can check by email in the database. But email is decoded. Can we somehow check if user exists?
+  // TODO: Check if user exists. We can check by email in the database. Can we somehow check if user exists?
 
-  const userAuthClaims = req.user.AuthClaims || [];
+  if (req.method === 'POST') {
+    const userAuthClaims = req.user.AuthClaims || [];
   
-  // SuperAdmin can create any user
-  if (userAuthClaims.includes('SuperAdmin')) {
-    return next();
-  }
-
-  // Validate the user being created
-  const newUserClaims = req.body.AuthClaims || [];
-  
-  if (userAuthClaims.includes('CityAdmin') || userAuthClaims.includes('OrgAdmin')) {
-    // Check if new user only has OrgAdmin and AdminFor roles
-    const hasOrgAdminRole = newUserClaims.some((claim: string) => 
-      claim === 'OrgAdmin'
-    );
-    
-    const hasOrgAdminForRole = newUserClaims.some((claim: string) => 
-      claim.startsWith('AdminFor:')
-    );
-
-    if (newUserClaims.length !== 2 || !hasOrgAdminRole || !hasOrgAdminForRole) {
-      return res.status(403).json({
-        success: false,
-        error: 'User can only create users with OrgAdmin role'
-      });
+    // SuperAdmin has access to everything. VolunteerAdmin has access to create
+    if (userAuthClaims.includes('SuperAdmin') || userAuthClaims.includes('VolunteerAdmin')) {
+      return next();
     }
-
-    // CityAdmin can create OrgAdmin users
-    if (userAuthClaims.includes('CityAdmin')) {
-      // Validate that CityAdmin has access to the organizations being assigned
-      const adminForClaims = newUserClaims.filter((claim: string) => claim.startsWith('AdminFor:'));  
-      const orgName = adminForClaims[0].replace('AdminFor:', '');
+    
+    // Validate the user being created
+    const newUserClaims = req.body.AuthClaims || [];
+    
+    if (userAuthClaims.includes('CityAdmin') || userAuthClaims.includes('OrgAdmin')) {
+      // // Check if new user only has OrgAdmin and AdminFor roles
+      // const hasOrgAdminRole = newUserClaims.some((claim: string) => 
+      //   claim === 'OrgAdmin'
+      // );
       
-      try {
-        const serviceProvider = await ServiceProvider.findOne({ Key: orgName }).lean();
-        
-        if (!serviceProvider) {
-          return res.status(404).json({
-            success: false,
-            error: `Organization ${orgName} not found`
-          });
-        }
+      // const hasOrgAdminForRole = newUserClaims.some((claim: string) => 
+      //   claim.startsWith('AdminFor:')
+      // );
 
-        const associatedLocationIds = serviceProvider.AssociatedLocationIds || [];
-        const hasLocationAccess = associatedLocationIds.some(locationId => 
-          userAuthClaims.includes(`CityAdminFor:${locationId}`)
-        );
-        
-        if (!hasLocationAccess) {
+      // if (!hasOrgAdminRole || !hasOrgAdminForRole) {
+      //   return res.status(403).json({
+      //     success: false,
+      //     error: 'User can only create users with OrgAdmin role'
+      //   });
+      // }
+
+      // CityAdmin can create CityAdmin, SwepAdmin, and OrgAdmin users
+      if (userAuthClaims.includes('CityAdmin')) {
+        // Validate that they're not trying to assign SuperAdmin or VolunteerAdmin role
+        if (newUserClaims.includes('SuperAdmin') || newUserClaims.includes('VolunteerAdmin')) {
           return res.status(403).json({
             success: false,
-            error: `Access denied - no permission for organization: ${orgName}`
+            error: 'CityAdmin cannot assign SuperAdmin or VolunteerAdmin roles'
           });
         }
-      } catch (error) {
-        console.error('Error validating organization access:', error);
-        return res.status(500).json({
-          success: false,
-          error: 'Error validating organization access'
-        });
-      }
-      
-      return next();
-    }
 
-    // OrgAdmin can create OrgAdmin users for their own organization
-    if (userAuthClaims.includes('OrgAdmin')) {
-      // Validate that OrgAdmin can only assign their own organization
-      const newAdminForClaims = newUserClaims.filter((claim: string) => claim.startsWith('AdminFor:'));
-      const userOrgClaims = userAuthClaims.filter(claim => claim.startsWith('AdminFor:'));
-      
-      if (!userOrgClaims.includes(newAdminForClaims[0])) {
-        return res.status(403).json({
-          success: false,
-          error: 'OrgAdmin can only create users for organizations they manage'
-        });
+        // Get the locations this CityAdmin has access to
+        const userLocationClaims = userAuthClaims.filter((claim: string) => 
+          claim.startsWith('CityAdminFor:')
+        );
+        const userLocations = userLocationClaims.map((claim: string) => 
+          claim.replace('CityAdminFor:', '')
+        );
+
+        // Check if creating CityAdmin or SwepAdmin with location-specific claims
+        const newCityAdminForClaims = newUserClaims.filter((claim: string) => 
+          claim.startsWith('CityAdminFor:')
+        );
+        const newSwepAdminForClaims = newUserClaims.filter((claim: string) => 
+          claim.startsWith('SwepAdminFor:')
+        );
+
+        // Validate location-specific claims
+        const allLocationClaims = [...newCityAdminForClaims, ...newSwepAdminForClaims];
+        for (const claim of allLocationClaims) {
+          const location = claim.replace(/^(CityAdminFor:|SwepAdminFor:)/, '');
+          if (!userLocations.includes(location)) {
+            return res.status(403).json({
+              success: false,
+              error: `Access denied - no permission for location: ${location}`
+            });
+          }
+        }
+
+        // Check if creating OrgAdmin with organization-specific claims
+        const adminForClaims = newUserClaims.filter((claim: string) => 
+          claim.startsWith('AdminFor:')
+        );
+        
+        if (adminForClaims.length > 0) {
+          try {
+            const orgName = adminForClaims[0].replace('AdminFor:', '');
+            const serviceProvider = await ServiceProvider.findOne({ Key: orgName }).lean();
+            
+            if (!serviceProvider) {
+              return res.status(404).json({
+                success: false,
+                error: `Organization ${orgName} not found`
+              });
+            }
+
+            const associatedLocationIds = serviceProvider.AssociatedLocationIds || [];
+            const hasLocationAccess = associatedLocationIds.some(locationId => 
+              userLocations.includes(locationId)
+            );
+            
+            if (!hasLocationAccess) {
+              return res.status(403).json({
+                success: false,
+                error: `Access denied - no permission for organization: ${orgName}`
+              });
+            }
+          } catch (error) {
+            console.error('Error validating organization access:', error);
+            return res.status(500).json({
+              success: false,
+              error: 'Error validating organization access'
+            });
+          }
+        }
+        
+        return next();
       }
+
+      // OrgAdmin can create OrgAdmin users for their own organization
+      if (userAuthClaims.includes('OrgAdmin')) {
+        // Validate that OrgAdmin can only assign their own organization
+        const newAdminForClaims = newUserClaims.filter((claim: string) => claim.startsWith('AdminFor:'));
+        const userOrgClaims = userAuthClaims.filter(claim => claim.startsWith('AdminFor:'));
+        
+        if (!userOrgClaims.includes(newAdminForClaims[0])) {
+          return res.status(403).json({
+            success: false,
+            error: 'OrgAdmin can only create users for organizations they manage'
+          });
+        }
+
+        // Validate that they're not trying to assign SuperAdmin role
+        const requestBody = req.body;
+        if (requestBody.AuthClaims && Array.isArray(requestBody.AuthClaims)) {
+          if (requestBody.AuthClaims.includes('SuperAdmin')) {
+            return res.status(403).json({
+              success: false,
+              error: 'CityAdmin cannot assign SuperAdmin role'
+            });
+          }
+        }
       
-      return next();
+        return next();
+      }
     }
   }
-
+  
   return res.status(403).json({
     success: false,
     error: 'Insufficient permissions to create users'
@@ -657,12 +733,185 @@ export const userCreationAuth = [
 ];
 
 /**
+ * Middleware for users access
+ */
+export const requireUserAccess = async (req: Request, res: Response, next: NextFunction) => {
+  if (!req.user) {
+    return res.status(401).json({
+      success: false,
+      error: 'Authentication required'
+    });
+  }
+
+  const userAuthClaims = req.user.AuthClaims || [];
+  const method = req.method;
+  const userId = req.params.id;
+
+  // 1. SuperAdmin can do everything
+  if (userAuthClaims.includes('SuperAdmin')) {
+    return next();
+  }
+
+  // 2. VolunteerAdmin - can do everything except DELETE and PUT and PATCH
+  if (userAuthClaims.includes('VolunteerAdmin')) {
+    if (method === 'DELETE') {
+      return res.status(403).json({
+        success: false,
+        error: 'VolunteerAdmin cannot delete users'
+      });
+    }
+    
+    if (method === 'PUT' || method === 'PATCH') {
+      // Validate that they're not trying to assign SuperAdmin role
+      const requestBody = req.body;
+      if (requestBody.AuthClaims && Array.isArray(requestBody.AuthClaims)) {
+        if (requestBody.AuthClaims.includes('SuperAdmin')) {
+          return res.status(403).json({
+            success: false,
+            error: 'VolunteerAdmin cannot update SuperAdmin role'
+          });
+        }
+      }
+    }
+    
+    // Allow GET and POST
+    return next();
+  }
+
+  // 3. CityAdmin - complex permissions
+  if (userAuthClaims.includes('CityAdmin')) {
+    // Can read all users
+    if (method === 'GET') {
+      return next();
+    }
+    
+    // Cannot delete users
+    if (method === 'DELETE') {
+      return res.status(403).json({
+        success: false,
+        error: 'CityAdmin cannot delete users'
+      });
+    }
+    
+    // Can update users (PUT) with restrictions
+    if (method === 'PUT' || method === 'PATCH') {
+      try {
+
+        const targetUser = await User.findById(userId);
+        
+        if (!targetUser) {
+          return res.status(404).json({
+            success: false,
+            error: 'User not found'
+          });
+        }
+
+        // Validate that they're not trying to assign SuperAdmin role
+        const requestBody = req.body;
+        if (requestBody.AuthClaims && Array.isArray(requestBody.AuthClaims)) {
+          if (requestBody.AuthClaims.includes('SuperAdmin')) {
+            return res.status(403).json({
+              success: false,
+              error: 'CityAdmin cannot update SuperAdmin role'
+            });
+          }
+        }
+
+        const targetUserClaims = targetUser.AuthClaims || [];
+        
+        // Check if CityAdmin can update this user
+        let canUpdate = false;
+        
+        // Check if target user has CityAdmin role with matching city
+        if (targetUserClaims.includes('CityAdmin')) {
+          const targetCityClaims = targetUserClaims.filter(claim => 
+            claim.startsWith('CityAdminFor:')
+          );
+          const currentUserCityClaims = userAuthClaims.filter(claim => 
+            claim.startsWith('CityAdminFor:')
+          );
+          
+          // Check if there's any matching city
+          const hasMatchingCity = targetCityClaims.some(targetCity =>
+            currentUserCityClaims.includes(targetCity)
+          );
+          
+          if (hasMatchingCity) {
+            canUpdate = true;
+          }
+        }
+        
+        // Check if target user has OrgAdmin role with matching org
+        if (!canUpdate && targetUserClaims.includes('OrgAdmin')) {
+          const targetOrgClaims = targetUserClaims.filter(claim => 
+            claim.startsWith('AdminFor:')
+          );
+          const currentUserCityClaims = userAuthClaims.filter(claim => 
+            claim.startsWith('CityAdminFor:')
+          );
+          // Extract location IDs from current user's claims
+          const currentUserLocationIds = currentUserCityClaims.map(claim => claim.replace('CityAdminFor:', ''));
+
+          // For each org key on the target user, check intersection with current user's city location IDs
+          const hasOrgInUserCities = await Promise.all(
+            targetOrgClaims.map(async (orgClaim) => {
+              const orgKey = orgClaim.replace('AdminFor:', '');
+              const sp = await ServiceProvider.findOne({ Key: orgKey }).lean();
+              if (!sp) return false;
+              const associated: string[] = Array.isArray(sp.AssociatedLocationIds) ? sp.AssociatedLocationIds : [];
+              return associated.some(locId => currentUserLocationIds.includes(String(locId)));
+            })
+          ).then(results => results.some(Boolean));
+
+          if (hasOrgInUserCities) {
+            canUpdate = true;
+          }
+        }
+        
+        if (!canUpdate) {
+          return res.status(403).json({
+            success: false,
+            error: 'CityAdmin can only update users with CityAdmin or OrgAdmin roles in their city/organization'
+          });
+        }
+        
+        // Validate that they're not trying to assign SuperAdmin role
+        if (requestBody.AuthClaims && Array.isArray(requestBody.AuthClaims)) {
+          if (requestBody.AuthClaims.includes('SuperAdmin')) {
+            return res.status(403).json({
+              success: false,
+              error: 'CityAdmin cannot update SuperAdmin role'
+            });
+          }
+        }
+        
+        return next();
+      } catch (error) {
+        console.error('Error checking user access:', error);
+        return res.status(500).json({
+          success: false,
+          error: 'Internal server error'
+        });
+      }
+    }
+  }
+
+  // No valid role found
+  return res.status(403).json({
+    success: false,
+    error: 'Access denied - insufficient permissions for user management'
+  });
+}
+
+/**
  * Combined middleware for users endpoint
  */
 export const usersAuth = [
   authenticate,
-  requireRole(['SuperAdmin'])
+  requireUserAccess
 ];
+
+
 
 /**
  * Middleware for banner access control with location validation
@@ -677,22 +926,28 @@ export const requireBannerAccess = async (req: Request, res: Response, next: Nex
 
   const userAuthClaims = req.user.AuthClaims || [];
   
-  // SuperAdmin has access to everything
-  if (userAuthClaims.includes('SuperAdmin')) {
+  // SuperAdmin has access to everything. VolunteerAdmin has access to everything except delete
+  if (userAuthClaims.includes('SuperAdmin') || (req.method !== 'DELETE' && userAuthClaims.includes('VolunteerAdmin'))) {
     return next();
   }
 
+  if (userAuthClaims.includes('VolunteerAdmin') && req.method === 'DELETE') {
+    return res.status(403).json({
+      success: false,
+      error: 'VolunteerAdmin cannot delete'
+    });
+  }
   // Check if user is a CityAdmin
   if (!userAuthClaims.includes('CityAdmin')) {
     return res.status(403).json({
       success: false,
-      error: 'City admin role required'
+      error: 'Access denied - insufficient permissions'
     });
   }
 
   // For operations on specific banners, check LocationId access
   const bannerId = req.params.id;
-  if (bannerId && (req.method === 'GET' || req.method === 'PUT' || req.method === 'DELETE')) {
+  if (bannerId && (req.method === 'GET' || req.method === 'PUT' || req.method === 'PATCH' || req.method === 'DELETE')) {
     // TODO: When Banner model is created with LocationId field, validate against user's CityAdminFor claims
     // For now, allow any CityAdmin to access
     const banner = await Banner.findById(bannerId).lean();
@@ -701,7 +956,7 @@ export const requireBannerAccess = async (req: Request, res: Response, next: Nex
     if (!userAuthClaims.includes(cityAdminClaim)) { return 403; }
   }
 
-  if (req.method === 'POST' && userAuthClaims.includes('CityAdmin')) {
+  if ((req.method === 'POST') && userAuthClaims.includes('CityAdmin')) {
     const locationId = req.body.LocationSlug;
     const cityAdminClaim = `CityAdminFor:${locationId}`;
     if (userAuthClaims.includes(cityAdminClaim)) {
@@ -736,9 +991,16 @@ export const requireBannerLocationAccess = (req: Request, res: Response, next: N
 
   const userAuthClaims = req.user.AuthClaims || [];
   
-  // SuperAdmin has access to everything
-  if (userAuthClaims.includes('SuperAdmin')) {
+  // SuperAdmin has access to everything. VolunteerAdmin has access to everything except delete
+  if (userAuthClaims.includes('SuperAdmin') || (req.method !== 'DELETE' && userAuthClaims.includes('VolunteerAdmin'))) {
     return next();
+  }
+
+  if (userAuthClaims.includes('VolunteerAdmin') && req.method === 'DELETE') {
+    return res.status(403).json({
+      success: false,
+      error: 'VolunteerAdmin cannot delete'
+    });
   }
 
   // Check if user is a CityAdmin
@@ -786,9 +1048,16 @@ export const requireSwepBannerFullAccess = async (req: Request, res: Response, n
 
   const userAuthClaims = req.user.AuthClaims || [];
   
-  // SuperAdmin has access to everything
-  if (userAuthClaims.includes('SuperAdmin')) {
+  // SuperAdmin has access to everything. VolunteerAdmin has access to everything except delete
+  if (userAuthClaims.includes('SuperAdmin') || (req.method !== 'DELETE' && userAuthClaims.includes('VolunteerAdmin'))) {
     return next();
+  }
+
+  if (userAuthClaims.includes('VolunteerAdmin') && req.method === 'DELETE') {
+    return res.status(403).json({
+      success: false,
+      error: 'VolunteerAdmin cannot delete'
+    });
   }
 
   // Check if user has SwepAdmin role
@@ -853,9 +1122,16 @@ export const requireSwepBannerLocationAccess = (req: Request, res: Response, nex
 
   const userAuthClaims = req.user.AuthClaims || [];
   
-  // SuperAdmin has access to everything
-  if (userAuthClaims.includes('SuperAdmin')) {
+  // SuperAdmin has access to everything. VolunteerAdmin has access to everything except delete
+  if (userAuthClaims.includes('SuperAdmin') || (req.method !== 'DELETE' && userAuthClaims.includes('VolunteerAdmin'))) {
     return next();
+  }
+
+  if (userAuthClaims.includes('VolunteerAdmin') && req.method === 'DELETE') {
+    return res.status(403).json({
+      success: false,
+      error: 'VolunteerAdmin cannot delete'
+    });
   }
 
   // Check if user has SwepAdmin role
@@ -910,9 +1186,16 @@ export const requireSwepBannerActivationAccess = async (req: Request, res: Respo
 
   const userAuthClaims = req.user.AuthClaims || [];
   
-  // SuperAdmin has access to everything
-  if (userAuthClaims.includes('SuperAdmin')) {
+  // SuperAdmin has access to everything. VolunteerAdmin has access to everything except delete
+  if (userAuthClaims.includes('SuperAdmin') || (req.method !== 'DELETE' && userAuthClaims.includes('VolunteerAdmin'))) {
     return next();
+  }
+
+  if (userAuthClaims.includes('VolunteerAdmin') && req.method === 'DELETE') {
+    return res.status(403).json({
+      success: false,
+      error: 'VolunteerAdmin cannot delete'
+    });
   }
 
   // Check if user has SwepAdmin role
@@ -965,9 +1248,16 @@ export const requireResourceAccess = async (req: Request, res: Response, next: N
 
   const userAuthClaims = req.user.AuthClaims || [];
   
-  // SuperAdmin has access to everything
-  if (userAuthClaims.includes('SuperAdmin')) {
+  // SuperAdmin has access to everything. VolunteerAdmin has access to everything except delete
+  if (userAuthClaims.includes('SuperAdmin') || (req.method !== 'DELETE' && userAuthClaims.includes('VolunteerAdmin'))) {
     return next();
+  }
+
+  if (userAuthClaims.includes('VolunteerAdmin') && req.method === 'DELETE') {
+    return res.status(403).json({
+      success: false,
+      error: 'VolunteerAdmin cannot delete'
+    });
   }
 
   // Check if user is a CityAdmin
@@ -1024,9 +1314,16 @@ export const requireResourceLocationAccess = (req: Request, res: Response, next:
 
   const userAuthClaims = req.user.AuthClaims || [];
   
-  // SuperAdmin has access to everything
-  if (userAuthClaims.includes('SuperAdmin')) {
+  // SuperAdmin has access to everything. VolunteerAdmin has access to everything except delete
+  if (userAuthClaims.includes('SuperAdmin') || (req.method !== 'DELETE' && userAuthClaims.includes('VolunteerAdmin'))) {
     return next();
+  }
+
+  if (userAuthClaims.includes('VolunteerAdmin') && req.method === 'DELETE') {
+    return res.status(403).json({
+      success: false,
+      error: 'VolunteerAdmin cannot delete'
+    });
   }
 
   // Check if user is a CityAdmin
@@ -1058,13 +1355,4 @@ export const requireResourceLocationAccess = (req: Request, res: Response, next:
 export const resourcesByLocationAuth = [
   authenticate,
   requireResourceLocationAccess
-];
-
-// TODO: Think if we need it and categories api
-/**
- * Combined middleware for categories endpoint (SuperAdmin only)
- */
-export const categoriesAuth = [
-  authenticate,
-  requireRole(['SuperAdmin'])
 ];

@@ -1,6 +1,5 @@
 // Re-export all types from individual files
 export * from './IAddress.js';
-export * from './ICategory.js';
 export * from './ICity.js';
 export * from './IFaq.js';
 export * from './IService.js';
