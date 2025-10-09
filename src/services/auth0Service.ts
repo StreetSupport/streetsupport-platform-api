@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import auth0Config from '@/config/auth0.js';
+import { HTTP_METHODS } from '@/constants/httpMethods.js';
 
 interface Auth0UserMetadata {
   authorization: {
@@ -56,7 +57,7 @@ async function getAuth0ManagementToken(): Promise<string> {
   }
 
   const response = await fetch(`https://${domain}/oauth/token`, {
-    method: 'POST',
+    method: HTTP_METHODS.POST,
     headers: {
       'Content-Type': 'application/json',
     },
@@ -115,7 +116,7 @@ export async function createAuth0User(
 
   // Create user in Auth0
   const response = await fetch(`https://${domain}/api/v2/users`, {
-    method: 'POST',
+    method: HTTP_METHODS.POST,
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${accessToken}`,
@@ -137,7 +138,6 @@ export async function createAuth0User(
  * @param auth0UserId - Auth0 user ID (e.g., "auth0|123456")
  */
 export async function deleteAuth0User(auth0UserId: string): Promise<void> {
-  debugger
   const domain = auth0Config.domain as string;
 
   if (!domain) {
@@ -157,7 +157,7 @@ export async function deleteAuth0User(auth0UserId: string): Promise<void> {
     const error = await response.text();
     throw new Error(`Failed to delete Auth0 user: ${error}`);
   }
-}
+};
 
 /**
  * Update user roles in Auth0
@@ -177,7 +177,7 @@ export async function updateAuth0UserRoles(
   const accessToken = await getAuth0ManagementToken();
 
   const response = await fetch(`https://${domain}/api/v2/users/${encodeURIComponent(auth0UserId)}`, {
-    method: 'PATCH',
+    method: HTTP_METHODS.PATCH,
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${accessToken}`,

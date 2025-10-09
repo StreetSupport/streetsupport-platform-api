@@ -1,13 +1,14 @@
 import { Request, Response } from 'express';
 import Faq from '@/models/faqsModel.js';
 import { asyncHandler } from '@/utils/asyncHandler.js';
+import { sendSuccess, sendCreated, sendNotFound } from '@/utils/apiResponses.js';
 
 // @desc    Get all FAQs
 // @route   GET /api/faqs
 // @access  Private
 export const getFaqs = asyncHandler(async (req: Request, res: Response) => {
-  const faqs = await Faq.find().sort('SortPosition');
-  res.status(200).json({ success: true, data: faqs });
+  const faqs = await Faq.find().sort('SortPosition').lean();
+  return sendSuccess(res, faqs);
 });
 
 // @desc    Get single FAQ by ID
@@ -16,26 +17,18 @@ export const getFaqs = asyncHandler(async (req: Request, res: Response) => {
 export const getFaqById = asyncHandler(async (req: Request, res: Response) => {
   const faq = await Faq.findById(req.params.id);
   if (!faq) {
-    res.status(404);
-    throw new Error('FAQ not found');
+    return sendNotFound(res, 'FAQ not found');
   }
-  res.status(200).json({ success: true, data: faq });
+  return sendSuccess(res, faq);
 });
 
-// @desc    Get FAQs by location
-// @route   GET /api/faqs/location/:locationId
-// @access  Private
-export const getFaqsByLocation = asyncHandler(async (req: Request, res: Response) => {
-  const faqs = await Faq.find({ Location: req.params.locationId }).sort('SortPosition');
-  res.status(200).json({ success: true, data: faqs });
-});
 
 // @desc    Create new FAQ
 // @route   POST /api/faqs
 // @access  Private
 export const createFaq = asyncHandler(async (req: Request, res: Response) => {
   const faq = await Faq.create(req.body);
-  res.status(201).json({ success: true, data: faq });
+  return sendCreated(res, faq);
 });
 
 // @desc    Update FAQ
@@ -48,20 +41,18 @@ export const updateFaq = asyncHandler(async (req: Request, res: Response) => {
     { new: true, runValidators: true }
   );
   if (!faq) {
-    res.status(404);
-    throw new Error('FAQ not found');
+    return sendNotFound(res, 'FAQ not found');
   }
-  res.status(200).json({ success: true, data: faq });
+  return sendSuccess(res, faq);
 });
 
 // @desc    Delete FAQ
 // @route   DELETE /api/faqs/:id
 // @access  Private
 export const deleteFaq = asyncHandler(async (req: Request, res: Response) => {
-  const faq = await Faq.findByIdAndDelete(req.params.id);
+  const faq = await Faq.findByIdAndDelete(req.params.id).lean();
   if (!faq) {
-    res.status(404);
-    throw new Error('FAQ not found');
+    return sendNotFound(res, 'FAQ not found');
   }
-  res.status(200).json({ success: true, data: {} });
+  return sendSuccess(res, {}, 'FAQ deleted');
 });

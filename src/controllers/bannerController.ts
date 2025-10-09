@@ -5,6 +5,7 @@ import { validateBanner } from '../schemas/bannerSchema.js';
 import Banner from '@/models/bannerModel.js';
 import { deleteFile } from '../middleware/uploadMiddleware.js';
 import { Types } from 'mongoose';
+import { sendSuccess, sendCreated, sendBadRequest, sendNotFound, sendPaginatedSuccess } from '@/utils/apiResponses.js';
 
 // Create new banner
 export const createBanner = asyncHandler(async (req: Request, res: Response) => {
@@ -18,11 +19,7 @@ export const createBanner = asyncHandler(async (req: Request, res: Response) => 
     // Clean up any uploaded files since validation failed
     await cleanupUploadedFiles(processedData);
     
-    return res.status(400).json({
-      success: false,
-      message: 'Validation failed',
-      errors: validation.errors
-    });
+    return sendBadRequest(res, 'Validation failed', validation.errors);
   }
 
   // Handle resource project specific logic
@@ -39,11 +36,7 @@ export const createBanner = asyncHandler(async (req: Request, res: Response) => 
 
   const banner = await Banner.create(bannerData);
 
-  res.status(201).json({
-    success: true,
-    data: banner,
-    message: 'Banner created successfully'
-  });
+  return sendCreated(res, banner, 'Banner created successfully');
 });
 
 // Helper function to extract all file URLs from a banner
@@ -210,7 +203,8 @@ async function cleanupUploadedFiles(processedData: any): Promise<void> {
 // Get all banners with optional filtering
 export const getBanners = asyncHandler(async (req: Request, res: Response) => {
   const { 
-    location, 
+    location,
+    locations, // New: comma-separated list of locations for CityAdmin filtering
     templateType, 
     isActive, 
     search,
@@ -231,9 +225,34 @@ export const getBanners = asyncHandler(async (req: Request, res: Response) => {
       { Subtitle: searchRegex }
     ];
   }
-  
-  // Apply filters
-  if (location) {
+
+  // Apply location filters
+  // Priority: 'locations' (for CityAdmin bulk filtering) over 'location' (for single filter)
+  if (locations && typeof locations === 'string') {
+    // Multiple locations passed from admin side for CityAdmin users
+    const locationArray = locations.split(',').map(loc => loc.trim()).filter(Boolean);
+    if (locationArray.length > 0) {
+      const locationQuery = {
+        $or: [
+          { LocationSlug: { $in: locationArray } },
+          { LocationSlug: { $exists: false } },
+          { LocationSlug: null }
+        ]
+      };
+      
+      // Combine with search query if it exists
+      if (query.$or) {
+        query.$and = [
+          { $or: query.$or }, // Search conditions
+          locationQuery       // Location conditions
+        ];
+        delete query.$or;
+      } else {
+        query.$or = locationQuery.$or;
+      }
+    }
+  } else if (location && typeof location === 'string') {
+    // Single location filter from UI
     const locationQuery = {
       $or: [
         { LocationSlug: location },
@@ -276,28 +295,11 @@ export const getBanners = asyncHandler(async (req: Request, res: Response) => {
 
   const total = await Banner.countDocuments(query);
 
-  res.status(200).json({
-    success: true,
-    data: banners,
-    pagination: {
-      page: Number(page),
-      limit: Number(limit),
-      total,
-      pages: Math.ceil(total / Number(limit))
-    }
-  });
-});
-
-// Get active banners for public display
-export const getActiveBanners = asyncHandler(async (req: Request, res: Response) => {
-  const { location, maxDisplay = 3 } = req.query;
-  
-  const banners = await Banner.findActive(location as string)
-    .limit(Number(maxDisplay));
-
-  res.status(200).json({
-    success: true,
-    data: banners
+  return sendPaginatedSuccess(res, banners, {
+    page: Number(page),
+    limit: Number(limit),
+    total: total,
+    pages: Math.ceil(total / Number(limit))
   });
 });
 
@@ -308,56 +310,20 @@ export const getBannerById = asyncHandler(async (req: Request, res: Response) =>
   const banner = await Banner.findById(id);
 
   if (!banner) {
-    return res.status(404).json({
-      success: false,
-      message: 'Banner not found'
-    });
+    return sendNotFound(res, 'Banner not found');
   }
 
-  res.status(200).json({
-    success: true,
-    data: banner
-  });
-});
-
-// Get banners by location
-export const getBannersByLocation = asyncHandler(async (req: Request, res: Response) => {
-  const { locationSlug } = req.params;
-  const { isActive = true } = req.query;
-  
-  const query: any = {
-    $or: [
-      { LocationSlug: locationSlug },
-      { LocationSlug: { $exists: false } },
-      { LocationSlug: null }
-    ]
-  };
-  
-  if (isActive !== undefined) {
-    query.IsActive = isActive === 'true';
-  }
-
-  const banners = await Banner.find(query)
-    .sort({ Priority: -1, DocumentCreationDate: -1 })
-    .populate('CreatedBy', 'UserName Email');
-
-  res.status(200).json({
-    success: true,
-    data: banners
-  });
+  return sendSuccess(res, banner);
 });
 
 // Update banner
 export const updateBanner = asyncHandler(async (req: Request, res: Response) => {
   const { id } = req.params;
   
-  const banner = await Banner.findById(id);
+  const banner = await Banner.findById(id).lean();
   
   if (!banner) {
-    return res.status(404).json({
-      success: false,
-      message: 'Banner not found'
-    });
+    return sendNotFound(res, 'Banner not found');
   }
 
   // Process media fields (existing assets + new uploads)
@@ -370,11 +336,7 @@ export const updateBanner = asyncHandler(async (req: Request, res: Response) => 
     // Clean up any newly uploaded files since validation failed
     await cleanupUploadedFiles(processedData);
     
-    return res.status(400).json({
-      success: false,
-      message: 'Validation failed after file upload',
-      errors: validation.errors
-    });
+    return sendBadRequest(res, 'Validation failed', validation.errors);
   }
 
   // Store old banner data for file cleanup
@@ -398,24 +360,17 @@ export const updateBanner = asyncHandler(async (req: Request, res: Response) => 
     await cleanupUnusedFiles(oldBannerData, updatedBanner.toObject());
   }
 
-  res.status(200).json({
-    success: true,
-    data: updatedBanner,
-    message: 'Banner updated successfully'
-  });
+  return sendSuccess(res, updatedBanner, 'Banner updated successfully');
 });
 
 // Delete banner
 export const deleteBanner = asyncHandler(async (req: Request, res: Response) => {
   const { id } = req.params;
   
-  const banner = await Banner.findById(id);
+  const banner = await Banner.findById(id).lean();
   
   if (!banner) {
-    return res.status(404).json({
-      success: false,
-      message: 'Banner not found'
-    });
+    return sendNotFound(res, 'Banner not found');
   }
 
   // Extract all file URLs from the banner before deletion
@@ -435,10 +390,7 @@ export const deleteBanner = asyncHandler(async (req: Request, res: Response) => 
     }
   }
 
-  res.status(200).json({
-    success: true,
-    message: 'Banner and associated files deleted successfully'
-  });
+  return sendSuccess(res, {}, 'Banner and associated files deleted successfully');
 });
 
 // Toggle banner active status
@@ -448,20 +400,13 @@ export const toggleBannerStatus = asyncHandler(async (req: Request, res: Respons
   const banner = await Banner.findById(id);
   
   if (!banner) {
-    return res.status(404).json({
-      success: false,
-      message: 'Banner not found'
-    });
+    return sendNotFound(res, 'Banner not found');
   }
 
   banner.IsActive = !banner.IsActive;
   await banner.save();
 
-  res.status(200).json({
-    success: true,
-    data: banner,
-    message: `Banner ${banner.IsActive ? 'activated' : 'deactivated'} successfully`
-  });
+  return sendSuccess(res, banner, `Banner ${banner.IsActive ? 'activated' : 'deactivated'} successfully`);
 });
 
 // Increment download count for resource banners
@@ -471,26 +416,16 @@ export const incrementDownloadCount = asyncHandler(async (req: Request, res: Res
   const banner = await Banner.findById(id);
   
   if (!banner) {
-    return res.status(404).json({
-      success: false,
-      message: 'Banner not found'
-    });
+    return sendNotFound(res, 'Banner not found');
   }
 
   if (banner.TemplateType !== BannerTemplateType.RESOURCE_PROJECT) {
-    return res.status(400).json({
-      success: false,
-      message: 'Download count can only be incremented for resource project banners'
-    });
+    return sendBadRequest(res, 'Download count can only be incremented for resource project banners');
   }
 
   await banner.IncrementDownloadCount();
 
-  res.status(200).json({
-    success: true,
-    data: { DownloadCount: banner.ResourceProject?.ResourceFile?.DownloadCount || 0 },
-    message: 'Download count incremented'
-  });
+  return sendSuccess(res, { DownloadCount: banner.ResourceProject?.ResourceFile?.DownloadCount || 0 }, 'Download count incremented');
 });
 
 // Private helper to handle resource project specific logic
@@ -516,40 +451,4 @@ function _handleResourceProjectBannerLogic(bannerData: any): any {
   return bannerData;
 }
 
-// Get banner statistics
-export const getBannerStats = asyncHandler(async (req: Request, res: Response) => {
-  const stats = await Banner.aggregate([
-    {
-      $group: {
-        _id: null,
-        TotalBanners: { $sum: 1 },
-        ActiveBanners: {
-          $sum: { $cond: [{ $eq: ['$IsActive', true] }, 1, 0] }
-        },
-        InactiveBanners: {
-          $sum: { $cond: [{ $eq: ['$IsActive', false] }, 1, 0] }
-        }
-      }
-    }
-  ]);
 
-  const templateStats = await Banner.aggregate([
-    {
-      $group: {
-        _id: '$TemplateType',
-        Count: { $sum: 1 },
-        Active: {
-          $sum: { $cond: [{ $eq: ['$IsActive', true] }, 1, 0] }
-        }
-      }
-    }
-  ]);
-
-  res.status(200).json({
-    success: true,
-    data: {
-      Overview: stats[0] || { TotalBanners: 0, ActiveBanners: 0, InactiveBanners: 0 },
-      ByTemplate: templateStats
-    }
-  });
-});

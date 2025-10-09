@@ -5,11 +5,8 @@ import {
   createBanner,
   updateBanner,
   deleteBanner,
-  getBannersByLocation,
-  getActiveBanners,
   toggleBannerStatus,
-  incrementDownloadCount,
-  getBannerStats
+  incrementDownloadCount
 } from '../controllers/bannerController.js';
 import { bannersAuth, bannersByLocationAuth } from '../middleware/authMiddleware.js';
 import { uploadMiddleware } from '../middleware/uploadMiddleware.js';
@@ -17,14 +14,10 @@ import { uploadMiddleware } from '../middleware/uploadMiddleware.js';
 const router = Router();
 
 // Public routes
-// I'm not sure if we need it
-// router.get('/active', getActiveBanners);
-// router.get('/location/:locationSlug', getBannersByLocation);
 router.post('/:id/download', incrementDownloadCount);
 
 // Protected routes
-router.get('/', bannersAuth, getBanners);
-router.get('/stats', bannersAuth, getBannerStats);
+router.get('/', bannersByLocationAuth, getBanners);
 router.get('/:id', bannersAuth, getBannerById);
 router.post('/', bannersAuth, uploadMiddleware, createBanner);
 router.put('/:id', bannersAuth, uploadMiddleware, updateBanner);

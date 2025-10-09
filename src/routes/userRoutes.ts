@@ -7,15 +7,15 @@ import {
   updateUser,
   deleteUser
 } from '@/controllers/userController.js';
-import { usersAuth, userCreationAuth } from '@/middleware/authMiddleware.js';
+import { usersAuth, userCreationAuth, usersDeletionAuth, usersByLocationAuth } from '@/middleware/authMiddleware.js';
 
 const router = Router();
 
-router.get('/', usersAuth, getUsers);
+router.get('/', usersByLocationAuth, getUsers);
 router.post('/', userCreationAuth, createUser);
 router.get('/:id', usersAuth, getUserById);
 router.put('/:id', usersAuth, updateUser);
-router.delete('/:id', usersAuth, deleteUser);
+router.delete('/:id', usersDeletionAuth, deleteUser);
 
 // Route for getting user by Auth0 ID
 router.get('/auth0/:auth0Id', getUserByAuth0Id);

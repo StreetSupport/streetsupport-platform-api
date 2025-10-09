@@ -1,13 +1,14 @@
 import { Request, Response } from 'express';
 import Service from '@/models/serviceModel.js';
 import { asyncHandler } from '@/utils/asyncHandler.js';
+import { sendSuccess, sendCreated, sendNotFound } from '@/utils/apiResponses.js';
 
 // @desc    Get all services
 // @route   GET /api/services
 // @access  Private
 export const getServices = asyncHandler(async (req: Request, res: Response) => {
   const services = await Service.find({ IsPublished: true });
-  res.status(200).json({ success: true, data: services });
+  return sendSuccess(res, services);
 });
 
 // @desc    Get single service by ID
@@ -16,10 +17,9 @@ export const getServices = asyncHandler(async (req: Request, res: Response) => {
 export const getServiceById = asyncHandler(async (req: Request, res: Response) => {
   const service = await Service.findById(req.params.id);
   if (!service) {
-    res.status(404);
-    throw new Error('Service not found');
+    return sendNotFound(res, 'Service not found');
   }
-  res.status(200).json({ success: true, data: service });
+  return sendSuccess(res, service);
 });
 
 // @desc    Get services by provider
@@ -30,7 +30,7 @@ export const getServicesByProvider = asyncHandler(async (req: Request, res: Resp
     ServiceProviderKey: req.params.providerId,
     IsPublished: true 
   });
-  res.status(200).json({ success: true, data: services });
+  return sendSuccess(res, services);
 });
 
 // @desc    Create new service
@@ -38,7 +38,7 @@ export const getServicesByProvider = asyncHandler(async (req: Request, res: Resp
 // @access  Private
 export const createService = asyncHandler(async (req: Request, res: Response) => {
   const service = await Service.create(req.body);
-  res.status(201).json({ success: true, data: service });
+  return sendCreated(res, service);
 });
 
 // @desc    Update service
@@ -51,20 +51,18 @@ export const updateService = asyncHandler(async (req: Request, res: Response) =>
     { new: true, runValidators: true }
   );
   if (!service) {
-    res.status(404);
-    throw new Error('Service not found');
+    return sendNotFound(res, 'Service not found');
   }
-  res.status(200).json({ success: true, data: service });
+  return sendSuccess(res, service);
 });
 
 // @desc    Delete service
 // @route   DELETE /api/services/:id
 // @access  Private
 export const deleteService = asyncHandler(async (req: Request, res: Response) => {
-  const service = await Service.findByIdAndDelete(req.params.id);
+  const service = await Service.findByIdAndDelete(req.params.id).lean();
   if (!service) {
-    res.status(404);
-    throw new Error('Service not found');
+    return sendNotFound(res, 'Service not found');
   }
-  res.status(200).json({ success: true, data: {} });
+  return sendSuccess(res, {}, 'Service deleted');
 });

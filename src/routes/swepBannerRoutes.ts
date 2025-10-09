@@ -4,18 +4,16 @@ import {
   getSwepBannerById,
   createSwepBanner,
   updateSwepBanner,
-  deleteSwepBanner,
-  getSwepBannersByLocation
+  deleteSwepBanner
 } from '@/controllers/swepBannerController.js';
-import { swepBannersAuth, swepBannersByLocationAuth, swepBannersActivationAuth } from '@/middleware/authMiddleware.js';
+import { swepBannersAuth, swepBannersByLocationAuth } from '@/middleware/authMiddleware.js';
 
 const router = Router();
 
-router.get('/', swepBannersAuth, getSwepBanners);
+router.get('/', swepBannersByLocationAuth, getSwepBanners);
 router.get('/:id', swepBannersAuth, getSwepBannerById);
-router.get('/location/:locationId', swepBannersByLocationAuth, getSwepBannersByLocation);
 router.post('/', swepBannersAuth, createSwepBanner);
-router.put('/:id', swepBannersActivationAuth, updateSwepBanner);
+router.put('/:id', swepBannersAuth, updateSwepBanner);
 router.delete('/:id', swepBannersAuth, deleteSwepBanner);
 
 export default router;

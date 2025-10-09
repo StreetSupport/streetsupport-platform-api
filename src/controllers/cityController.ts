@@ -1,20 +1,30 @@
 import { Request, Response } from 'express';
 import Cities from '@/models/cityModel.js';
 import { asyncHandler } from '@/utils/asyncHandler.js';
+import { sendSuccess, sendCreated, sendNotFound } from '@/utils/apiResponses.js';
 import mongoose from 'mongoose';
 
 /**
- * @desc Get all cities
+ * @desc Get all cities with optional role-based filtering
  * @route GET /api/cities
  * @access Private
  */
 export const getCities = asyncHandler(async (req: Request, res: Response) => {
-  const cities = await Cities.find().lean();
-
-  res.status(200).json({
-    success: true,
-    data: cities,
-  });
+  const { locations } = req.query; // Optional: comma-separated list of location slugs for filtering
+  
+  // Build query based on location filter
+  const query: any = {};
+  
+  if (locations && typeof locations === 'string') {
+    // Filter by specific locations (used for CityAdmin users)
+    const locationArray = locations.split(',').map(loc => loc.trim()).filter(Boolean);
+    if (locationArray.length > 0) {
+      query.Key = { $in: locationArray };
+    }
+  }
+  
+  const cities = await Cities.find(query).lean();
+  return sendSuccess(res, cities);
 });
 
 /**
@@ -24,13 +34,13 @@ export const getCities = asyncHandler(async (req: Request, res: Response) => {
  */
 export const getCityById = asyncHandler(async (req: Request, res: Response) => {
   const { id } = req.params;
-  const city = await Cities.findById(id).lean();
+  const city = await Cities.findById(id);
 
   if (!city) {
-    return res.status(404).json({ success: false, message: 'City not found' });
+    return sendNotFound(res, 'City not found');
   }
 
-  res.status(200).json({ success: true, data: city });
+  return sendSuccess(res, city);
 });
 
 /**
@@ -51,8 +61,7 @@ export const createCity = asyncHandler(async (req: Request, res: Response) => {
   payload.DocumentModifiedDate = new Date();
 
   const created = await Cities.create(payload);
-
-  res.status(201).json({ success: true, data: created });
+  return sendCreated(res, created);
 });
 
 /**
@@ -64,12 +73,12 @@ export const updateCity = asyncHandler(async (req: Request, res: Response) => {
   const { id } = req.params;
   const updates = { ...req.body, DocumentModifiedDate: new Date() };
 
-  const updated = await Cities.findByIdAndUpdate(id, updates, { new: true, runValidators: true }).lean();
+  const updated = await Cities.findByIdAndUpdate(id, updates, { new: true, runValidators: true });
   if (!updated) {
-    return res.status(404).json({ success: false, message: 'City not found' });
+    return sendNotFound(res, 'City not found');
   }
 
-  res.status(200).json({ success: true, data: updated });
+  return sendSuccess(res, updated);
 });
 
 /**
@@ -82,8 +91,8 @@ export const deleteCity = asyncHandler(async (req: Request, res: Response) => {
   const deleted = await Cities.findByIdAndDelete(id).lean();
 
   if (!deleted) {
-    return res.status(404).json({ success: false, message: 'City not found' });
+    return sendNotFound(res, 'City not found');
   }
 
-  res.status(200).json({ success: true, message: 'City deleted', data: deleted });
+  return sendSuccess(res, deleted, 'City deleted');
 });

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { ROLE_VALIDATION_PATTERN } from '../constants/roles.js';
 
 // Preprocessing helper for JSON strings
 const preprocessJSON = (val: unknown) => {
@@ -30,8 +31,7 @@ export const CreateUserSchema = z.object({
       .refine(
         (claims) => {
           // Ensure AuthClaims contains valid role formats
-          const validFormats = /^(SuperAdmin|CityAdmin|CityAdminFor:.+|VolunteerAdmin|SwepAdmin|SwepAdminFor:.+|OrgAdmin|AdminFor:.+)$/;
-          return claims.every(claim => validFormats.test(claim));
+          return claims.every(claim => ROLE_VALIDATION_PATTERN.test(claim));
         },
         { message: 'Invalid role format in AuthClaims' }
       )
@@ -56,8 +56,7 @@ export const UpdateUserSchema = z.object({
       .min(1, 'At least one role is required')
       .refine(
         (claims) => {
-          const validFormats = /^(SuperAdmin|CityAdmin|CityAdminFor:.+|VolunteerAdmin|SwepAdmin|SwepAdminFor:.+|OrgAdmin|AdminFor:.+)$/;
-          return claims.every(claim => validFormats.test(claim));
+          return claims.every(claim => ROLE_VALIDATION_PATTERN.test(claim));
         },
         { message: 'Invalid role format in AuthClaims' }
       )

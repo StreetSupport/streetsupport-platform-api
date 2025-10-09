@@ -3,6 +3,7 @@ import { BlobServiceClient } from '@azure/storage-blob';
 import { NextFunction, Request, Response, Express } from 'express';
 import { isValidResourceFileType, SUPPORTED_RESOURCE_FILE_TYPES } from '@/types/banners/IResourceFile.js';
 import { validateBannerPreUpload } from '../schemas/bannerSchema.js';
+import { sendBadRequest, sendInternalError } from '@/utils/apiResponses.js';
 import path from 'path';
 import fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
@@ -20,11 +21,11 @@ if (AZURE_STORAGE_CONNECTION_STRING) {
     blobServiceClient = BlobServiceClient.fromConnectionString(AZURE_STORAGE_CONNECTION_STRING);
     console.log('Azure Blob Storage configured successfully');
   } catch (error) {
-    console.warn('Failed to initialize Azure Blob Storage:', error);
-    console.warn('Falling back to local storage');
+    console.error('Failed to initialize Azure Blob Storage:', error);
+    console.error('Falling back to local storage');
   }
 } else {
-  console.log('Azure Storage connection string not provided, using local storage');
+  console.error('Azure Storage connection string not provided, using local storage');
 }
 
 // Multer configuration for memory storage
@@ -124,10 +125,7 @@ async function processUploads(req: Request, res: Response, next: NextFunction) {
       for (const file of fileArray) {
         // Basic file validation (detailed validation handled by Zod schemas)
         if (!file || file.size === 0) {
-          return res.status(400).json({
-            success: false,
-            message: 'Invalid file upload'
-          });
+          return sendBadRequest(res, 'Invalid file upload');
         }
 
         // Upload file
@@ -176,9 +174,9 @@ async function processUploads(req: Request, res: Response, next: NextFunction) {
                 FileUrl: fileUrl,
               };
             }
-          } catch (error: any) {
-            console.error('Upload error:', error);
-            throw new Error(`Failed to upload ${file.originalname}: ${error.message}`);
+          } catch (error) {
+            console.error('Upload file error:', error);
+            throw new Error(`Failed to upload ${file.originalname}`);
           }
         })();
 
@@ -196,13 +194,9 @@ async function processUploads(req: Request, res: Response, next: NextFunction) {
     };
 
     next();
-  } catch (error: any) {
-    console.error('Upload processing error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'File upload failed',
-      error: error.message
-    });
+  } catch (error) {
+    console.error('Upload error:', error);
+    sendInternalError(res, `File upload failed`);
   }
 }
 
@@ -221,18 +215,14 @@ export const uploadMiddleware = (req: Request, res: Response, next: NextFunction
   handleMultipartData(req, res, (err) => {
     if (err) {
       // Handle Multer errors (e.g., file size limit)
-      return res.status(400).json({ success: false, message: 'File upload error', error: err.message });
+      return sendBadRequest(res, `File upload error: ${err.message}`);
     }
 
     // 1. Perform Pre-upload validation on req.body (now populated by Multer).
     const validation = validateBannerPreUpload(req.body);
     if (!validation.success) {
       // Stop the process if validation fails before uploading files.
-      return res.status(400).json({
-        success: false,
-        message: 'Validation failed',
-        errors: validation.errors,
-      });
+      return sendBadRequest(res, 'Validation failed', validation.errors);
     }
 
     // Attach the validated data for the next steps.

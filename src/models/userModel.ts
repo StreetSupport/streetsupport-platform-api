@@ -33,7 +33,7 @@ const userSchema = new Schema<IUser>({
   },
   Auth0Id: {
     type: String,
-    required: false,
+    required: true,
     unique: true,
   },
   AssociatedProviderLocationIds: {
