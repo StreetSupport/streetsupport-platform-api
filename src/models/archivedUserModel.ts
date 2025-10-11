@@ -26,10 +26,6 @@ const archivedUserSchema = new Schema<IUser>({
     type: Buffer,
     required: true,
   },
-  AssociatedAreaId: {
-    type: String,
-    required: false,
-  },
   Auth0Id: {
     type: String,
     required: true,
