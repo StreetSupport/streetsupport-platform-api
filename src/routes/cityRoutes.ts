@@ -1,9 +1,10 @@
 import { Router } from 'express';
-import { getCities } from '../controllers/cityController.js';
-import checkJwt from '../middleware/checkJwt.js';
+import { getCities, getCityById } from '@/controllers/cityController.js';
+import { citiesAuth } from '@/middleware/authMiddleware.js';
 
 const router = Router();
 
-router.get('/', getCities);
+router.get('/', citiesAuth, getCities);
+router.get('/:id', citiesAuth, getCityById);
 
 export default router;
