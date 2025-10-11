@@ -202,7 +202,7 @@ export async function updateAuth0UserRoles(
  * @param auth0UserId - Auth0 user ID
  */
 export async function blockAuth0User(auth0UserId: string): Promise<void> {
-  const domain = null;//auth0Config.domain as string;
+  const domain = auth0Config.domain as string;
 
   if (!domain) {
     throw new Error('AUTH0_DOMAIN is not configured');
