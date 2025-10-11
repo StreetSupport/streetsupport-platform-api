@@ -16,7 +16,7 @@ import {
   sharedBannerRefinements,
   type ValidationResult
 } from './bannerSchemaCore.js';
-import { BannerTemplateType, UrgencyLevel, CharterType, LayoutStyle, TextColour, BackgroundType } from '@/types/index.js';
+import { BannerTemplateType, UrgencyLevel, CharterType, LayoutStyle, TextColour, BackgroundType } from '../types/index.js';
 
 // Helper function to preprocess FormData strings to proper types
 // const preprocessString = (val: unknown) => {

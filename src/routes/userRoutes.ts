@@ -7,8 +7,8 @@ import {
   updateUser,
   deleteUser,
   toggleUserActive
-} from '@/controllers/userController.js';
-import { usersAuth, userCreationAuth, usersDeletionAuth, usersByLocationAuth } from '@/middleware/authMiddleware.js';
+} from '../controllers/userController.js';
+import { usersAuth, userCreationAuth, usersDeletionAuth, usersByLocationAuth } from '../middleware/authMiddleware.js';
 
 const router = Router();
 

@@ -1,6 +1,6 @@
 import crypto from 'crypto';
-import auth0Config from '@/config/auth0.js';
-import { HTTP_METHODS } from '@/constants/httpMethods.js';
+import auth0Config from '../config/auth0.js';
+import { HTTP_METHODS } from '../constants/httpMethods.js';
 
 interface Auth0UserMetadata {
   authorization: {

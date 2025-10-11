@@ -1,9 +1,9 @@
 import multer from 'multer';
 import { BlobServiceClient } from '@azure/storage-blob';
 import { NextFunction, Request, Response, Express } from 'express';
-import { isValidResourceFileType, SUPPORTED_RESOURCE_FILE_TYPES } from '@/types/banners/IResourceFile.js';
+import { isValidResourceFileType, SUPPORTED_RESOURCE_FILE_TYPES } from '../types/banners/IResourceFile.js';
 import { validateBannerPreUpload } from '../schemas/bannerSchema.js';
-import { sendBadRequest, sendInternalError } from '@/utils/apiResponses.js';
+import { sendBadRequest, sendInternalError } from '../utils/apiResponses.js';
 import path from 'path';
 import fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';

@@ -6,8 +6,8 @@ import {
   createService, 
   updateService, 
   deleteService 
-} from '@/controllers/serviceController.js';
-import { servicesAuth, servicesByProviderAuth } from '@/middleware/authMiddleware.js';
+} from '../controllers/serviceController.js';
+import { servicesAuth, servicesByProviderAuth } from '../middleware/authMiddleware.js';
 
 const router = Router();
 

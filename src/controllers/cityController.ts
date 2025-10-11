@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
-import Cities from '@/models/cityModel.js';
-import { asyncHandler } from '@/utils/asyncHandler.js';
-import { sendSuccess, sendCreated, sendNotFound } from '@/utils/apiResponses.js';
+import Cities from '../models/cityModel.js';
+import { asyncHandler } from '../utils/asyncHandler.js';
+import { sendSuccess, sendCreated, sendNotFound } from '../utils/apiResponses.js';
 import mongoose from 'mongoose';
 
 /**

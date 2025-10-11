@@ -10,7 +10,7 @@ For endpoints that return paginated results, use `sendPaginatedSuccess()` instea
 ### 1. Import the Helper
 
 ```typescript
-import { sendPaginatedSuccess, PaginationMeta } from '@/utils/apiResponses.js';
+import { sendPaginatedSuccess, PaginationMeta } from '../utils/apiResponses.js';
 ```
 
 ### 2. Use in Controller
@@ -192,7 +192,7 @@ return sendPaginatedSuccess(res, banners, pagination);  // banners type inferred
 
 If you have an existing paginated endpoint:
 
-- [ ] Import `sendPaginatedSuccess` from `@/utils/apiResponses.js`
+- [ ] Import `sendPaginatedSuccess` from `../utils/apiResponses.js`
 - [ ] Replace manual `res.status(200).json({...})` with `sendPaginatedSuccess()`
 - [ ] Ensure pagination object has all 4 required fields
 - [ ] Add `return` statement if not already present
