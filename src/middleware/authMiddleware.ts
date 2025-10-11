@@ -17,6 +17,7 @@ import {
   sendInternalError, 
   sendUnauthorized
 } from '@/utils/apiResponses.js';
+import { asyncHandler } from '@/utils/asyncHandler.js';
 
 type PreValidatedBannerData = z.output<typeof BannerPreUploadApiSchema>;
 // Extend Request interface to include user
@@ -44,6 +45,46 @@ interface JwtPayload {
 const handleSuperVolunteerAdminAccess = (
   userAuthClaims: string[]
 ): boolean => userAuthClaims.includes(ROLES.SUPER_ADMIN) || userAuthClaims.includes(ROLES.VOLUNTEER_ADMIN);
+
+/**
+ * Helper: validates that user roles are properly configured
+ * - AuthClaims must not be empty
+ * - CityAdmin must have at least one CityAdminFor:* claim
+ * - SwepAdmin must have at least one SwepAdminFor:* claim
+ * - OrgAdmin must have at least one AdminFor:* claim
+ */
+const validateUserRoles = (authClaims: string[]): { valid: boolean; error?: string } => {
+  // Must have at least one role
+  if (!authClaims || authClaims.length === 0) {
+    return { valid: false, error: 'User must have at least one role assigned' };
+  }
+
+  // Check CityAdmin requires location-specific claim
+  if (authClaims.includes(ROLES.CITY_ADMIN)) {
+    const hasCityAdminFor = authClaims.some(claim => claim.startsWith(ROLE_PREFIXES.CITY_ADMIN_FOR));
+    if (!hasCityAdminFor) {
+      return { valid: false, error: 'CityAdmin role requires at least one CityAdminFor:* location claim' };
+    }
+  }
+
+  // Check SwepAdmin requires location-specific claim
+  if (authClaims.includes(ROLES.SWEP_ADMIN)) {
+    const hasSwepAdminFor = authClaims.some(claim => claim.startsWith(ROLE_PREFIXES.SWEP_ADMIN_FOR));
+    if (!hasSwepAdminFor) {
+      return { valid: false, error: 'SwepAdmin role requires at least one SwepAdminFor:* location claim' };
+    }
+  }
+
+  // Check OrgAdmin requires org-specific claim
+  if (authClaims.includes(ROLES.ORG_ADMIN)) {
+    const hasAdminFor = authClaims.some(claim => claim.startsWith(ROLE_PREFIXES.ADMIN_FOR));
+    if (!hasAdminFor) {
+      return { valid: false, error: 'OrgAdmin role requires at least one AdminFor:* organization claim' };
+    }
+  }
+
+  return { valid: true };
+};
 
 /**
  * Helper: ensures req.user exists. If missing, responds 401 and returns true (handled).
@@ -115,39 +156,57 @@ const validateCityAdminLocationsAccess = (
 };
 
 /**
+ * Helper: extracts location parameters from query string.
+ * Supports both single location (?location=manchester) and multiple locations (?locations=manchester,bradford).
+ * Returns an array of location slugs, with filtering applied.
+ * 
+ * @param req - Express Request object
+ * @returns Array of location slugs
+ */
+const extractLocationsFromQuery = (req: Request): string[] => {
+  const singleLocation = req.query.location as string | undefined;
+  const multipleLocations = req.query.locations as string | undefined;
+  
+  let locations: string[] = [];
+  
+  if (singleLocation) {
+    locations = [singleLocation];
+  } else if (multipleLocations) {
+    locations = multipleLocations.split(',').map(l => l.trim()).filter(Boolean);
+  }
+  
+  return locations;
+};
+
+/**
  * Middleware to authenticate JWT tokens from Auth0
  */
-export const authenticate = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const authHeader = req.headers.authorization;
-    
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return sendUnauthorized(res, 'Access token required');
-    }
-
-    const token = authHeader.substring(7); // Remove 'Bearer ' prefix
-    
-    // Verify JWT token (you may need to implement proper Auth0 verification)
-    const decoded = jwt.decode(token) as JwtPayload;
-    
-    if (!decoded || !decoded.sub) {
-      return sendUnauthorized(res, 'Invalid token');
-    }
-
-    // Find user in database by Auth0 ID
-    const user = await User.findOne({ Auth0Id: decoded.sub.replace('auth0|', '') }).lean();
-
-    if (!user) {
-      return sendUnauthorized(res, 'User not found');
-    }
-
-    req.user = user;
-    next();
-  } catch (error) {
-    console.error('Authentication failed:', error);
-    return sendUnauthorized(res, 'Authentication failed');
+export const authenticate = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
+  const authHeader = req.headers.authorization;
+  
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return sendUnauthorized(res, 'Access token required');
   }
-};
+
+  const token = authHeader.substring(7); // Remove 'Bearer ' prefix
+  
+  // Verify JWT token (you may need to implement proper Auth0 verification)
+  const decoded = jwt.decode(token) as JwtPayload;
+  
+  if (!decoded || !decoded.sub) {
+    return sendUnauthorized(res, 'Invalid token');
+  }
+
+  // Find user in database by Auth0 ID
+  const user = await User.findOne({ Auth0Id: decoded.sub.replace('auth0|', '') }).lean();
+
+  if (!user) {
+    return sendUnauthorized(res, 'User not found');
+  }
+
+  req.user = user;
+  next();
+});
 
 /**
  * Middleware to check if user has required role
@@ -182,7 +241,7 @@ export const citiesAuth = [
 /**
  * Middleware for service provider access control based on location and organization
  */
-export const requireServiceProviderAccess = async (req: Request, res: Response, next: NextFunction) => {
+export const requireServiceProviderAccess = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
   if (ensureAuthenticated(req, res)) { return; }
 
   const userAuthClaims = req.user?.AuthClaims || [];
@@ -193,29 +252,24 @@ export const requireServiceProviderAccess = async (req: Request, res: Response, 
   // For operations on specific service providers, check access based on role
   const serviceProviderId = req.params.id;
   if (serviceProviderId && (req.method === HTTP_METHODS.GET || req.method === HTTP_METHODS.PUT || req.method === HTTP_METHODS.PATCH || req.method === HTTP_METHODS.DELETE)) {
-    try {
-      const serviceProvider = await ServiceProvider.findById(serviceProviderId).lean();
-      
-      if (!serviceProvider) {
-        return sendNotFound(res, 'Service provider');
-      }
-
-      // Check OrgAdmin access
-      if (hasOrgAdminAccess(userAuthClaims, serviceProvider.Key)) {
-        return next();
-      }
-
-      // Check CityAdmin access
-      const associatedLocationIds = serviceProvider.AssociatedLocationIds || [];
-      if (hasCityAdminLocationAccess(userAuthClaims, associatedLocationIds)) {
-        return next();
-      }
-
-      return sendForbidden(res);
-    } catch (error) {
-      console.error('Error validating service provider access:', error);
-      return sendInternalError(res, 'Error validating service provider access');
+    const serviceProvider = await ServiceProvider.findById(serviceProviderId).lean();
+    
+    if (!serviceProvider) {
+      return sendNotFound(res, 'Service provider');
     }
+
+    // Check OrgAdmin access
+    if (hasOrgAdminAccess(userAuthClaims, serviceProvider.Key)) {
+      return next();
+    }
+
+    // Check CityAdmin access
+    const associatedLocationIds = serviceProvider.AssociatedLocationIds || [];
+    if (hasCityAdminLocationAccess(userAuthClaims, associatedLocationIds)) {
+      return next();
+    }
+
+    return sendForbidden(res);
   }
 
   if (req.body && req.method === HTTP_METHODS.POST) {
@@ -229,7 +283,7 @@ export const requireServiceProviderAccess = async (req: Request, res: Response, 
   }
 
   return sendForbidden(res);
-};
+});
 
 /**
  * Combined middleware for service providers endpoint
@@ -261,8 +315,8 @@ export const requireServiceProviderLocationAccess = (req: Request, res: Response
   }
 
   // For location-based access, check the locationId param
-  const locations = req.params.location ? [req.params.location] : (req.params.locations || '').split(',').map(l => l.trim()).filter(Boolean);
-  
+  const locations = extractLocationsFromQuery(req);
+
   if (validateCityAdminLocationsAccess(userAuthClaims, locations, res)) {
     return; // Access denied, response already sent
   }
@@ -281,7 +335,7 @@ export const serviceProvidersByLocationAuth = [
 /**
  * Middleware for service access control based on service provider ownership
  */
-export const requireServiceAccess = async (req: Request, res: Response, next: NextFunction) => {
+export const requireServiceAccess = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
   if (ensureAuthenticated(req, res)) { return; }
 
   const userAuthClaims = req.user?.AuthClaims || [];
@@ -292,37 +346,32 @@ export const requireServiceAccess = async (req: Request, res: Response, next: Ne
   // For operations on specific services, check access based on role
   const serviceId = req.params.id;
   if (serviceId && (req.method === HTTP_METHODS.GET || req.method === HTTP_METHODS.PUT || req.method === HTTP_METHODS.PATCH || req.method === HTTP_METHODS.DELETE)) {
-    try {
-      const service = await Service.findById(serviceId).lean();
+    const service = await Service.findById(serviceId).lean();
+    
+    if (!service) {
+      return sendNotFound(res, 'Service not found');
+    }
+
+    // Check OrgAdmin access by ServiceProviderKey
+    if (hasOrgAdminAccess(userAuthClaims, service.ServiceProviderKey)) {
+      return next();
+    }
+
+    // Check CityAdmin access by finding the service provider
+    if (userAuthClaims.includes(ROLES.CITY_ADMIN)) {
+      const serviceProvider = await ServiceProvider.findById(service.ParentId).lean();
       
-      if (!service) {
-        return sendNotFound(res, 'Service not found');
+      if (!serviceProvider) {
+        return sendNotFound(res, 'Associated service provider not found');
       }
 
-      // Check OrgAdmin access by ServiceProviderKey
-      if (hasOrgAdminAccess(userAuthClaims, service.ServiceProviderKey)) {
+      const associatedLocationIds = serviceProvider.AssociatedLocationIds || [];
+      if (hasCityAdminLocationAccess(userAuthClaims, associatedLocationIds)) {
         return next();
       }
-
-      // Check CityAdmin access by finding the service provider
-      if (userAuthClaims.includes(ROLES.CITY_ADMIN)) {
-        const serviceProvider = await ServiceProvider.findById(service.ParentId).lean();
-        
-        if (!serviceProvider) {
-          return sendNotFound(res, 'Associated service provider not found');
-        }
-
-        const associatedLocationIds = serviceProvider.AssociatedLocationIds || [];
-        if (hasCityAdminLocationAccess(userAuthClaims, associatedLocationIds)) {
-          return next();
-        }
-      }
-
-      return sendForbidden(res);
-    } catch (error) {
-      console.error('Error validating service access:', error);
-      return sendInternalError(res, 'Error validating service access');
     }
+
+    return sendForbidden(res);
   }
 
   if (req.body && req.method === HTTP_METHODS.POST) {
@@ -347,7 +396,7 @@ export const requireServiceAccess = async (req: Request, res: Response, next: Ne
   }
 
   return sendForbidden(res);
-};
+});
 
 /**
  * Combined middleware for services endpoint
@@ -360,7 +409,7 @@ export const servicesAuth = [
 /**
  * Middleware for service access control based on provider ownership
  */
-export const requireServicesByProviderAccess = async (req: Request, res: Response, next: NextFunction) => {
+export const requireServicesByProviderAccess = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
   if (ensureAuthenticated(req, res)) { return; }
 
   if (req.method !== HTTP_METHODS.GET && !req.params.providerId) {
@@ -381,25 +430,19 @@ export const requireServicesByProviderAccess = async (req: Request, res: Respons
 
   // CityAdmin access check
   if (userAuthClaims.includes(ROLES.CITY_ADMIN)) {
-    try {
-      const serviceProvider = await ServiceProvider.findById(providerId).lean();
+    const serviceProvider = await ServiceProvider.findById(providerId).lean();
 
-      if (serviceProvider) {
-        // Check CityAdmin access
-        const associatedLocationIds = serviceProvider.AssociatedLocationIds || [];
-        if (hasCityAdminLocationAccess(userAuthClaims, associatedLocationIds)) {
-          return next();
-        }
+    if (serviceProvider) {
+      // Check CityAdmin access
+      const associatedLocationIds = serviceProvider.AssociatedLocationIds || [];
+      if (hasCityAdminLocationAccess(userAuthClaims, associatedLocationIds)) {
+        return next();
       }
-    } catch (error) {
-      console.error('Error validating service provider access:', error);
-      return sendInternalError(res, 'Error validating service provider access');
     }
-    
   }
 
   return sendForbidden(res);
-};
+});
 
 /**
  * Combined middleware for services by provider endpoint
@@ -412,7 +455,7 @@ export const servicesByProviderAuth = [
 /**
  * Middleware for FAQ access control based on LocationKey
  */
-export const requireFaqAccess = async (req: Request, res: Response, next: NextFunction) => {
+export const requireFaqAccess = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
   if (ensureAuthenticated(req, res)) { return; }
 
   const userAuthClaims = req.user?.AuthClaims || [];
@@ -428,32 +471,27 @@ export const requireFaqAccess = async (req: Request, res: Response, next: NextFu
   // For operations on specific FAQs, check LocationKey access
   const faqId = req.params.id;
   if (faqId && (req.method === HTTP_METHODS.GET || req.method === HTTP_METHODS.PUT || req.method === HTTP_METHODS.PATCH || req.method === HTTP_METHODS.DELETE)) {
-    try {
-      const faq = await Faq.findById(faqId).lean();
-      
-      if (!faq) {
-        return sendNotFound(res, 'FAQ not found');
-      }
-
-      const locationKey = faq.LocationKey;
-      
-      // If LocationKey is 'general', any CityAdmin can access
-      if (locationKey === 'general') {
-        return next();
-      }
-
-      // For location-based access, check the locationKey
-      const locations = (locationKey || '').split(',').map(l => l.trim()).filter(Boolean);
-      
-      if (validateCityAdminLocationsAccess(userAuthClaims, locations, res)) {
-        return; // Access denied, response already sent
-      }
-
-      next();
-    } catch (error) {
-      console.error('Error validating FAQ access:', error);
-      return sendInternalError(res, 'Error validating FAQ access');
+    const faq = await Faq.findById(faqId).lean();
+    
+    if (!faq) {
+      return sendNotFound(res, 'FAQ not found');
     }
+
+    const locationKey = faq.LocationKey;
+    
+    // If LocationKey is 'general', any CityAdmin can access
+    if (locationKey === 'general') {
+      return next();
+    }
+
+    // For location-based access, check the locationKey
+    const locations = (locationKey || '').split(',').map(l => l.trim()).filter(Boolean);
+    
+    if (validateCityAdminLocationsAccess(userAuthClaims, locations, res)) {
+      return; // Access denied, response already sent
+    }
+
+    return next();
   }
 
   if (req.body && req.method === HTTP_METHODS.POST) {
@@ -467,7 +505,7 @@ export const requireFaqAccess = async (req: Request, res: Response, next: NextFu
   }
 
   return sendForbidden(res);
-};
+});
 
 /**
  * Combined middleware for FAQs endpoint
@@ -506,7 +544,7 @@ export const requireFaqLocationAccess = (req: Request, res: Response, next: Next
   }
 
   // For location-based access, check the locationId param
-  const locations = req.params.location ? [req.params.location] : (req.params.locations || '').split(',').map(l => l.trim()).filter(Boolean).filter(l => l !== 'general');
+  const locations = extractLocationsFromQuery(req);
 
   if (validateCityAdminLocationsAccess(userAuthClaims, locations, res)) {
     return; // Access denied, response already sent
@@ -526,7 +564,7 @@ export const faqsByLocationAuth = [
 /**
  * Middleware for user creation access control
  */
-export const requireUserCreationAccess = async (req: Request, res: Response, next: NextFunction) => {
+export const requireUserCreationAccess = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
   if (ensureAuthenticated(req, res)) { return; }
 
   if (req.method !== HTTP_METHODS.POST) {
@@ -536,13 +574,19 @@ export const requireUserCreationAccess = async (req: Request, res: Response, nex
   if (req.method === HTTP_METHODS.POST) {
     const userAuthClaims = req.user?.AuthClaims || [];
   
+    // Validate the user being created
+    const newUserClaims = req.body.AuthClaims || [];
+    
+    // Validate roles structure for the new user
+    const roleValidation = validateUserRoles(newUserClaims);
+    if (!roleValidation.valid) {
+      return sendBadRequest(res, roleValidation.error || 'Invalid role configuration');
+    }
+  
     // SuperAdmin has access to everything. VolunteerAdmin has access to create
     if (userAuthClaims.includes(ROLES.SUPER_ADMIN) || userAuthClaims.includes(ROLES.VOLUNTEER_ADMIN)) {
       return next();
     }
-    
-    // Validate the user being created
-    const newUserClaims = req.body.AuthClaims || [];
     
     if (userAuthClaims.includes(ROLES.CITY_ADMIN) || userAuthClaims.includes(ROLES.ORG_ADMIN)) {
       // OrgAdmin can create OrgAdmin users for their own organization
@@ -600,7 +644,7 @@ export const requireUserCreationAccess = async (req: Request, res: Response, nex
             return next();
           } catch (error) {
             console.error('Error validating organization access:', error);
-            return sendInternalError(res, 'Error validating organization access');
+            throw error; // Let asyncHandler catch and forward it
           }
         }
 
@@ -636,7 +680,7 @@ export const requireUserCreationAccess = async (req: Request, res: Response, nex
   }
   
   return sendForbidden(res);
-};
+});
 
 /**
  * Combined middleware for user creation endpoint
@@ -649,10 +693,10 @@ export const userCreationAuth = [
 /**
  * Middleware for delete users access
  */
-export const requireDeletionUserAccess = async (req: Request, res: Response, next: NextFunction) => {
+export const requireDeletionUserAccess = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
   if (ensureAuthenticated(req, res)) { return; }
 
-  if (req.method !== HTTP_METHODS.DELETE) {
+  if (!(req.method === HTTP_METHODS.DELETE || req.method === HTTP_METHODS.PATCH)) {
     return sendForbidden(res, 'Invalid HTTP method for this endpoint');
   }
 
@@ -669,123 +713,113 @@ export const requireDeletionUserAccess = async (req: Request, res: Response, nex
   }
 
   // Fetch the target user to check their roles
-  try {
-    const targetUser = await User.findById(userId).lean();
-    
-    if (!targetUser) {
-      return sendNotFound(res, 'User not found');
+  const targetUser = await User.findById(userId).lean();
+  
+  if (!targetUser) {
+    return sendNotFound(res, 'User not found');
+  }
+
+  const targetUserClaims = targetUser.AuthClaims || [];
+
+  // 2. VolunteerAdmin can delete all except SuperAdmin and VolunteerAdmin
+  if (userAuthClaims.includes(ROLES.VOLUNTEER_ADMIN)) {
+    if (targetUserClaims.includes(ROLES.SUPER_ADMIN) || targetUserClaims.includes(ROLES.VOLUNTEER_ADMIN)) {
+      return sendForbidden(res, 'VolunteerAdmin cannot delete SuperAdmin or VolunteerAdmin users');
     }
 
-    const targetUserClaims = targetUser.AuthClaims || [];
+    return next();
+  }
 
-    // 2. VolunteerAdmin can delete all except SuperAdmin and VolunteerAdmin
-    if (userAuthClaims.includes(ROLES.VOLUNTEER_ADMIN)) {
-      if (targetUserClaims.includes(ROLES.SUPER_ADMIN) || targetUserClaims.includes(ROLES.VOLUNTEER_ADMIN)) {
-        return sendForbidden(res, 'VolunteerAdmin cannot delete SuperAdmin or VolunteerAdmin users');
+  // 3. CityAdmin can delete specific roles within their city
+  if (userAuthClaims.includes(ROLES.CITY_ADMIN)) {
+    // Cannot delete SuperAdmin or VolunteerAdmin
+    if (targetUserClaims.includes(ROLES.SUPER_ADMIN) || targetUserClaims.includes(ROLES.VOLUNTEER_ADMIN)) {
+      return sendForbidden(res, 'CityAdmin cannot delete SuperAdmin or VolunteerAdmin users');
+    }
+
+    // Get the locations this CityAdmin has access to
+    const userLocationClaims = userAuthClaims.filter((claim: string) => 
+      claim.startsWith(ROLE_PREFIXES.CITY_ADMIN_FOR)
+    );
+    const userLocations = userLocationClaims.map((claim: string) => 
+      claim.replace(ROLE_PREFIXES.CITY_ADMIN_FOR, '')
+    );
+
+    // CityAdmin can delete OrgAdmins if they belong to their city
+    if (targetUserClaims.includes(ROLES.ORG_ADMIN)) {
+      // Get the organization claims from target user
+      const targetAdminForClaims = targetUserClaims.filter((claim: string) => 
+        claim.startsWith(ROLE_PREFIXES.ADMIN_FOR)
+      );
+
+      if (targetAdminForClaims.length === 0) {
+        // OrgAdmin without organization claim - shouldn't happen, but allow deletion
+        return next();
+      }
+
+      // Extract organization key from the claim (AdminFor:orgname)
+      const orgKey = targetAdminForClaims[0].replace(ROLE_PREFIXES.ADMIN_FOR, '');
+
+      // Find the organization to get its associated locations
+      const organization = await ServiceProvider.findOne({ Key: orgKey }).lean();
+
+      if (!organization) {
+        return sendNotFound(res, `Organization not found: ${orgKey}`);
+      }
+
+      // Check if organization belongs to any of the CityAdmin's cities
+      const orgLocations = organization.AssociatedLocationIds || [];
+      const hasLocationAccess = orgLocations.some(location => userLocations.includes(location));
+
+      if (!hasLocationAccess) {
+        return sendForbidden(res, `Access denied - OrgAdmin's organization is not in your managed cities`);
       }
 
       return next();
     }
 
-    // 3. CityAdmin can delete specific roles within their city
-    if (userAuthClaims.includes(ROLES.CITY_ADMIN)) {
-      // Cannot delete SuperAdmin or VolunteerAdmin
-      if (targetUserClaims.includes(ROLES.SUPER_ADMIN) || targetUserClaims.includes(ROLES.VOLUNTEER_ADMIN)) {
-        return sendForbidden(res, 'CityAdmin cannot delete SuperAdmin or VolunteerAdmin users');
-      }
-
-      // Get the locations this CityAdmin has access to
-      const userLocationClaims = userAuthClaims.filter((claim: string) => 
+    // CityAdmin can delete CityAdmins and SwepAdmins if they belong to their city
+    if (targetUserClaims.includes(ROLES.CITY_ADMIN) || targetUserClaims.includes(ROLES.SWEP_ADMIN)) {
+      // Check if target user is CityAdmin with location-specific claims
+      const targetCityAdminForClaims = targetUserClaims.filter((claim: string) => 
         claim.startsWith(ROLE_PREFIXES.CITY_ADMIN_FOR)
       );
-      const userLocations = userLocationClaims.map((claim: string) => 
-        claim.replace(ROLE_PREFIXES.CITY_ADMIN_FOR, '')
+
+      if (targetCityAdminForClaims.length > 0) {
+        // Validate all location claims belong to CityAdmin's locations
+        for (const claim of targetCityAdminForClaims) {
+          const location = claim.replace(ROLE_PREFIXES.CITY_ADMIN_FOR, '');
+          if (!userLocations.includes(location)) {
+            return sendForbidden(res, `Access denied - cannot delete CityAdmin for location: ${location}`);
+          }
+        }
+        return next();
+      }
+
+      // Check if target user is SwepAdmin with location-specific claims
+      const targetSwepAdminForClaims = targetUserClaims.filter((claim: string) => 
+        claim.startsWith(ROLE_PREFIXES.SWEP_ADMIN_FOR)
       );
 
-      // CityAdmin can delete OrgAdmins if they belong to their city
-      if (targetUserClaims.includes(ROLES.ORG_ADMIN)) {
-        try {
-          // Get the organization claims from target user
-          const targetAdminForClaims = targetUserClaims.filter((claim: string) => 
-            claim.startsWith(ROLE_PREFIXES.ADMIN_FOR)
-          );
-
-          if (targetAdminForClaims.length === 0) {
-            // OrgAdmin without organization claim - shouldn't happen, but allow deletion
-            return next();
+      if (targetSwepAdminForClaims.length > 0) {
+        // Validate all location claims belong to CityAdmin's locations
+        for (const claim of targetSwepAdminForClaims) {
+          const location = claim.replace(ROLE_PREFIXES.SWEP_ADMIN_FOR, '');
+          if (!userLocations.includes(location)) {
+            return sendForbidden(res, `Access denied - cannot delete SwepAdmin for location: ${location}`);
           }
-
-          // Extract organization key from the claim (AdminFor:orgname)
-          const orgKey = targetAdminForClaims[0].replace(ROLE_PREFIXES.ADMIN_FOR, '');
-
-          // Find the organization to get its associated locations
-          const organization = await ServiceProvider.findOne({ Key: orgKey }).lean();
-
-          if (!organization) {
-            return sendNotFound(res, `Organization not found: ${orgKey}`);
-          }
-
-          // Check if organization belongs to any of the CityAdmin's cities
-          const orgLocations = organization.AssociatedLocationIds || [];
-          const hasLocationAccess = orgLocations.some(location => userLocations.includes(location));
-
-          if (!hasLocationAccess) {
-            return sendForbidden(res, `Access denied - OrgAdmin's organization is not in your managed cities`);
-          }
-
-          return next();
-        } catch (error) {
-          console.error('Error validating organization access for deletion:', error);
-          return sendInternalError(res, 'Error validating organization access for deletion');
         }
+        return next();
       }
 
-      // CityAdmin can delete CityAdmins and SwepAdmins if they belong to their city
-      if (targetUserClaims.includes(ROLES.CITY_ADMIN) || targetUserClaims.includes(ROLES.SWEP_ADMIN)) {
-        // Check if target user is CityAdmin with location-specific claims
-        const targetCityAdminForClaims = targetUserClaims.filter((claim: string) => 
-          claim.startsWith(ROLE_PREFIXES.CITY_ADMIN_FOR)
-        );
-
-        if (targetCityAdminForClaims.length > 0) {
-          // Validate all location claims belong to CityAdmin's locations
-          for (const claim of targetCityAdminForClaims) {
-            const location = claim.replace(ROLE_PREFIXES.CITY_ADMIN_FOR, '');
-            if (!userLocations.includes(location)) {
-              return sendForbidden(res, `Access denied - cannot delete CityAdmin for location: ${location}`);
-            }
-          }
-          return next();
-        }
-
-        // Check if target user is SwepAdmin with location-specific claims
-        const targetSwepAdminForClaims = targetUserClaims.filter((claim: string) => 
-          claim.startsWith(ROLE_PREFIXES.SWEP_ADMIN_FOR)
-        );
-
-        if (targetSwepAdminForClaims.length > 0) {
-          // Validate all location claims belong to CityAdmin's locations
-          for (const claim of targetSwepAdminForClaims) {
-            const location = claim.replace(ROLE_PREFIXES.SWEP_ADMIN_FOR, '');
-            if (!userLocations.includes(location)) {
-              return sendForbidden(res, `Access denied - cannot delete SwepAdmin for location: ${location}`);
-            }
-          }
-          return next();
-        }
-
-        // If none of the above conditions match, deny access
-        return sendForbidden(res, 'CityAdmin cannot delete this user');
-      }
+      // If none of the above conditions match, deny access
+      return sendForbidden(res, 'CityAdmin cannot delete this user');
     }
-
-    // No valid role found
-    return sendForbidden(res);
-  } catch (error) {
-    console.error('Error validating user deletion access:', error);
-    return sendInternalError(res, 'Error validating user deletion access');
   }
-};
+
+  // No valid role found
+  return sendForbidden(res);
+});
 
 /**
  * Combined middleware for users endpoint
@@ -798,7 +832,7 @@ export const usersDeletionAuth = [
 /**
  * Middleware for users access
  */
-export const requireUserAccess = async (req: Request, res: Response, next: NextFunction) => {
+export const requireUserAccess = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
   if (ensureAuthenticated(req, res)) { return; }
 
   if (!(req.method === HTTP_METHODS.GET || req.method === HTTP_METHODS.PUT || req.method === HTTP_METHODS.PATCH)) {
@@ -811,6 +845,17 @@ export const requireUserAccess = async (req: Request, res: Response, next: NextF
 
   // 1. SuperAdmin can do everything
   if (userAuthClaims.includes(ROLES.SUPER_ADMIN)) {
+    // For updates, validate role structure
+    if (method === HTTP_METHODS.PUT || method === HTTP_METHODS.PATCH) {
+      const requestBody = req.body;
+      if (requestBody.AuthClaims && Array.isArray(requestBody.AuthClaims)) {
+        // Validate role structure (must have roles and proper location/org claims)
+        const roleValidation = validateUserRoles(requestBody.AuthClaims);
+        if (!roleValidation.valid) {
+          return sendBadRequest(res, roleValidation.error || 'Invalid role configuration');
+        }
+      }
+    }
     return next();
   }
 
@@ -838,12 +883,17 @@ export const requireUserAccess = async (req: Request, res: Response, next: NextF
           if (requestBody.AuthClaims.includes(ROLES.SUPER_ADMIN) || requestBody.AuthClaims.includes(ROLES.VOLUNTEER_ADMIN)) {
             return sendForbidden(res, 'VolunteerAdmin cannot assign SuperAdmin or VolunteerAdmin roles');
           }
+          
+          // Validate role structure (must have roles and proper location/org claims)
+          const roleValidation = validateUserRoles(requestBody.AuthClaims);
+          if (!roleValidation.valid) {
+            return sendBadRequest(res, roleValidation.error || 'Invalid role configuration');
+          }
         }
 
         return next();
       } catch (error) {
-        console.error('Error validating user update access:', error);
-        return sendInternalError(res, 'Error validating user update access');
+        return next(error);
       }
     }
     
@@ -854,157 +904,158 @@ export const requireUserAccess = async (req: Request, res: Response, next: NextF
   // 3. CityAdmin - complex permissions
   if (userAuthClaims.includes(ROLES.CITY_ADMIN)) {
     if (method === HTTP_METHODS.GET || method === HTTP_METHODS.PUT || method === HTTP_METHODS.PATCH) {
-      try {
-        const targetUser = await User.findById(userId).lean();
+      const targetUser = await User.findById(userId).lean();
+      
+      if (!targetUser) {
+        return sendNotFound(res, 'User not found');
+      }
+
+      const targetUserClaims = targetUser.AuthClaims || [];
+
+      // CityAdmin cannot update SuperAdmin or VolunteerAdmin users
+      if (targetUserClaims.includes(ROLES.SUPER_ADMIN) || targetUserClaims.includes(ROLES.VOLUNTEER_ADMIN)) {
+        return sendForbidden(res, 'CityAdmin cannot update SuperAdmin or VolunteerAdmin users');
+      }
+
+      // Validate that they're not trying to assign SuperAdmin or VolunteerAdmin role
+      const requestBody = req.body;
+      if (requestBody.AuthClaims && Array.isArray(requestBody.AuthClaims)) {
+        if (requestBody.AuthClaims.includes(ROLES.SUPER_ADMIN) || requestBody.AuthClaims.includes(ROLES.VOLUNTEER_ADMIN)) {
+          return sendForbidden(res, 'CityAdmin cannot assign SuperAdmin or VolunteerAdmin roles');
+        }
         
-        if (!targetUser) {
-          return sendNotFound(res, 'User not found');
+        // Validate role structure (must have roles and proper location/org claims)
+        const roleValidation = validateUserRoles(requestBody.AuthClaims);
+        if (!roleValidation.valid) {
+          return sendBadRequest(res, roleValidation.error || 'Invalid role configuration');
         }
+      }
 
-        const targetUserClaims = targetUser.AuthClaims || [];
-
-        // CityAdmin cannot update SuperAdmin or VolunteerAdmin users
-        if (targetUserClaims.includes(ROLES.SUPER_ADMIN) || targetUserClaims.includes(ROLES.VOLUNTEER_ADMIN)) {
-          return sendForbidden(res, 'CityAdmin cannot update SuperAdmin or VolunteerAdmin users');
+      if (method === HTTP_METHODS.GET) {
+        // For GET requests, check if CityAdmin has access to user's location
+        // Check three ways: AssociatedProviderLocationIds, CityAdminFor: claims, AdminFor: claims
+        
+        // Get CityAdmin's accessible locations
+        const currentUserCityClaims = userAuthClaims.filter(claim => 
+          claim.startsWith(ROLE_PREFIXES.CITY_ADMIN_FOR)
+        );
+        const currentUserLocationIds = currentUserCityClaims.map(claim => 
+          claim.replace(ROLE_PREFIXES.CITY_ADMIN_FOR, '')
+        );
+        
+        let hasAccess = false;
+        
+        // 1. Check AssociatedProviderLocationIds
+        const userLocationIds = targetUser.AssociatedProviderLocationIds || [];
+        if (userLocationIds.length > 0) {
+          hasAccess = userLocationIds.some(locId => 
+            currentUserLocationIds.includes(String(locId))
+          );
         }
-
-        // Validate that they're not trying to assign SuperAdmin or VolunteerAdmin role
-        const requestBody = req.body;
-        if (requestBody.AuthClaims && Array.isArray(requestBody.AuthClaims)) {
-          if (requestBody.AuthClaims.includes(ROLES.SUPER_ADMIN) || requestBody.AuthClaims.includes(ROLES.VOLUNTEER_ADMIN)) {
-            return sendForbidden(res, 'CityAdmin cannot assign SuperAdmin or VolunteerAdmin roles');
-          }
-        }
-
-        if (method === HTTP_METHODS.GET) {
-          // For GET requests, check if CityAdmin has access to user's location
-          // Check three ways: AssociatedProviderLocationIds, CityAdminFor: claims, AdminFor: claims
-          
-          // Get CityAdmin's accessible locations
-          const currentUserCityClaims = userAuthClaims.filter(claim => 
+        
+        // 2. Check if target user has CityAdminFor: claims matching current user's locations
+        if (!hasAccess) {
+          const targetUserCityClaims = targetUserClaims.filter(claim => 
             claim.startsWith(ROLE_PREFIXES.CITY_ADMIN_FOR)
           );
-          const currentUserLocationIds = currentUserCityClaims.map(claim => 
+          const targetUserLocationIds = targetUserCityClaims.map(claim => 
             claim.replace(ROLE_PREFIXES.CITY_ADMIN_FOR, '')
           );
           
-          let hasAccess = false;
-          
-          // 1. Check AssociatedProviderLocationIds
-          const userLocationIds = targetUser.AssociatedProviderLocationIds || [];
-          if (userLocationIds.length > 0) {
-            hasAccess = userLocationIds.some(locId => 
-              currentUserLocationIds.includes(String(locId))
-            );
-          }
-          
-          // 2. Check if target user has CityAdminFor: claims matching current user's locations
-          if (!hasAccess) {
-            const targetUserCityClaims = targetUserClaims.filter(claim => 
-              claim.startsWith(ROLE_PREFIXES.CITY_ADMIN_FOR)
-            );
-            const targetUserLocationIds = targetUserCityClaims.map(claim => 
-              claim.replace(ROLE_PREFIXES.CITY_ADMIN_FOR, '')
-            );
-            
-            hasAccess = targetUserLocationIds.some(locId => 
-              currentUserLocationIds.includes(locId)
-            );
-          }
-          
-          // 3. Check if target user has AdminFor: (OrgAdmin) claims where org location matches
-          if (!hasAccess) {
-            const targetOrgClaims = targetUserClaims.filter(claim => 
-              claim.startsWith(ROLE_PREFIXES.ADMIN_FOR)
-            );
-            
-            if (targetOrgClaims.length > 0) {
-              const hasOrgInUserCities = await Promise.all(
-                targetOrgClaims.map(async (orgClaim) => {
-                  const orgKey = orgClaim.replace(ROLE_PREFIXES.ADMIN_FOR, '');
-                  const sp = await ServiceProvider.findOne({ Key: orgKey }).lean();
-                  if (!sp) return false;
-                  const associated: string[] = Array.isArray(sp.AssociatedLocationIds) 
-                    ? sp.AssociatedLocationIds 
-                    : [];
-                  return associated.some(locId => currentUserLocationIds.includes(String(locId)));
-                })
-              );
-              hasAccess = hasOrgInUserCities.some(Boolean);
-            }
-          }
-          
-          if (!hasAccess) {
-            return sendForbidden(res, 'CityAdmin can only view users in their assigned locations');
-          }
-          
-          return next();
-        }
-
-        // Check if CityAdmin can update this user
-        let canUpdate = false;
-        
-        // Check if target user has CityAdmin role with matching city
-        if (targetUserClaims.includes(ROLES.CITY_ADMIN)) {
-          const targetCityClaims = targetUserClaims.filter(claim => 
-            claim.startsWith(ROLE_PREFIXES.CITY_ADMIN_FOR)
+          hasAccess = targetUserLocationIds.some(locId => 
+            currentUserLocationIds.includes(locId)
           );
-          const currentUserCityClaims = userAuthClaims.filter(claim => 
-            claim.startsWith(ROLE_PREFIXES.CITY_ADMIN_FOR)
-          );
-          
-          // Check if there's any matching city
-          const hasMatchingCity = targetCityClaims.some(targetCity =>
-            currentUserCityClaims.includes(targetCity)
-          );
-          
-          if (hasMatchingCity) {
-            canUpdate = true;
-          }
         }
         
-        // Check if target user has OrgAdmin role with matching org
-        if (!canUpdate && targetUserClaims.includes(ROLES.ORG_ADMIN)) {
+        // 3. Check if target user has AdminFor: (OrgAdmin) claims where org location matches
+        if (!hasAccess) {
           const targetOrgClaims = targetUserClaims.filter(claim => 
             claim.startsWith(ROLE_PREFIXES.ADMIN_FOR)
           );
-          const currentUserCityClaims = userAuthClaims.filter(claim => 
-            claim.startsWith(ROLE_PREFIXES.CITY_ADMIN_FOR)
-          );
-          // Extract location IDs from current user's claims
-          const currentUserLocationIds = currentUserCityClaims.map(claim => claim.replace(ROLE_PREFIXES.CITY_ADMIN_FOR, ''));
-
-          // For each org key on the target user, check intersection with current user's city location IDs
-          const hasOrgInUserCities = await Promise.all(
-            targetOrgClaims.map(async (orgClaim) => {
-              const orgKey = orgClaim.replace(ROLE_PREFIXES.ADMIN_FOR, '');
-              const sp = await ServiceProvider.findOne({ Key: orgKey }).lean();
-              if (!sp) return false;
-              const associated: string[] = Array.isArray(sp.AssociatedLocationIds) ? sp.AssociatedLocationIds : [];
-              return associated.some(locId => currentUserLocationIds.includes(String(locId)));
-            })
-          ).then(results => results.some(Boolean));
-
-          if (hasOrgInUserCities) {
-            canUpdate = true;
+          
+          if (targetOrgClaims.length > 0) {
+            const hasOrgInUserCities = await Promise.all(
+              targetOrgClaims.map(async (orgClaim) => {
+                const orgKey = orgClaim.replace(ROLE_PREFIXES.ADMIN_FOR, '');
+                const sp = await ServiceProvider.findOne({ Key: orgKey }).lean();
+                if (!sp) return false;
+                const associated: string[] = Array.isArray(sp.AssociatedLocationIds) 
+                  ? sp.AssociatedLocationIds 
+                  : [];
+                return associated.some(locId => currentUserLocationIds.includes(String(locId)));
+              })
+            );
+            hasAccess = hasOrgInUserCities.some(Boolean);
           }
         }
         
-        if (!canUpdate) {
-          return sendForbidden(res, 'CityAdmin can only update users with CityAdmin or OrgAdmin roles in their city/organization');
+        if (!hasAccess) {
+          return sendForbidden(res, 'CityAdmin can only view users in their assigned locations');
         }
         
         return next();
-      } catch (error) {
-        console.error('Error validating user update access:', error);
-        return sendInternalError(res);
       }
+
+      // Check if CityAdmin can update this user
+      let canUpdate = false;
+      
+      // Check if target user has CityAdmin role with matching city
+      if (targetUserClaims.includes(ROLES.CITY_ADMIN)) {
+        const targetCityClaims = targetUserClaims.filter(claim => 
+          claim.startsWith(ROLE_PREFIXES.CITY_ADMIN_FOR)
+        );
+        const currentUserCityClaims = userAuthClaims.filter(claim => 
+          claim.startsWith(ROLE_PREFIXES.CITY_ADMIN_FOR)
+        );
+        
+        // Check if there's any matching city
+        const hasMatchingCity = targetCityClaims.some(targetCity =>
+          currentUserCityClaims.includes(targetCity)
+        );
+        
+        if (hasMatchingCity) {
+          canUpdate = true;
+        }
+      }
+      
+      // Check if target user has OrgAdmin role with matching org
+      if (!canUpdate && targetUserClaims.includes(ROLES.ORG_ADMIN)) {
+        const targetOrgClaims = targetUserClaims.filter(claim => 
+          claim.startsWith(ROLE_PREFIXES.ADMIN_FOR)
+        );
+        const currentUserCityClaims = userAuthClaims.filter(claim => 
+          claim.startsWith(ROLE_PREFIXES.CITY_ADMIN_FOR)
+        );
+        // Extract location IDs from current user's claims
+        const currentUserLocationIds = currentUserCityClaims.map(claim => claim.replace(ROLE_PREFIXES.CITY_ADMIN_FOR, ''));
+
+        // For each org key on the target user, check intersection with current user's city location IDs
+        const hasOrgInUserCities = await Promise.all(
+          targetOrgClaims.map(async (orgClaim) => {
+            const orgKey = orgClaim.replace(ROLE_PREFIXES.ADMIN_FOR, '');
+            const sp = await ServiceProvider.findOne({ Key: orgKey }).lean();
+            if (!sp) return false;
+            const associated: string[] = Array.isArray(sp.AssociatedLocationIds) ? sp.AssociatedLocationIds : [];
+            return associated.some(locId => currentUserLocationIds.includes(String(locId)));
+          })
+        ).then(results => results.some(Boolean));
+
+        if (hasOrgInUserCities) {
+          canUpdate = true;
+        }
+      }
+      
+      if (!canUpdate) {
+        return sendForbidden(res, 'CityAdmin can only update users with CityAdmin or OrgAdmin roles in their city/organization');
+      }
+      
+      return next();
     }
   }
 
   // No valid role found
   return sendForbidden(res);
-};
+});
 
 /**
  * Combined middleware for users endpoint
@@ -1035,8 +1086,8 @@ export const requireUserLocationAccess = (req: Request, res: Response, next: Nex
   }
 
   // For location-based access, check the location and locations param
-  const locations = req.params.location ? [req.params.location] : (req.params.locations || '').split(',').map(l => l.trim()).filter(Boolean);
-  
+  const locations = extractLocationsFromQuery(req);
+
   if (validateCityAdminLocationsAccess(userAuthClaims, locations, res)) {
     return; // Access denied, response already sent
   }
@@ -1055,7 +1106,7 @@ export const usersByLocationAuth = [
 /**
  * Middleware for banner access control with location validation
  */
-export const requireBannerAccess = async (req: Request, res: Response, next: NextFunction) => {
+export const requireBannerAccess = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
   if (ensureAuthenticated(req, res)) { return; }
 
   const userAuthClaims = req.user?.AuthClaims || [];
@@ -1096,11 +1147,11 @@ export const requireBannerAccess = async (req: Request, res: Response, next: Nex
       return; // Access denied, response already sent
     }
 
-    next();
+    return next();
   }
 
   return sendForbidden(res);
-};
+});
 
 /**
  * Combined middleware for banners endpoint
@@ -1131,8 +1182,8 @@ export const requireBannerLocationAccess = (req: Request, res: Response, next: N
   }
 
   // For location-based access, check the location and locations param
-  const locations = req.params.location ? [req.params.location] : (req.params.locations || '').split(',').map(l => l.trim()).filter(Boolean);
-  
+  const locations = extractLocationsFromQuery(req);
+
   if (validateCityAdminLocationsAccess(userAuthClaims, locations, res)) {
     return; // Access denied, response already sent
   }
@@ -1152,7 +1203,7 @@ export const bannersByLocationAuth = [
 /**
  * Middleware for SWEP banner access control with location validation
  */
-export const requireSwepBannerAccess = async (req: Request, res: Response, next: NextFunction) => {
+export const requireSwepBannerAccess = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
   if (ensureAuthenticated(req, res)) return;
 
   const userAuthClaims = req.user?.AuthClaims || [];
@@ -1196,11 +1247,11 @@ export const requireSwepBannerAccess = async (req: Request, res: Response, next:
       return; // Access denied, response already sent
     }
 
-    next();
+    return next();
   }
 
   return sendForbidden(res);
-};
+});
 
 /**
  * Combined middleware for SWEP banners endpoint
@@ -1227,8 +1278,8 @@ export const requireSwepBannerLocationAccess = (req: Request, res: Response, nex
   }
 
   // For location-based access, check the location and locations param
-  const locations = req.params.location ? [req.params.location] : (req.params.locations || '').split(',').map(l => l.trim()).filter(Boolean);
-  
+  const locations = extractLocationsFromQuery(req);
+
   if (validateCityAdminLocationsAccess(userAuthClaims, locations, res)) {
     return; // Access denied, response already sent
   }
@@ -1247,7 +1298,7 @@ export const swepBannersByLocationAuth = [
 /**
  * Middleware for resource access control with location validation
  */
-export const requireResourceAccess = async (req: Request, res: Response, next: NextFunction) => {
+export const requireResourceAccess = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
   if (ensureAuthenticated(req, res)) return;
 
   const userAuthClaims = req.user?.AuthClaims || [];
@@ -1291,11 +1342,11 @@ export const requireResourceAccess = async (req: Request, res: Response, next: N
       return; // Access denied, response already sent
     }
 
-    next();
+    return next();
   }
 
   return sendForbidden(res);
-};
+});
 
 /**
  * Combined middleware for resources endpoint
@@ -1322,7 +1373,7 @@ export const requireResourceLocationAccess = (req: Request, res: Response, next:
   }
 
   // For location-based access, check the location and locations param
-  const locations = req.params.location ? [req.params.location] : (req.params.locations || '').split(',').map(l => l.trim()).filter(Boolean);
+  const locations = extractLocationsFromQuery(req);
   
   if (validateCityAdminLocationsAccess(userAuthClaims, locations, res)) {
     return; // Access denied, response already sent

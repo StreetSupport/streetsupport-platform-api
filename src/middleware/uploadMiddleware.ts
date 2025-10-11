@@ -222,7 +222,8 @@ export const uploadMiddleware = (req: Request, res: Response, next: NextFunction
     const validation = validateBannerPreUpload(req.body);
     if (!validation.success) {
       // Stop the process if validation fails before uploading files.
-      return sendBadRequest(res, 'Validation failed', validation.errors);
+      const errorMessages = validation.errors.map(err => err.message).join(', ');
+      return sendBadRequest(res, `Validation failed: ${errorMessages}`);
     }
 
     // Attach the validated data for the next steps.
@@ -238,19 +239,6 @@ export const uploadSingle = (fieldName: string) => [
   upload.single(fieldName),
   processUploads
 ];
-
-// Utility functions
-// function formatFileSize(bytes: number): string {
-//   if (bytes === 0) return '0 Bytes';
-//   const k = 1024;
-//   const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-//   const i = Math.floor(Math.log(bytes) / Math.log(k));
-//   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-// }
-
-// function getFileExtension(filename: string): string {
-//   return filename.split('.').pop() || '';
-// }
 
 // Delete file from storage
 export async function deleteFile(fileUrl: string): Promise<void> {

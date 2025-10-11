@@ -176,7 +176,7 @@ export async function updateAuth0UserRoles(
 
   const accessToken = await getAuth0ManagementToken();
 
-  const response = await fetch(`https://${domain}/api/v2/users/${encodeURIComponent(auth0UserId)}`, {
+  const response = await fetch(`https://${domain}/api/v2/users/${encodeURIComponent('auth0|' + auth0UserId)}`, {
     method: HTTP_METHODS.PATCH,
     headers: {
       'Content-Type': 'application/json',
@@ -194,5 +194,65 @@ export async function updateAuth0UserRoles(
   if (!response.ok) {
     const error = await response.json();
     throw new Error(`Failed to update Auth0 user roles: ${JSON.stringify(error)}`);
+  }
+}
+
+/**
+ * Block a user in Auth0
+ * @param auth0UserId - Auth0 user ID
+ */
+export async function blockAuth0User(auth0UserId: string): Promise<void> {
+  const domain = null;//auth0Config.domain as string;
+
+  if (!domain) {
+    throw new Error('AUTH0_DOMAIN is not configured');
+  }
+
+  const accessToken = await getAuth0ManagementToken();
+
+  const response = await fetch(`https://${domain}/api/v2/users/${encodeURIComponent('auth0|' + auth0UserId)}`, {
+    method: HTTP_METHODS.PATCH,
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify({
+      blocked: true,
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(`Failed to block Auth0 user: ${JSON.stringify(error)}`);
+  }
+}
+
+/**
+ * Unblock a user in Auth0
+ * @param auth0UserId - Auth0 user ID
+ */
+export async function unblockAuth0User(auth0UserId: string): Promise<void> {
+  const domain = auth0Config.domain as string;
+
+  if (!domain) {
+    throw new Error('AUTH0_DOMAIN is not configured');
+  }
+
+  const accessToken = await getAuth0ManagementToken();
+
+  const response = await fetch(`https://${domain}/api/v2/users/${encodeURIComponent('auth0|' + auth0UserId)}`, {
+    method: HTTP_METHODS.PATCH,
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify({
+      blocked: false,
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(`Failed to unblock Auth0 user: ${JSON.stringify(error)}`);
   }
 }

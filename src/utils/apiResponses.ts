@@ -56,11 +56,10 @@ export const sendNotFound = (res: Response, error: string = 'Resource not found'
 /**
  * Send a 400 Bad Request response
  */
-export const sendBadRequest = (res: Response, error: string = 'Bad request', errors: Array<{ path: string; message: string; code: string }> = []): Response => {
+export const sendBadRequest = (res: Response, error: string = 'Bad request'): Response => {
   return res.status(400).json({
     success: false,
-    error: error,
-    errors: errors
+    error: error
   } as ErrorResponse);
 };
 

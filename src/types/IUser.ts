@@ -10,8 +10,7 @@ export interface IUser extends Document {
     type: string;
     data: Buffer;
   };
-  // We don't use this property
-  AssociatedAreaId: string;
   Auth0Id: string;
   AssociatedProviderLocationIds: string[];
+  IsActive: boolean;
 }

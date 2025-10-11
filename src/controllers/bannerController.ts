@@ -18,8 +18,8 @@ export const createBanner = asyncHandler(async (req: Request, res: Response) => 
   if (!validation.success) {
     // Clean up any uploaded files since validation failed
     await cleanupUploadedFiles(processedData);
-    
-    return sendBadRequest(res, 'Validation failed', validation.errors);
+    const errorMessages = validation.errors.map(err => err.message).join(', ');
+    return sendBadRequest(res, `Validation failed: ${errorMessages}`);
   }
 
   // Handle resource project specific logic
@@ -28,7 +28,7 @@ export const createBanner = asyncHandler(async (req: Request, res: Response) => 
   // Add creator information and system fields
   const bannerData = {
     ...finalBannerData,
-    CreatedBy: req.user?.id || finalBannerData?.CreatedBy,
+    CreatedBy: req.user?._id || finalBannerData?.CreatedBy,
     DocumentCreationDate: new Date(),
     DocumentModifiedDate: new Date(),
     _id: new Types.ObjectId()
@@ -335,8 +335,8 @@ export const updateBanner = asyncHandler(async (req: Request, res: Response) => 
   if (!validation.success) {
     // Clean up any newly uploaded files since validation failed
     await cleanupUploadedFiles(processedData);
-    
-    return sendBadRequest(res, 'Validation failed', validation.errors);
+    const errorMessages = validation.errors.map(err => err.message).join(', ');
+    return sendBadRequest(res, `Validation failed: ${errorMessages}`);
   }
 
   // Store old banner data for file cleanup

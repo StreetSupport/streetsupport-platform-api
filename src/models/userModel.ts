@@ -26,11 +26,6 @@ const userSchema = new Schema<IUser>({
     type: Buffer,
     required: true,
   },
-  // We don't use this property
-  AssociatedAreaId: {
-    type: String,
-    required: false,
-  },
   Auth0Id: {
     type: String,
     required: true,
@@ -40,6 +35,7 @@ const userSchema = new Schema<IUser>({
     type: [String],
     default: [],
   },
+  IsActive: { type: Boolean, default: true },
 }, { collection: 'Users', versionKey: false });
 
 const User = model<IUser>('Users', userSchema);
