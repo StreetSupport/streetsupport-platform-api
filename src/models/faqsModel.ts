@@ -1,5 +1,5 @@
 import mongoose, { Schema } from "mongoose";
-import { IFaq } from "@/types/index.js";
+import { IFaq } from "../types/index.js";
 
 const faqSchema = new Schema<IFaq>({
   _id: {

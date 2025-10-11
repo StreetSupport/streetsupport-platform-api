@@ -5,8 +5,8 @@ import {
   createFaq, 
   updateFaq, 
   deleteFaq 
-} from '@/controllers/faqController.js';
-import { faqsAuth } from '@/middleware/authMiddleware.js';
+} from '../controllers/faqController.js';
+import { faqsAuth } from '../middleware/authMiddleware.js';
 
 const router = Router();
 

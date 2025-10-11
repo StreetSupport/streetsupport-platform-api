@@ -1,5 +1,5 @@
 import { Schema, model } from 'mongoose';
-import { IUser } from '@/types/index.js';
+import { IUser } from '../types/index.js';
 
 const userSchema = new Schema<IUser>({
   DocumentCreationDate: {

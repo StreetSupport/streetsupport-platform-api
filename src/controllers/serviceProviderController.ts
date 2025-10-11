@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
-import ServiceProvider from '@/models/serviceProviderModel.js';
-import { asyncHandler } from '@/utils/asyncHandler.js';
-import { sendSuccess, sendCreated, sendNotFound } from '@/utils/apiResponses.js';
+import ServiceProvider from '../models/serviceProviderModel.js';
+import { asyncHandler } from '../utils/asyncHandler.js';
+import { sendSuccess, sendCreated, sendNotFound } from '../utils/apiResponses.js';
 
 // @desc    Get all service providers
 // @route   GET /api/providers

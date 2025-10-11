@@ -13,7 +13,7 @@ import {
   DonationGoalSchema,
   MediaAssetSchema,
   ResourceFileSchema
-} from "@/types/index.js";
+} from "../types/index.js";
 import mongoose, { Schema } from 'mongoose';
 
 // Template-specific nested schemas

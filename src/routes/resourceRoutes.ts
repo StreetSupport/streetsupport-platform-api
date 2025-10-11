@@ -5,8 +5,8 @@ import {
   createResource,
   updateResource,
   deleteResource
-} from '@/controllers/resourceController.js';
-import { resourcesAuth, resourcesByLocationAuth } from '@/middleware/authMiddleware.js';
+} from '../controllers/resourceController.js';
+import { resourcesAuth, resourcesByLocationAuth } from '../middleware/authMiddleware.js';
 
 const router = Router();
 

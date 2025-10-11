@@ -13,7 +13,7 @@ import {
   CTAVariant,
   // ACCENT_POSITIONS,
   // AccentPosition
-} from '@/types/index.js';
+} from '../types/index.js';
 
 // Core Media Asset Schema - shared structure
 export const MediaAssetSchemaCore = z.object({

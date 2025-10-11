@@ -1,11 +1,11 @@
 import { Request, Response } from 'express';
 import { asyncHandler } from '../utils/asyncHandler.js';
-import { BannerTemplateType } from '@/types/index.js';
+import { BannerTemplateType } from '../types/index.js';
 import { validateBanner } from '../schemas/bannerSchema.js';
-import Banner from '@/models/bannerModel.js';
+import Banner from '../models/bannerModel.js';
 import { deleteFile } from '../middleware/uploadMiddleware.js';
 import { Types } from 'mongoose';
-import { sendSuccess, sendCreated, sendBadRequest, sendNotFound, sendPaginatedSuccess } from '@/utils/apiResponses.js';
+import { sendSuccess, sendCreated, sendBadRequest, sendNotFound, sendPaginatedSuccess } from '../utils/apiResponses.js';
 
 // Create new banner
 export const createBanner = asyncHandler(async (req: Request, res: Response) => {

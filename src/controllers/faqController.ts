@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
-import Faq from '@/models/faqsModel.js';
-import { asyncHandler } from '@/utils/asyncHandler.js';
-import { sendSuccess, sendCreated, sendNotFound } from '@/utils/apiResponses.js';
+import Faq from '../models/faqsModel.js';
+import { asyncHandler } from '../utils/asyncHandler.js';
+import { sendSuccess, sendCreated, sendNotFound } from '../utils/apiResponses.js';
 
 // @desc    Get all FAQs
 // @route   GET /api/faqs
