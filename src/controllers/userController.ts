@@ -5,7 +5,8 @@ import { asyncHandler } from '../utils/asyncHandler.js';
 import { decryptUserEmail, encryptEmail } from '../utils/encryption.js';
 import { validateCreateUser, validateUpdateUser } from '../schemas/userSchema.js';
 import { createAuth0User, deleteAuth0User, blockAuth0User, unblockAuth0User, updateAuth0UserRoles } from '../services/auth0Service.js';
-import { sendSuccess, sendCreated, sendNotFound, sendBadRequest, sendInternalError, sendPaginatedSuccess } from '../utils/apiResponses.js';
+import { sendSuccess, sendCreated, sendNotFound, sendBadRequest, sendInternalError, sendPaginatedSuccess, sendForbidden } from '../utils/apiResponses.js';
+import { ROLE_PREFIXES, ROLES } from 'constants/roles.js';
 
 // @desc    Get all users with optional filtering and search
 // @route   GET /api/users
@@ -38,6 +39,17 @@ const getUsers = asyncHandler(async (req: Request, res: Response) => {
     conditions.push({ AuthClaims: role });
   }
 
+  // Exclude SuperAdmin users from results if requesting user is not a SuperAdmin
+  const requestingUserAuthClaims = req.user?.AuthClaims || [];
+  if (!requestingUserAuthClaims.includes(ROLES.SUPER_ADMIN)) {
+    conditions.push({ AuthClaims: { $ne: ROLES.SUPER_ADMIN } });
+  }
+
+  // Exclude VolunteerAdmin users from results if requesting user is not a SuperAdmin or VolunteerAdmin
+  if (!requestingUserAuthClaims.includes(ROLES.SUPER_ADMIN) && !requestingUserAuthClaims.includes(ROLES.VOLUNTEER_ADMIN)) {
+    conditions.push({ AuthClaims: { $ne: ROLES.VOLUNTEER_ADMIN } });
+  }
+
   // Apply location filter - checks BOTH AssociatedProviderLocationIds AND AuthClaims
   // Priority: 'locations' (for CityAdmin bulk filtering) over 'location' (for single filter)
   if (locations && typeof locations === 'string') {
@@ -46,8 +58,8 @@ const getUsers = asyncHandler(async (req: Request, res: Response) => {
     if (locationArray.length > 0) {
       // flatMap creates conditions for each location (CityAdminFor + SwepAdminFor) and flattens into single array
       const authClaimsConditions = locationArray.flatMap(loc => [
-        { AuthClaims: `CityAdminFor:${loc}` },
-        { AuthClaims: `SwepAdminFor:${loc}` }
+        { AuthClaims: `${ROLE_PREFIXES.CITY_ADMIN_FOR}${loc}` },
+        { AuthClaims: `${ROLE_PREFIXES.SWEP_ADMIN_FOR}${loc}` }
       ]);
       
       // Match users who have EITHER:
@@ -68,8 +80,8 @@ const getUsers = asyncHandler(async (req: Request, res: Response) => {
     conditions.push({
       $or: [
         { AssociatedProviderLocationIds: location },
-        { AuthClaims: `CityAdminFor:${location}` },
-        { AuthClaims: `SwepAdminFor:${location}` }
+        { AuthClaims: `${ROLE_PREFIXES.CITY_ADMIN_FOR}${location}` },
+        { AuthClaims: `${ROLE_PREFIXES.SWEP_ADMIN_FOR}${location}` }
       ]
     });
   }
@@ -116,6 +128,14 @@ const getUserById = asyncHandler(async (req: Request, res: Response) => {
   const user = await User.findById(req.params.id);
   if (!user) {
     return sendNotFound(res, 'User not found');
+  }
+
+  // Exclude SuperAdmin users from results if requesting user is not a SuperAdmin
+  const requestingUserAuthClaims = req.user?.AuthClaims || [];
+  if (!requestingUserAuthClaims.includes(ROLES.SUPER_ADMIN)) {
+    if(user.AuthClaims.some((claim: string) => claim === ROLES.SUPER_ADMIN)){
+      return sendForbidden(res);
+    };
   }
   
   // Decrypt email before sending
