@@ -624,28 +624,23 @@ export const requireUserCreationAccess = asyncHandler(async (req: Request, res: 
         );
         
         if (adminForClaims.length > 0) {
-          try {
-            const orgName = adminForClaims[0].replace(ROLE_PREFIXES.ADMIN_FOR, '');
-            const serviceProvider = await ServiceProvider.findOne({ Key: orgName }).lean();
-            
-            if (!serviceProvider) {
-              return sendNotFound(res, `Organization ${orgName} not found`);
-            }
-
-            const associatedLocationIds = serviceProvider.AssociatedLocationIds || [];
-            const hasLocationAccess = associatedLocationIds.some(locationId => 
-              userLocations.includes(locationId)
-            );
-            
-            if (!hasLocationAccess) {
-              return sendForbidden(res, `Access denied - no permission for organization: ${orgName}`);
-            }
-
-            return next();
-          } catch (error) {
-            console.error('Error validating organization access:', error);
-            throw error; // Let asyncHandler catch and forward it
+          const orgName = adminForClaims[0].replace(ROLE_PREFIXES.ADMIN_FOR, '');
+          const serviceProvider = await ServiceProvider.findOne({ Key: orgName }).lean();
+          
+          if (!serviceProvider) {
+            return sendNotFound(res, `Organization ${orgName} not found`);
           }
+
+          const associatedLocationIds = serviceProvider.AssociatedLocationIds || [];
+          const hasLocationAccess = associatedLocationIds.some(locationId => 
+            userLocations.includes(locationId)
+          );
+          
+          if (!hasLocationAccess) {
+            return sendForbidden(res, `Access denied - no permission for organization: ${orgName}`);
+          }
+
+          return next();
         }
 
         // Check if creating CityAdmin or SwepAdmin with organization-specific claims
@@ -724,7 +719,7 @@ export const requireDeletionUserAccess = asyncHandler(async (req: Request, res: 
   // 2. VolunteerAdmin can delete all except SuperAdmin and VolunteerAdmin
   if (userAuthClaims.includes(ROLES.VOLUNTEER_ADMIN)) {
     if (targetUserClaims.includes(ROLES.SUPER_ADMIN) || targetUserClaims.includes(ROLES.VOLUNTEER_ADMIN)) {
-      return sendForbidden(res, 'VolunteerAdmin cannot delete SuperAdmin or VolunteerAdmin users');
+      return sendForbidden(res, 'VolunteerAdmin cannot delete/deactivate/activate SuperAdmin or VolunteerAdmin users');
     }
 
     return next();
@@ -734,7 +729,7 @@ export const requireDeletionUserAccess = asyncHandler(async (req: Request, res: 
   if (userAuthClaims.includes(ROLES.CITY_ADMIN)) {
     // Cannot delete SuperAdmin or VolunteerAdmin
     if (targetUserClaims.includes(ROLES.SUPER_ADMIN) || targetUserClaims.includes(ROLES.VOLUNTEER_ADMIN)) {
-      return sendForbidden(res, 'CityAdmin cannot delete SuperAdmin or VolunteerAdmin users');
+      return sendForbidden(res, 'CityAdmin cannot delete/deactivate/activate SuperAdmin or VolunteerAdmin users');
     }
 
     // Get the locations this CityAdmin has access to
@@ -861,49 +856,11 @@ export const requireUserAccess = asyncHandler(async (req: Request, res: Response
 
   // 2. VolunteerAdmin - can do everything except updating SuperAdmin and VolunteerAdmin users
   if (userAuthClaims.includes(ROLES.VOLUNTEER_ADMIN)) {
+    if (method === HTTP_METHODS.GET) {
+      return next();
+    }
     // For updates, check if target user is SuperAdmin or VolunteerAdmin
     if (method === HTTP_METHODS.PUT || method === HTTP_METHODS.PATCH) {
-      try {
-        const targetUser = await User.findById(userId).lean();
-        
-        if (!targetUser) {
-          return sendNotFound(res, 'User not found');
-        }
-
-        const targetUserClaims = targetUser.AuthClaims || [];
-
-        // VolunteerAdmin cannot update SuperAdmin or other VolunteerAdmin users
-        if (targetUserClaims.includes(ROLES.SUPER_ADMIN) || targetUserClaims.includes(ROLES.VOLUNTEER_ADMIN)) {
-          return sendForbidden(res, 'VolunteerAdmin cannot update SuperAdmin or VolunteerAdmin users');
-        }
-
-        // Also validate that they're not trying to assign SuperAdmin role in the update
-        const requestBody = req.body;
-        if (requestBody.AuthClaims && Array.isArray(requestBody.AuthClaims)) {
-          if (requestBody.AuthClaims.includes(ROLES.SUPER_ADMIN) || requestBody.AuthClaims.includes(ROLES.VOLUNTEER_ADMIN)) {
-            return sendForbidden(res, 'VolunteerAdmin cannot assign SuperAdmin or VolunteerAdmin roles');
-          }
-          
-          // Validate role structure (must have roles and proper location/org claims)
-          const roleValidation = validateUserRoles(requestBody.AuthClaims);
-          if (!roleValidation.valid) {
-            return sendBadRequest(res, roleValidation.error || 'Invalid role configuration');
-          }
-        }
-
-        return next();
-      } catch (error) {
-        return next(error);
-      }
-    }
-    
-    // Allow GET and POST
-    return next();
-  }
-
-  // 3. CityAdmin - complex permissions
-  if (userAuthClaims.includes(ROLES.CITY_ADMIN)) {
-    if (method === HTTP_METHODS.GET || method === HTTP_METHODS.PUT || method === HTTP_METHODS.PATCH) {
       const targetUser = await User.findById(userId).lean();
       
       if (!targetUser) {
@@ -912,6 +869,108 @@ export const requireUserAccess = asyncHandler(async (req: Request, res: Response
 
       const targetUserClaims = targetUser.AuthClaims || [];
 
+      // VolunteerAdmin cannot update SuperAdmin or other VolunteerAdmin users
+      if (targetUserClaims.includes(ROLES.SUPER_ADMIN) || targetUserClaims.includes(ROLES.VOLUNTEER_ADMIN)) {
+        return sendForbidden(res, 'VolunteerAdmin cannot update SuperAdmin or VolunteerAdmin users');
+      }
+
+      // Also validate that they're not trying to assign SuperAdmin role in the update
+      const requestBody = req.body;
+      if (requestBody.AuthClaims && Array.isArray(requestBody.AuthClaims)) {
+        if (requestBody.AuthClaims.includes(ROLES.SUPER_ADMIN) || requestBody.AuthClaims.includes(ROLES.VOLUNTEER_ADMIN)) {
+          return sendForbidden(res, 'VolunteerAdmin cannot assign SuperAdmin or VolunteerAdmin roles');
+        }
+        
+        // Validate role structure (must have roles and proper location/org claims)
+        const roleValidation = validateUserRoles(requestBody.AuthClaims);
+        if (!roleValidation.valid) {
+          return sendBadRequest(res, roleValidation.error || 'Invalid role configuration');
+        }
+      }
+
+      return next();
+    }
+    
+    // Allow GET and POST
+    return next();
+  }
+
+  // 3. CityAdmin - complex permissions
+  if (userAuthClaims.includes(ROLES.CITY_ADMIN)) {
+    const targetUser = await User.findById(userId).lean();
+      
+    if (!targetUser) {
+      return sendNotFound(res, 'User not found');
+    }
+
+    const targetUserClaims = targetUser.AuthClaims || [];
+
+    if (method === HTTP_METHODS.GET) {
+      // For GET requests, check if CityAdmin has access to user's location
+      // Check three ways: AssociatedProviderLocationIds, CityAdminFor: claims, AdminFor: claims
+      
+      // Get CityAdmin's accessible locations
+      const currentUserCityClaims = userAuthClaims.filter(claim => 
+        claim.startsWith(ROLE_PREFIXES.CITY_ADMIN_FOR)
+      );
+      const currentUserLocationIds = currentUserCityClaims.map(claim => 
+        claim.replace(ROLE_PREFIXES.CITY_ADMIN_FOR, '')
+      );
+      
+      let hasAccess = false;
+      
+      // 1. Check AssociatedProviderLocationIds
+      const userLocationIds = targetUser.AssociatedProviderLocationIds || [];
+      if (userLocationIds.length > 0) {
+        hasAccess = userLocationIds.some(locId => 
+          currentUserLocationIds.includes(String(locId))
+        );
+      }
+      
+      // 2. Check if target user has CityAdminFor: claims matching current user's locations
+      if (!hasAccess) {
+        const targetUserCityClaims = targetUserClaims.filter(claim => 
+          claim.startsWith(ROLE_PREFIXES.CITY_ADMIN_FOR)
+        );
+        const targetUserLocationIds = targetUserCityClaims.map(claim => 
+          claim.replace(ROLE_PREFIXES.CITY_ADMIN_FOR, '')
+        );
+        
+        hasAccess = targetUserLocationIds.some(locId => 
+          currentUserLocationIds.includes(locId)
+        );
+      }
+      
+      // 3. Check if target user has AdminFor: (OrgAdmin) claims where org location matches
+      if (!hasAccess) {
+        const targetOrgClaims = targetUserClaims.filter(claim => 
+          claim.startsWith(ROLE_PREFIXES.ADMIN_FOR)
+        );
+        
+        if (targetOrgClaims.length > 0) {
+          const hasOrgInUserCities = await Promise.all(
+            targetOrgClaims.map(async (orgClaim) => {
+              const orgKey = orgClaim.replace(ROLE_PREFIXES.ADMIN_FOR, '');
+              const sp = await ServiceProvider.findOne({ Key: orgKey }).lean();
+              if (!sp) return false;
+              const associated: string[] = Array.isArray(sp.AssociatedLocationIds) 
+                ? sp.AssociatedLocationIds 
+                : [];
+              return associated.some(locId => currentUserLocationIds.includes(String(locId)));
+            })
+          );
+          hasAccess = hasOrgInUserCities.some(Boolean);
+        }
+      }
+      
+      if (!hasAccess) {
+        return sendForbidden(res, 'CityAdmin can only view users in their assigned locations');
+      }
+      
+      return next();
+    }
+
+    if (method === HTTP_METHODS.PUT || method === HTTP_METHODS.PATCH) {
       // CityAdmin cannot update SuperAdmin or VolunteerAdmin users
       if (targetUserClaims.includes(ROLES.SUPER_ADMIN) || targetUserClaims.includes(ROLES.VOLUNTEER_ADMIN)) {
         return sendForbidden(res, 'CityAdmin cannot update SuperAdmin or VolunteerAdmin users');
@@ -929,124 +988,118 @@ export const requireUserAccess = asyncHandler(async (req: Request, res: Response
         if (!roleValidation.valid) {
           return sendBadRequest(res, roleValidation.error || 'Invalid role configuration');
         }
-      }
 
-      if (method === HTTP_METHODS.GET) {
-        // For GET requests, check if CityAdmin has access to user's location
-        // Check three ways: AssociatedProviderLocationIds, CityAdminFor: claims, AdminFor: claims
-        
-        // Get CityAdmin's accessible locations
-        const currentUserCityClaims = userAuthClaims.filter(claim => 
+        // Validate that CityAdmin is not trying to remove roles from different locations
+        // Get original user data from database to compare
+
+        const newAuthClaims = requestBody.AuthClaims;
+
+        // Find removed roles (present in original but not in new)
+        const removedRoles = targetUserClaims.filter(
+          (claim: string) => !newAuthClaims.includes(claim)
+        );
+
+        // Extract current user's location claims
+        const currentUserLocationClaims = userAuthClaims.filter(claim => 
           claim.startsWith(ROLE_PREFIXES.CITY_ADMIN_FOR)
         );
-        const currentUserLocationIds = currentUserCityClaims.map(claim => 
+        const currentUserLocationIds = currentUserLocationClaims.map(claim => 
           claim.replace(ROLE_PREFIXES.CITY_ADMIN_FOR, '')
         );
-        
-        let hasAccess = false;
-        
-        // 1. Check AssociatedProviderLocationIds
-        const userLocationIds = targetUser.AssociatedProviderLocationIds || [];
-        if (userLocationIds.length > 0) {
-          hasAccess = userLocationIds.some(locId => 
-            currentUserLocationIds.includes(String(locId))
-          );
-        }
-        
-        // 2. Check if target user has CityAdminFor: claims matching current user's locations
-        if (!hasAccess) {
-          const targetUserCityClaims = targetUserClaims.filter(claim => 
-            claim.startsWith(ROLE_PREFIXES.CITY_ADMIN_FOR)
-          );
-          const targetUserLocationIds = targetUserCityClaims.map(claim => 
-            claim.replace(ROLE_PREFIXES.CITY_ADMIN_FOR, '')
-          );
-          
-          hasAccess = targetUserLocationIds.some(locId => 
-            currentUserLocationIds.includes(locId)
-          );
-        }
-        
-        // 3. Check if target user has AdminFor: (OrgAdmin) claims where org location matches
-        if (!hasAccess) {
-          const targetOrgClaims = targetUserClaims.filter(claim => 
-            claim.startsWith(ROLE_PREFIXES.ADMIN_FOR)
-          );
-          
-          if (targetOrgClaims.length > 0) {
-            const hasOrgInUserCities = await Promise.all(
-              targetOrgClaims.map(async (orgClaim) => {
-                const orgKey = orgClaim.replace(ROLE_PREFIXES.ADMIN_FOR, '');
-                const sp = await ServiceProvider.findOne({ Key: orgKey }).lean();
-                if (!sp) return false;
-                const associated: string[] = Array.isArray(sp.AssociatedLocationIds) 
-                  ? sp.AssociatedLocationIds 
-                  : [];
-                return associated.some(locId => currentUserLocationIds.includes(String(locId)));
-              })
-            );
-            hasAccess = hasOrgInUserCities.some(Boolean);
+
+        // Validate each removed role
+        for (const removedRole of removedRoles) {
+          // Check if removed role is a location-specific role (CityAdminFor or SwepAdminFor)
+          if (removedRole.startsWith(ROLE_PREFIXES.CITY_ADMIN_FOR)) {
+            const locationId = removedRole.replace(ROLE_PREFIXES.CITY_ADMIN_FOR, '');
+            if (!currentUserLocationIds.includes(locationId)) {
+              return sendForbidden(
+                res, 
+                `Cannot remove CityAdmin role for location '${locationId}' - you don't have permission to manage this location`
+              );
+            }
+          } else if (removedRole.startsWith(ROLE_PREFIXES.SWEP_ADMIN_FOR)) {
+            const locationId = removedRole.replace(ROLE_PREFIXES.SWEP_ADMIN_FOR, '');
+            if (!currentUserLocationIds.includes(locationId)) {
+              return sendForbidden(
+                res, 
+                `Cannot remove SwepAdmin role for location '${locationId}' - you don't have permission to manage this location`
+              );
+            }
+          } else if (removedRole.startsWith(ROLE_PREFIXES.ADMIN_FOR)) {
+            // For OrgAdmin roles, validate org belongs to CityAdmin's location
+            const orgKey = removedRole.replace(ROLE_PREFIXES.ADMIN_FOR, '');
+            const sp = await ServiceProvider.findOne({ Key: orgKey }).lean();
+            
+            if (sp) {
+              const associated: string[] = Array.isArray(sp.AssociatedLocationIds) 
+                ? sp.AssociatedLocationIds 
+                : [];
+              const hasLocationAccess = associated.some(locId => 
+                currentUserLocationIds.includes(String(locId))
+              );
+              
+              if (!hasLocationAccess) {
+                return sendForbidden(
+                  res, 
+                  `Cannot remove OrgAdmin role for organization '${orgKey}' - organization doesn't belong to your managed locations`
+                );
+              }
+            }
           }
         }
-        
-        if (!hasAccess) {
-          return sendForbidden(res, 'CityAdmin can only view users in their assigned locations');
-        }
-        
-        return next();
-      }
 
-      // Check if CityAdmin can update this user
-      let canUpdate = false;
-      
-      // Check if target user has CityAdmin role with matching city
-      if (targetUserClaims.includes(ROLES.CITY_ADMIN)) {
-        const targetCityClaims = targetUserClaims.filter(claim => 
-          claim.startsWith(ROLE_PREFIXES.CITY_ADMIN_FOR)
+        // Validate added roles (present in new but not in original)
+        const addedRoles = newAuthClaims.filter(
+          (claim: string) => !targetUserClaims.includes(claim)
         );
-        const currentUserCityClaims = userAuthClaims.filter(claim => 
-          claim.startsWith(ROLE_PREFIXES.CITY_ADMIN_FOR)
-        );
-        
-        // Check if there's any matching city
-        const hasMatchingCity = targetCityClaims.some(targetCity =>
-          currentUserCityClaims.includes(targetCity)
-        );
-        
-        if (hasMatchingCity) {
-          canUpdate = true;
-        }
-      }
-      
-      // Check if target user has OrgAdmin role with matching org
-      if (!canUpdate && targetUserClaims.includes(ROLES.ORG_ADMIN)) {
-        const targetOrgClaims = targetUserClaims.filter(claim => 
-          claim.startsWith(ROLE_PREFIXES.ADMIN_FOR)
-        );
-        const currentUserCityClaims = userAuthClaims.filter(claim => 
-          claim.startsWith(ROLE_PREFIXES.CITY_ADMIN_FOR)
-        );
-        // Extract location IDs from current user's claims
-        const currentUserLocationIds = currentUserCityClaims.map(claim => claim.replace(ROLE_PREFIXES.CITY_ADMIN_FOR, ''));
 
-        // For each org key on the target user, check intersection with current user's city location IDs
-        const hasOrgInUserCities = await Promise.all(
-          targetOrgClaims.map(async (orgClaim) => {
-            const orgKey = orgClaim.replace(ROLE_PREFIXES.ADMIN_FOR, '');
+        // Validate each added role - CityAdmin can only add roles for their locations
+        for (const addedRole of addedRoles) {
+          // Skip base roles validation (they're auto-managed)
+          if (BASE_ROLES_ARRAY.includes(addedRole)) {
+            continue;
+          }
+
+          // Check if added role is a location-specific role
+          if (addedRole.startsWith(ROLE_PREFIXES.CITY_ADMIN_FOR)) {
+            const locationId = addedRole.replace(ROLE_PREFIXES.CITY_ADMIN_FOR, '');
+            if (!currentUserLocationIds.includes(locationId)) {
+              return sendForbidden(
+                res, 
+                `Cannot add CityAdmin role for location '${locationId}' - you don't have permission to manage this location`
+              );
+            }
+          } else if (addedRole.startsWith(ROLE_PREFIXES.SWEP_ADMIN_FOR)) {
+            const locationId = addedRole.replace(ROLE_PREFIXES.SWEP_ADMIN_FOR, '');
+            if (!currentUserLocationIds.includes(locationId)) {
+              return sendForbidden(
+                res, 
+                `Cannot add SwepAdmin role for location '${locationId}' - you don't have permission to manage this location`
+              );
+            }
+          } else if (addedRole.startsWith(ROLE_PREFIXES.ADMIN_FOR)) {
+            // For OrgAdmin roles, validate org belongs to CityAdmin's location
+            const orgKey = addedRole.replace(ROLE_PREFIXES.ADMIN_FOR, '');
             const sp = await ServiceProvider.findOne({ Key: orgKey }).lean();
-            if (!sp) return false;
-            const associated: string[] = Array.isArray(sp.AssociatedLocationIds) ? sp.AssociatedLocationIds : [];
-            return associated.some(locId => currentUserLocationIds.includes(String(locId)));
-          })
-        ).then(results => results.some(Boolean));
-
-        if (hasOrgInUserCities) {
-          canUpdate = true;
+            
+            if (sp) {
+              const associated: string[] = Array.isArray(sp.AssociatedLocationIds) 
+                ? sp.AssociatedLocationIds 
+                : [];
+              const hasLocationAccess = associated.some(locId => 
+                currentUserLocationIds.includes(String(locId))
+              );
+              
+              if (!hasLocationAccess) {
+                return sendForbidden(
+                  res, 
+                  `Cannot add OrgAdmin role for organization '${orgKey}' - organization doesn't belong to your managed locations`
+                );
+              }
+            }
+          }
         }
-      }
-      
-      if (!canUpdate) {
-        return sendForbidden(res, 'CityAdmin can only update users with CityAdmin or OrgAdmin roles in their city/organization');
       }
       
       return next();
