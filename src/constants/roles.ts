@@ -80,24 +80,25 @@ export function isOrgSpecificRole(role: string): boolean {
   return role.startsWith(ROLE_PREFIXES.ADMIN_FOR);
 }
 
+// TODO: remove it if we don't need it
 /**
  * Extract the location/org slug from a specific role
  * @example extractRoleSlug('CityAdminFor:birmingham') => 'birmingham'
  */
-export function extractRoleSlug(role: string): string | null {
-  if (isLocationSpecificRole(role)) {
-    if (role.startsWith(ROLE_PREFIXES.CITY_ADMIN_FOR)) {
-      return role.substring(ROLE_PREFIXES.CITY_ADMIN_FOR.length);
-    }
-    if (role.startsWith(ROLE_PREFIXES.SWEP_ADMIN_FOR)) {
-      return role.substring(ROLE_PREFIXES.SWEP_ADMIN_FOR.length);
-    }
-  }
-  if (isOrgSpecificRole(role)) {
-    return role.substring(ROLE_PREFIXES.ADMIN_FOR.length);
-  }
-  return null;
-}
+// export function extractRoleSlug(role: string): string | null {
+//   if (isLocationSpecificRole(role)) {
+//     if (role.startsWith(ROLE_PREFIXES.CITY_ADMIN_FOR)) {
+//       return role.substring(ROLE_PREFIXES.CITY_ADMIN_FOR.length);
+//     }
+//     if (role.startsWith(ROLE_PREFIXES.SWEP_ADMIN_FOR)) {
+//       return role.substring(ROLE_PREFIXES.SWEP_ADMIN_FOR.length);
+//     }
+//   }
+//   if (isOrgSpecificRole(role)) {
+//     return role.substring(ROLE_PREFIXES.ADMIN_FOR.length);
+//   }
+//   return null;
+// }
 
 /**
  * Create a location-specific city admin role
@@ -115,13 +116,14 @@ export function createSwepAdminRole(locationSlug: string): string {
   return `${ROLE_PREFIXES.SWEP_ADMIN_FOR}${locationSlug}`;
 }
 
+// TODO: remove it if we don't need it
 /**
  * Create an org-specific admin role
  * @example createOrgAdminRole('org-slug') => 'AdminFor:org-slug'
  */
-export function createOrgAdminRole(orgSlug: string): string {
-  return `${ROLE_PREFIXES.ADMIN_FOR}${orgSlug}`;
-}
+// export function createOrgAdminRole(orgSlug: string): string {
+//   return `${ROLE_PREFIXES.ADMIN_FOR}${orgSlug}`;
+// }
 
 /**
  * Validate if a role string matches the expected format
@@ -142,13 +144,15 @@ export function isValidRole(role: string): boolean {
   return rolePatterns.some(pattern => pattern.test(role));
 }
 
+// TODO: remove it if we don't need it
 /**
  * Get all roles from a user's auth claims (base roles only)
  */
-export function getBaseRoles(authClaims: string[]): BaseRole[] {
-  return authClaims.filter(isBaseRole);
-}
+// export function getBaseRoles(authClaims: string[]): BaseRole[] {
+//   return authClaims.filter(isBaseRole);
+// }
 
+// TODO: remove it if we don't need it
 /**
  * Get all location-specific roles from auth claims
  */
@@ -156,12 +160,13 @@ export function getLocationSpecificRoles(authClaims: string[]): string[] {
   return authClaims.filter(isLocationSpecificRole);
 }
 
+// TODO: remove it if we don't need it
 /**
  * Get all org-specific roles from auth claims
  */
-export function getOrgSpecificRoles(authClaims: string[]): string[] {
-  return authClaims.filter(isOrgSpecificRole);
-}
+// export function getOrgSpecificRoles(authClaims: string[]): string[] {
+//   return authClaims.filter(isOrgSpecificRole);
+// }
 
 /**
  * Check if user has a specific base role
@@ -198,24 +203,26 @@ export function hasLocationAccess(authClaims: string[], locationSlug: string): b
   return authClaims.includes(cityAdminRole) || authClaims.includes(swepAdminRole);
 }
 
+
+// TODO: remove it if we don't need it
 /**
  * Check if user has access to a specific organisation
  */
-export function hasOrgAccess(authClaims: string[], orgSlug: string): boolean {
-  // SuperAdmin has access to all organisations
-  if (isSuperAdmin(authClaims)) {
-    return true;
-  }
+// export function hasOrgAccess(authClaims: string[], orgSlug: string): boolean {
+//   // SuperAdmin has access to all organisations
+//   if (isSuperAdmin(authClaims)) {
+//     return true;
+//   }
   
-  // Check for general OrgAdmin role
-  if (hasRole(authClaims, ROLES.ORG_ADMIN)) {
-    return true;
-  }
+//   // Check for general OrgAdmin role
+//   if (hasRole(authClaims, ROLES.ORG_ADMIN)) {
+//     return true;
+//   }
   
-  // Check for org-specific role
-  const orgAdminRole = createOrgAdminRole(orgSlug);
-  return authClaims.includes(orgAdminRole);
-}
+//   // Check for org-specific role
+//   const orgAdminRole = createOrgAdminRole(orgSlug);
+//   return authClaims.includes(orgAdminRole);
+// }
 
 // ============================================================================
 // VALIDATION REGEX
