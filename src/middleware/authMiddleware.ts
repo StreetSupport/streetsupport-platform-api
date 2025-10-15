@@ -8,7 +8,7 @@ import Service from '../models/providedServiceModel.js';
 import Banner from '../models/bannerModel.js';
 import { z } from 'zod';
 import { BannerPreUploadApiSchema } from '../schemas/bannerSchema.js';
-import { BASE_ROLES_ARRAY, ROLE_PREFIXES, ROLES } from '../constants/roles.js';
+import { BASE_ROLES_ARRAY, isOrgSpecificRole, ROLE_PREFIXES, ROLES } from '../constants/roles.js';
 import { HTTP_METHODS } from '../constants/httpMethods.js';
 import { 
   sendForbidden, 
@@ -37,14 +37,13 @@ interface JwtPayload {
 }
 
 /**
- * Helper: handles global privileged access rules for SuperAdmin and VolunteerAdmin.
+ * Helper: handles global privileged access rules for SuperAdmin.
  * - SuperAdmin: full access
- * - VolunteerAdmin: full access
  * Returns true if the request has been fully handled (next() called or response sent), otherwise false.
  */
-const handleSuperVolunteerAdminAccess = (
+const handleSuperAdminAccess = (
   userAuthClaims: string[]
-): boolean => userAuthClaims.includes(ROLES.SUPER_ADMIN) || userAuthClaims.includes(ROLES.VOLUNTEER_ADMIN);
+): boolean => userAuthClaims.includes(ROLES.SUPER_ADMIN);
 
 /**
  * Helper: validates that user roles are properly configured
@@ -246,8 +245,8 @@ export const requireServiceProviderAccess = asyncHandler(async (req: Request, re
 
   const userAuthClaims = req.user?.AuthClaims || [];
 
-  // SuperAdmin / VolunteerAdmin global rule
-  if (handleSuperVolunteerAdminAccess(userAuthClaims)) { return next(); }
+  // SuperAdmin global rule
+  if (handleSuperAdminAccess(userAuthClaims)) { return next(); }
 
   // For operations on specific service providers, check access based on role
   const serviceProviderId = req.params.id;
@@ -306,8 +305,8 @@ export const requireServiceProviderLocationAccess = (req: Request, res: Response
 
   const userAuthClaims = req.user?.AuthClaims || [];
   
-  // SuperAdmin / VolunteerAdmin global rule
-  if (handleSuperVolunteerAdminAccess(userAuthClaims)) { return next(); }
+  // SuperAdmin global rule
+  if (handleSuperAdminAccess(userAuthClaims)) { return next(); }
 
   // Check if user is a CityAdmin
   if (!userAuthClaims.includes(ROLES.CITY_ADMIN)) {
@@ -340,8 +339,8 @@ export const requireServiceAccess = asyncHandler(async (req: Request, res: Respo
 
   const userAuthClaims = req.user?.AuthClaims || [];
   
-  // SuperAdmin / VolunteerAdmin global rule
-  if (handleSuperVolunteerAdminAccess(userAuthClaims)) { return next(); }
+  // SuperAdmin global rule
+  if (handleSuperAdminAccess(userAuthClaims)) { return next(); }
 
   // For operations on specific services, check access based on role
   const serviceId = req.params.id;
@@ -418,8 +417,8 @@ export const requireServicesByProviderAccess = asyncHandler(async (req: Request,
 
   const userAuthClaims = req.user?.AuthClaims || [];
 
-  // SuperAdmin / VolunteerAdmin global rule
-  if (handleSuperVolunteerAdminAccess(userAuthClaims)) { return next(); }
+  // SuperAdmin global rule
+  if (handleSuperAdminAccess(userAuthClaims)) { return next(); }
 
   const providerId = req.params.providerId;
 
@@ -460,8 +459,8 @@ export const requireFaqAccess = asyncHandler(async (req: Request, res: Response,
 
   const userAuthClaims = req.user?.AuthClaims || [];
   
-  // SuperAdmin / VolunteerAdmin global rule
-  if (handleSuperVolunteerAdminAccess(userAuthClaims)) { return next(); }
+  // SuperAdmin global rule
+  if (handleSuperAdminAccess(userAuthClaims)) { return next(); }
 
   // Check if user is a CityAdmin
   if (!userAuthClaims.includes(ROLES.CITY_ADMIN)) {
@@ -527,8 +526,8 @@ export const requireFaqLocationAccess = (req: Request, res: Response, next: Next
 
   const userAuthClaims = req.user?.AuthClaims || [];
   
-  // SuperAdmin / VolunteerAdmin global rule
-  if (handleSuperVolunteerAdminAccess(userAuthClaims)) { return next(); }
+  // SuperAdmin global rule
+  if (handleSuperAdminAccess(userAuthClaims)) { return next(); }
 
   // Check if user is a CityAdmin
   if (!userAuthClaims.includes(ROLES.CITY_ADMIN)) {
@@ -583,16 +582,29 @@ export const requireUserCreationAccess = asyncHandler(async (req: Request, res: 
       return sendBadRequest(res, roleValidation.error || 'Invalid role configuration');
     }
   
-    // SuperAdmin has access to everything. VolunteerAdmin has access to create
-    if (userAuthClaims.includes(ROLES.SUPER_ADMIN) || userAuthClaims.includes(ROLES.VOLUNTEER_ADMIN)) {
+    // SuperAdmin has access to everything.
+    if (userAuthClaims.includes(ROLES.SUPER_ADMIN)) {
       return next();
     }
     
-    if (userAuthClaims.includes(ROLES.CITY_ADMIN) || userAuthClaims.includes(ROLES.ORG_ADMIN)) {
+    if (userAuthClaims.includes(ROLES.CITY_ADMIN) || userAuthClaims.includes(ROLES.ORG_ADMIN) || userAuthClaims.includes(ROLES.VOLUNTEER_ADMIN)) {
       // OrgAdmin can create OrgAdmin users for their own organization
-      if (userAuthClaims.includes(ROLES.ORG_ADMIN)) {
-        // Validate that OrgAdmin can only assign their own organization
+      if (userAuthClaims.includes(ROLES.ORG_ADMIN) || userAuthClaims.includes(ROLES.VOLUNTEER_ADMIN)) {
         const newAdminForClaims = newUserClaims.filter((claim: string) => claim.startsWith(ROLE_PREFIXES.ADMIN_FOR));
+
+        // VolunteerAdmin can create OrgAdmin users for all organization
+        if (userAuthClaims.includes(ROLES.VOLUNTEER_ADMIN)) {
+          // Check for each item in newAdminForClaims
+          for (const claim of newAdminForClaims) {
+            if (isOrgSpecificRole(claim)) {
+              return next(); 
+            }
+          }
+
+          return sendForbidden(res, 'VolunteerAdmin can only create users for organizations');  
+        }
+        
+        // Validate that OrgAdmin can only assign their own organization
         const userOrgClaims = userAuthClaims.filter(claim => claim.startsWith(ROLE_PREFIXES.ADMIN_FOR));
         
         // We use newAdminForClaims[0] with [0] because OrgAdmin user cannot be created for more that 1 organisation per once
@@ -716,16 +728,7 @@ export const requireDeletionUserAccess = asyncHandler(async (req: Request, res: 
 
   const targetUserClaims = targetUser.AuthClaims || [];
 
-  // 2. VolunteerAdmin can delete all except SuperAdmin and VolunteerAdmin
-  if (userAuthClaims.includes(ROLES.VOLUNTEER_ADMIN)) {
-    if (targetUserClaims.includes(ROLES.SUPER_ADMIN) || targetUserClaims.includes(ROLES.VOLUNTEER_ADMIN)) {
-      return sendForbidden(res, 'VolunteerAdmin cannot delete/deactivate/activate SuperAdmin or VolunteerAdmin users');
-    }
-
-    return next();
-  }
-
-  // 3. CityAdmin can delete specific roles within their city
+  // 2. CityAdmin can delete specific roles within their city
   if (userAuthClaims.includes(ROLES.CITY_ADMIN)) {
     // Cannot delete SuperAdmin or VolunteerAdmin
     if (targetUserClaims.includes(ROLES.SUPER_ADMIN) || targetUserClaims.includes(ROLES.VOLUNTEER_ADMIN)) {
@@ -854,48 +857,7 @@ export const requireUserAccess = asyncHandler(async (req: Request, res: Response
     return next();
   }
 
-  // 2. VolunteerAdmin - can do everything except updating SuperAdmin and VolunteerAdmin users
-  if (userAuthClaims.includes(ROLES.VOLUNTEER_ADMIN)) {
-    if (method === HTTP_METHODS.GET) {
-      return next();
-    }
-    // For updates, check if target user is SuperAdmin or VolunteerAdmin
-    if (method === HTTP_METHODS.PUT || method === HTTP_METHODS.PATCH) {
-      const targetUser = await User.findById(userId).lean();
-      
-      if (!targetUser) {
-        return sendNotFound(res, 'User not found');
-      }
-
-      const targetUserClaims = targetUser.AuthClaims || [];
-
-      // VolunteerAdmin cannot update SuperAdmin or other VolunteerAdmin users
-      if (targetUserClaims.includes(ROLES.SUPER_ADMIN) || targetUserClaims.includes(ROLES.VOLUNTEER_ADMIN)) {
-        return sendForbidden(res, 'VolunteerAdmin cannot update SuperAdmin or VolunteerAdmin users');
-      }
-
-      // Also validate that they're not trying to assign SuperAdmin role in the update
-      const requestBody = req.body;
-      if (requestBody.AuthClaims && Array.isArray(requestBody.AuthClaims)) {
-        if (requestBody.AuthClaims.includes(ROLES.SUPER_ADMIN) || requestBody.AuthClaims.includes(ROLES.VOLUNTEER_ADMIN)) {
-          return sendForbidden(res, 'VolunteerAdmin cannot assign SuperAdmin or VolunteerAdmin roles');
-        }
-        
-        // Validate role structure (must have roles and proper location/org claims)
-        const roleValidation = validateUserRoles(requestBody.AuthClaims);
-        if (!roleValidation.valid) {
-          return sendBadRequest(res, roleValidation.error || 'Invalid role configuration');
-        }
-      }
-
-      return next();
-    }
-    
-    // Allow GET and POST
-    return next();
-  }
-
-  // 3. CityAdmin - complex permissions
+  // 2. CityAdmin - complex permissions
   if (userAuthClaims.includes(ROLES.CITY_ADMIN)) {
     const targetUser = await User.findById(userId).lean();
       
@@ -1130,8 +1092,8 @@ export const requireUserLocationAccess = (req: Request, res: Response, next: Nex
 
   const userAuthClaims = req.user?.AuthClaims || [];
   
-  // SuperAdmin / VolunteerAdmin global rule
-  if (handleSuperVolunteerAdminAccess(userAuthClaims)) { return next(); }
+  // SuperAdmin global rule
+  if (handleSuperAdminAccess(userAuthClaims)) { return next(); }
 
   // Check if user is a CityAdmin
   if (!userAuthClaims.includes(ROLES.CITY_ADMIN)) {
@@ -1164,8 +1126,8 @@ export const requireBannerAccess = asyncHandler(async (req: Request, res: Respon
 
   const userAuthClaims = req.user?.AuthClaims || [];
   
-  // SuperAdmin / VolunteerAdmin global rule
-  if (handleSuperVolunteerAdminAccess(userAuthClaims)) { return next(); }
+  // SuperAdmin global rule
+  if (handleSuperAdminAccess(userAuthClaims)) { return next(); }
   
   // Check if user is a CityAdmin
   if (!userAuthClaims.includes(ROLES.CITY_ADMIN)) {
@@ -1226,8 +1188,8 @@ export const requireBannerLocationAccess = (req: Request, res: Response, next: N
 
   const userAuthClaims = req.user?.AuthClaims || [];
   
-  // SuperAdmin / VolunteerAdmin global rule
-  if (handleSuperVolunteerAdminAccess(userAuthClaims)) { return next(); }
+  // SuperAdmin global rule
+  if (handleSuperAdminAccess(userAuthClaims)) { return next(); }
 
   // Check if user is a CityAdmin
   if (!userAuthClaims.includes(ROLES.CITY_ADMIN)) {
@@ -1261,8 +1223,8 @@ export const requireSwepBannerAccess = asyncHandler(async (req: Request, res: Re
 
   const userAuthClaims = req.user?.AuthClaims || [];
   
-  // SuperAdmin / VolunteerAdmin global rule
-  if (handleSuperVolunteerAdminAccess(userAuthClaims)) { return next(); }
+  // SuperAdmin global rule
+  if (handleSuperAdminAccess(userAuthClaims)) { return next(); }
 
   // Check if user has SwepAdmin role
   if (!userAuthClaims.includes(ROLES.SWEP_ADMIN) && !userAuthClaims.includes(ROLES.CITY_ADMIN)) {
@@ -1322,8 +1284,8 @@ export const requireSwepBannerLocationAccess = (req: Request, res: Response, nex
 
   const userAuthClaims = req.user?.AuthClaims || [];
   
-  // SuperAdmin / VolunteerAdmin global rule
-  if (handleSuperVolunteerAdminAccess(userAuthClaims)) { return next(); }
+  // SuperAdmin global rule
+  if (handleSuperAdminAccess(userAuthClaims)) { return next(); }
 
   // Check if user has SwepAdmin role
   if (!userAuthClaims.includes(ROLES.SWEP_ADMIN) && !userAuthClaims.includes(ROLES.CITY_ADMIN)) {
@@ -1356,8 +1318,8 @@ export const requireResourceAccess = asyncHandler(async (req: Request, res: Resp
 
   const userAuthClaims = req.user?.AuthClaims || [];
   
-  // SuperAdmin / VolunteerAdmin global rule
-  if (handleSuperVolunteerAdminAccess(userAuthClaims)) { return next(); }
+  // SuperAdmin global rule
+  if (handleSuperAdminAccess(userAuthClaims)) { return next(); }
 
   // Check if user is a CityAdmin
   if (!userAuthClaims.includes(ROLES.CITY_ADMIN)) {
@@ -1417,8 +1379,8 @@ export const requireResourceLocationAccess = (req: Request, res: Response, next:
 
   const userAuthClaims = req.user?.AuthClaims || [];
   
-  // SuperAdmin / VolunteerAdmin global rule
-  if (handleSuperVolunteerAdminAccess(userAuthClaims)) { return next(); }
+  // SuperAdmin global rule
+  if (handleSuperAdminAccess(userAuthClaims)) { return next(); }
 
   // Check if user is a CityAdmin
   if (!userAuthClaims.includes(ROLES.CITY_ADMIN)) {
