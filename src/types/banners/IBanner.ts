@@ -69,12 +69,7 @@ export interface IBanner extends Document {
   Priority: number;
   TrackingContext?: string;
   
-  // Virtuals
-  IsExpired: boolean;
-  DaysRemaining: number | null;
-  
   // Methods
-  CalculateProgress(): number;
   IncrementDownloadCount(): Promise<IBanner>;
 }
 
@@ -116,9 +111,4 @@ export enum ResourceType {
   RESEARCH = 'research',
   TRAINING = 'training',
   EVENT = 'event'
-}
-
-export interface IBannerModel extends mongoose.Model<IBanner> {
-  findActive(locationSlug?: string): mongoose.Query<IBanner[], IBanner>;
-  findByTemplate(templateType: BannerTemplateType): mongoose.Query<IBanner[], IBanner>;
 }

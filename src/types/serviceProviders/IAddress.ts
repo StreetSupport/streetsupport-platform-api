@@ -3,7 +3,6 @@ import { LocationSchema, ILocation } from "./ILocation.js";
 import { IOpeningTime, OpeningTimeSchema } from "./IOpeningTime.js";
 
 export interface IAddress extends Document {
-  _id: Types.ObjectId;
   Primary: boolean;
   Key: string;
   Street: string;
@@ -11,12 +10,12 @@ export interface IAddress extends Document {
   Street2?: string;
   Street3?: string;
   City?: string;
-  Postcode?: string;
+  Postcode: string;
   Telephone?: string;
   IsOpen247?: boolean;
   IsAppointmentOnly?: boolean;
   Location?: ILocation;
-  OpeningTimes?: IOpeningTime[];
+  OpeningTimes: IOpeningTime[];
 }
 
 export const AddressSchema = new mongoose.Schema<IAddress>({
@@ -36,10 +35,21 @@ export const AddressSchema = new mongoose.Schema<IAddress>({
   Street2: String,
   Street3: String,
   City: String,
-  Postcode: String,
+  Postcode: {
+    type: String,
+    required: true,
+  },
   Telephone: String,
   IsOpen247: Boolean,
   IsAppointmentOnly: Boolean,
   Location: LocationSchema,
-  OpeningTimes: [OpeningTimeSchema]
+  OpeningTimes: {
+    type: [OpeningTimeSchema],
+    validate: {
+      validator: function(v: IOpeningTime[]) {
+        return v.length > 0;
+      },
+      message: 'At least one opening time is required'
+    }
+  }
 }, { _id: false });

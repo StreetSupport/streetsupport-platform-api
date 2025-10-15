@@ -1,5 +1,5 @@
 import { Document, Types } from "mongoose";
-import { ILocation } from "./ILocation.js";
+import { ILocation } from "./serviceProviders/ILocation.js";
 
 export interface ICity extends Document {
   _id: Types.ObjectId;

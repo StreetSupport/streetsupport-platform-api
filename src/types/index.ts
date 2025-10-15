@@ -1,14 +1,19 @@
 // Re-export all types from individual files
-export * from './IAddress.js';
 export * from './ICity.js';
 export * from './IFaq.js';
-export * from './IService.js';
-export * from './IServiceProvider.js';
-export * from './IOpeningTime.js';
-export * from './ISubCategory.js';
-export * from './ILocation.js';
 export * from './IUser.js';
-export * from './INeedCategory.js';
+
+
+// Service provider related types
+export * from './serviceProviders/IServiceProvider.js';
+export * from './serviceProviders/IProvidedService.js';
+export * from './serviceProviders/IAccommodation.js';
+export * from './serviceProviders/IAddress.js';
+export * from './serviceProviders/IOpeningTime.js';
+export * from './serviceProviders/ILocation.js';
+export * from './serviceProviders/IAdministrator.js';
+export * from './serviceProviders/INotes.js';
+export * from './serviceProviders/IServiceProviderAddress.js';
 
 // Banner related types
 export * from './banners/IBanner.js';
