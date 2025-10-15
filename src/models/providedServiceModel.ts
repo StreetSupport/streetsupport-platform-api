@@ -61,7 +61,7 @@ const serviceSchema = new mongoose.Schema<IProvidedService>({
   LocationDescription: String,
 }, { collection: 'ProvidedServices', versionKey: false });
 
-// Indexes for performance based on database structure (from Image 3)
+// Indexes for performance based on database structure
 serviceSchema.index({ _id: 1 }, { unique: true });
 serviceSchema.index({ ServiceProviderKey: 1 });
 serviceSchema.index({ ParentId: 1 });

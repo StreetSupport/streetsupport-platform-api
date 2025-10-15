@@ -104,7 +104,7 @@ serviceProviderSchema.pre('save', function(next) {
   next();
 });
 
-// Indexes for performance based on database structure (from Image 2)
+// Indexes for performance based on database structure
 serviceProviderSchema.index({ _id: 1 }, { unique: true });
 serviceProviderSchema.index({ Name: 1 });
 serviceProviderSchema.index({ IsPublished: 1, AssociatedLocationIds: 1 });
