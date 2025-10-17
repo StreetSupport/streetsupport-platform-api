@@ -46,7 +46,7 @@ const getUsers = asyncHandler(async (req: Request, res: Response) => {
   }
 
   // Exclude VolunteerAdmin users from results if requesting user is not a SuperAdmin or VolunteerAdmin
-  if (!requestingUserAuthClaims.includes(ROLES.SUPER_ADMIN) && !requestingUserAuthClaims.includes(ROLES.VOLUNTEER_ADMIN)) {
+  if (!requestingUserAuthClaims.includes(ROLES.SUPER_ADMIN)) {
     conditions.push({ AuthClaims: { $ne: ROLES.VOLUNTEER_ADMIN } });
   }
 
