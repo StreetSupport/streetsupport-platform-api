@@ -10,7 +10,7 @@ enum DiscretionaryValue {
 
 const AccommodationSchema = new Schema<IAccommodation>({
   _id: {
-    type: String,
+    type: Schema.Types.ObjectId,
     required: true
   },
   GeneralInfo: {

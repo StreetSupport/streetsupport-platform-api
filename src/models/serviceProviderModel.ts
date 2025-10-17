@@ -1,10 +1,10 @@
-import mongoose from "mongoose";
-import { AddressSchema, IServiceProvider } from "../types/index.js";
+import mongoose, { Schema } from "mongoose";
+import { AddressSchema, AdministratorSchema, IServiceProvider, NoteSchema } from "../types/index.js";
 import { truncateSync } from "fs";
 
-const serviceProviderSchema = new mongoose.Schema<IServiceProvider>({
+const serviceProviderSchema = new Schema<IServiceProvider>({
   _id: {
-    type: mongoose.Schema.Types.ObjectId,
+    type: Schema.Types.ObjectId,
     required: true,
   },
   DocumentCreationDate: {
@@ -60,7 +60,7 @@ const serviceProviderSchema = new mongoose.Schema<IServiceProvider>({
   },
   Email: {
     type: String,
-    required: truncateSync,
+    required: false,
   },
   Telephone: {
     type: String,
@@ -79,21 +79,20 @@ const serviceProviderSchema = new mongoose.Schema<IServiceProvider>({
     required: false,
   },
   Addresses: [AddressSchema],
-  Notes: [{
-    type: String,
-    required: false
-  }],
-  Administrators: [{
-    type: String,
-    required: false
-  }],
+  Notes: {
+    type: [NoteSchema],
+    default: [],
+    required: false,
+  },
   // Administrators: {
-  //   type: [String],
-  //   required: [true, 'At least one administrator is required'],
-  //   validate: {
-  //     validator: (v: string[]) => Array.isArray(v) && v.length > 0,
-  //     message: 'At least one administrator is required'
-  //   }
+  //   type: [AdministratorSchema],
+  //   default: [],
+  //   required: false,
+  //   // required: [true, 'At least one administrator is required'],
+  //   // validate: {
+  //   //   validator: (v: string[]) => Array.isArray(v) && v.length > 0,
+  //   //   message: 'At least one administrator is required'
+  //   // }
   // }
 }, { collection: 'ServiceProviders', versionKey: false });
 
@@ -105,7 +104,7 @@ serviceProviderSchema.pre('save', function(next) {
 });
 
 // Indexes for performance based on database structure
-serviceProviderSchema.index({ _id: 1 }, { unique: true });
+// Note: _id index is created automatically by MongoDB, no need to define it explicitly
 serviceProviderSchema.index({ Name: 1 });
 serviceProviderSchema.index({ IsPublished: 1, AssociatedLocationIds: 1 });
 serviceProviderSchema.index({ Key: 1 });

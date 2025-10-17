@@ -1,5 +1,7 @@
+import { Types } from "mongoose";
+
 export interface IAccommodation {
-  _id: string;
+  _id: Types.ObjectId;
   GeneralInfo: {
     Name: string;
     Synopsis?: string;

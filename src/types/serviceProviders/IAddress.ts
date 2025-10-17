@@ -45,11 +45,13 @@ export const AddressSchema = new mongoose.Schema<IAddress>({
   Location: LocationSchema,
   OpeningTimes: {
     type: [OpeningTimeSchema],
-    validate: {
-      validator: function(v: IOpeningTime[]) {
-        return v.length > 0;
-      },
-      message: 'At least one opening time is required'
-    }
+    default: [],
+    required: false,
+    // validate: {
+    //   validator: function(v: IOpeningTime[]) {
+    //     return v.length > 0;
+    //   },
+    //   message: 'At least one opening time is required'
+    // }
   }
 }, { _id: false });

@@ -1,6 +1,6 @@
 import { Document, Types } from "mongoose";
 import { IAddress } from "./IAddress.js";
-import { INotes } from "./INotes.js";
+import { INote } from "./INote.js";
 import { IAdministrator } from "./IAdministrator.js";
 
 export interface IServiceProvider extends Document {
@@ -23,6 +23,6 @@ export interface IServiceProvider extends Document {
     Facebook?: string;
     Twitter?: string;
     Addresses: IAddress[];
-    Notes: INotes[];
-    Administrators: IAdministrator[];
+    Notes: INote[];
+    //Administrators: IAdministrator[];
 }

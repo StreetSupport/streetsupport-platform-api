@@ -12,7 +12,7 @@ export * from './serviceProviders/IAddress.js';
 export * from './serviceProviders/IOpeningTime.js';
 export * from './serviceProviders/ILocation.js';
 export * from './serviceProviders/IAdministrator.js';
-export * from './serviceProviders/INotes.js';
+export * from './serviceProviders/INote.js';
 export * from './serviceProviders/IServiceProviderAddress.js';
 
 // Banner related types

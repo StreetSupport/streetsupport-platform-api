@@ -1,9 +1,9 @@
-import mongoose from "mongoose";
+import mongoose, { Schema } from "mongoose";
 import { OpeningTimeSchema, AddressSchema, IProvidedService, IOpeningTime } from "../types/index.js";
 
-const serviceSchema = new mongoose.Schema<IProvidedService>({
+const serviceSchema = new Schema<IProvidedService>({
   _id: {
-    type: mongoose.Schema.Types.ObjectId,
+    type: Schema.Types.ObjectId,
     required: true,
   },
   DocumentCreationDate: {
@@ -62,7 +62,7 @@ const serviceSchema = new mongoose.Schema<IProvidedService>({
 }, { collection: 'ProvidedServices', versionKey: false });
 
 // Indexes for performance based on database structure
-serviceSchema.index({ _id: 1 }, { unique: true });
+// Note: _id index is created automatically by MongoDB, no need to define it explicitly
 serviceSchema.index({ ServiceProviderKey: 1 });
 serviceSchema.index({ ParentId: 1 });
 serviceSchema.index({ 'Address.Location': '2dsphere' });
