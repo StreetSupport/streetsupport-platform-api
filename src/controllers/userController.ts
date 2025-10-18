@@ -165,7 +165,7 @@ const getUserByAuth0Id = asyncHandler(async (req: Request, res: Response) => {
   return sendSuccess(res, userWithDecryptedEmail);
 });
 
-// @desc    Create new user
+// @desc Create new user
 const createUser = asyncHandler(async (req: Request, res: Response) => {
   // Validate the request data first
   const validation = validateUser(req.body);

@@ -2,10 +2,10 @@ import mongoose from "mongoose";
 import { LocationCoordinatesSchema, ICity } from "../types/index.js";
 
 const citySchema = new mongoose.Schema({
-  _id: {
-    type: mongoose.Schema.Types.ObjectId,
-    required: true,
-  },
+  // _id: {
+  //   type: mongoose.Schema.Types.ObjectId,
+  //   required: true,
+  // },
   DocumentCreationDate: {
     type: Date,
     default: Date.now,

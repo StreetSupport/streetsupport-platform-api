@@ -7,10 +7,10 @@ import {
 } from "../types/index.js";
 
 const groupedServiceSchema = new Schema<IGroupedService>({
-  _id: {
-    type: Schema.Types.ObjectId,
-    required: true,
-  },
+  // _id: {
+  //   type: Schema.Types.ObjectId,
+  //   required: true,
+  // },
   DocumentCreationDate: {
     type: Date,
     default: Date.now,

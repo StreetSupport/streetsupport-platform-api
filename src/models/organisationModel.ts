@@ -2,10 +2,10 @@ import mongoose, { Schema } from "mongoose";
 import { AddressSchema, IOrganisation, NoteSchema } from "../types/index.js";
 
 const organisationSchema = new Schema<IOrganisation>({
-  _id: {
-    type: Schema.Types.ObjectId,
-    required: true,
-  },
+  // _id: {
+  //   type: Schema.Types.ObjectId,
+  //   required: true,
+  // },
   DocumentCreationDate: {
     type: Date,
     default: Date.now,

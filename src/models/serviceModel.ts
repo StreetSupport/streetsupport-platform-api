@@ -2,10 +2,10 @@ import mongoose, { Schema } from "mongoose";
 import { OpeningTimeSchema, AddressSchema, IService, IOpeningTime } from "../types/index.js";
 
 const serviceSchema = new Schema<IService>({
-  _id: {
-    type: Schema.Types.ObjectId,
-    required: true,
-  },
+  // _id: {
+  //   type: Schema.Types.ObjectId,
+  //   required: true,
+  // },
   DocumentCreationDate: {
     type: Date,
     default: Date.now,

@@ -34,10 +34,10 @@ const ResourceProjectSchema = new Schema({
 
 // Main Banner Schema
 export const BannerSchema = new Schema({
-  _id: {
-    type: mongoose.Schema.Types.ObjectId,
-    required: true,
-  },
+  // _id: {
+  //   type: mongoose.Schema.Types.ObjectId,
+  //   required: true,
+  // },
   DocumentCreationDate: {
     type: Date,
     default: Date.now,
