@@ -1,5 +1,5 @@
 import { Document, Types } from "mongoose";
-import { ILocation } from "./serviceProviders/ILocation.js";
+import { ILocationCoordinates } from "./organisations/ILocationCoordinates.js";
 
 export interface ICity extends Document {
   _id: Types.ObjectId;
@@ -14,7 +14,7 @@ export interface ICity extends Document {
   SwepIsAvailable: boolean;
   IsOpenToRegistrations: boolean;
   IsPublic: boolean;
-  Location: ILocation;
+  Location: ILocationCoordinates;
   ToolkitIsEnabled?: boolean;
   CharterIsEnabled?: boolean;
   BigChangeIsEnabled?: boolean;

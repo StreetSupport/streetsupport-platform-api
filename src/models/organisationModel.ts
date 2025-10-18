@@ -1,8 +1,7 @@
 import mongoose, { Schema } from "mongoose";
-import { AddressSchema, AdministratorSchema, IServiceProvider, NoteSchema } from "../types/index.js";
-import { truncateSync } from "fs";
+import { AddressSchema, IOrganisation, NoteSchema } from "../types/index.js";
 
-const serviceProviderSchema = new Schema<IServiceProvider>({
+const organisationSchema = new Schema<IOrganisation>({
   _id: {
     type: Schema.Types.ObjectId,
     required: true,
@@ -97,7 +96,7 @@ const serviceProviderSchema = new Schema<IServiceProvider>({
 }, { collection: 'ServiceProviders', versionKey: false });
 
 // Pre-save middleware
-serviceProviderSchema.pre('save', function(next) {
+organisationSchema.pre('save', function(next) {
   this.DocumentModifiedDate = new Date();
 
   next();
@@ -105,15 +104,15 @@ serviceProviderSchema.pre('save', function(next) {
 
 // Indexes for performance based on database structure
 // Note: _id index is created automatically by MongoDB, no need to define it explicitly
-serviceProviderSchema.index({ Name: 1 });
-serviceProviderSchema.index({ IsPublished: 1, AssociatedLocationIds: 1 });
-serviceProviderSchema.index({ Key: 1 });
-serviceProviderSchema.index({ AssociatedLocationIds: 1, Name: 1 });
-serviceProviderSchema.index({ IsPublished: 1, DocumentCreationDate: -1 });
-serviceProviderSchema.index({ AssociatedCityId: 1 });
-serviceProviderSchema.index({ IsPublished: 1 });
-serviceProviderSchema.index({ IsPublished: 1, AssociatedCityId: 1 });
+organisationSchema.index({ Name: 1 });
+organisationSchema.index({ IsPublished: 1, AssociatedLocationIds: 1 });
+organisationSchema.index({ Key: 1 });
+organisationSchema.index({ AssociatedLocationIds: 1, Name: 1 });
+organisationSchema.index({ IsPublished: 1, DocumentCreationDate: -1 });
+organisationSchema.index({ AssociatedCityId: 1 });
+organisationSchema.index({ IsPublished: 1 });
+organisationSchema.index({ IsPublished: 1, AssociatedCityId: 1 });
 
-const ServiceProvider = mongoose.model<IServiceProvider>("ServiceProviders", serviceProviderSchema);
+const Organisation = mongoose.model<IOrganisation>("ServiceProviders", organisationSchema);
 
-export default ServiceProvider;
+export default Organisation;

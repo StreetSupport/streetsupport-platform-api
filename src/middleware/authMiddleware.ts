@@ -2,9 +2,9 @@ import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import User from '../models/userModel.js';
 import { IUser } from '../types/index.js';
-import ServiceProvider from '../models/serviceProviderModel.js';
+import Organisation from '../models/organisationModel.js';
 import Faq from '../models/faqsModel.js';
-import Service from '../models/providedServiceModel.js';
+import Service from '../models/serviceModel.js';
 import Banner from '../models/bannerModel.js';
 import { z } from 'zod';
 import { BannerPreUploadApiSchema } from '../schemas/bannerSchema.js';
@@ -243,9 +243,9 @@ export const citiesAuth = [
 ];
 
 /**
- * Middleware for service provider access control based on location and organization
+ * Middleware for organisation access control based on location and organization
  */
-export const requireServiceProviderAccess = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
+export const requireOrganisationAccess = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
   if (ensureAuthenticated(req, res)) { return; }
 
   const userAuthClaims = req.user?.AuthClaims || [];
@@ -253,22 +253,22 @@ export const requireServiceProviderAccess = asyncHandler(async (req: Request, re
   // SuperAdmin global rule
   if (handleSuperAdminAccess(userAuthClaims)) { return next(); }
 
-  // For operations on specific service providers, check access based on role
-  const serviceProviderId = req.params.id;
-  if (serviceProviderId && (req.method === HTTP_METHODS.GET || req.method === HTTP_METHODS.PUT || req.method === HTTP_METHODS.PATCH || req.method === HTTP_METHODS.DELETE)) {
-    const serviceProvider = await ServiceProvider.findById(serviceProviderId).lean();
+  // For operations on specific organisations, check access based on role
+  const organisationId = req.params.id;
+  if (organisationId && (req.method === HTTP_METHODS.GET || req.method === HTTP_METHODS.PUT || req.method === HTTP_METHODS.PATCH || req.method === HTTP_METHODS.DELETE)) {
+    const organisation = await Organisation.findById(organisationId).lean();
     
-    if (!serviceProvider) {
-      return sendNotFound(res, 'Service provider');
+    if (!organisation) {
+      return sendNotFound(res, 'Organisation');
     }
 
     // Check OrgAdmin access
-    if (hasOrgAdminAccess(userAuthClaims, serviceProvider.Key)) {
+    if (hasOrgAdminAccess(userAuthClaims, organisation.Key)) {
       return next();
     }
 
     // Check CityAdmin access
-    const associatedLocationIds = serviceProvider.AssociatedLocationIds || [];
+    const associatedLocationIds = organisation.AssociatedLocationIds || [];
     if (hasCityAdminLocationAccess(userAuthClaims, associatedLocationIds)) {
       return next();
     }
@@ -292,16 +292,15 @@ export const requireServiceProviderAccess = asyncHandler(async (req: Request, re
 /**
  * Combined middleware for service providers endpoint
  */
-export const serviceProvidersAuth = [
+export const organisationsAuth = [
   authenticate,
-  requireServiceProviderAccess
+  requireOrganisationAccess
 ];
 
-// What if OrgAdmin wants to get orgs by location? - probably he can't because he has access to his own orgs (only a few)
 /**
- * Middleware for service provider location-based access
+ * Middleware for organisation location-based access
  */
-export const requireServiceProviderLocationAccess = (req: Request, res: Response, next: NextFunction) => {
+export const requireOrganisationLocationAccess = (req: Request, res: Response, next: NextFunction) => {
   if (ensureAuthenticated(req, res)) { return; }
 
   if (req.method !== HTTP_METHODS.GET) {
@@ -331,9 +330,9 @@ export const requireServiceProviderLocationAccess = (req: Request, res: Response
 /**
  * Combined middleware for service providers endpoint
  */
-export const serviceProvidersByLocationAuth = [
+export const organisationsByLocationAuth = [
   authenticate,
-  requireServiceProviderLocationAccess
+  requireOrganisationLocationAccess
 ];
 
 /**
@@ -363,13 +362,13 @@ export const requireServiceAccess = asyncHandler(async (req: Request, res: Respo
 
     // Check CityAdmin access by finding the service provider
     if (userAuthClaims.includes(ROLES.CITY_ADMIN)) {
-      const serviceProvider = await ServiceProvider.findById(service.ParentId).lean();
+      const organisation = await Organisation.findById(service.ParentId).lean();
       
-      if (!serviceProvider) {
+      if (!organisation) {
         return sendNotFound(res, 'Associated service provider not found');
       }
 
-      const associatedLocationIds = serviceProvider.AssociatedLocationIds || [];
+      const associatedLocationIds = organisation.AssociatedLocationIds || [];
       if (hasCityAdminLocationAccess(userAuthClaims, associatedLocationIds)) {
         return next();
       }
@@ -379,21 +378,21 @@ export const requireServiceAccess = asyncHandler(async (req: Request, res: Respo
   }
 
   if (req.body && req.method === HTTP_METHODS.POST) {
-    const serviceProvider = await ServiceProvider.findOne({ 
+    const organisation = await Organisation.findOne({ 
       _id: req.body.ParentId 
     }).lean();
     
-    if (!serviceProvider) {
+    if (!organisation) {
       return sendNotFound(res, 'Associated service provider not found');
     }
 
     // Check OrgAdmin access
-    if (hasOrgAdminAccess(userAuthClaims, serviceProvider.Key)) {
+    if (hasOrgAdminAccess(userAuthClaims, organisation.Key)) {
       return next();
     }
 
     // Check CityAdmin access
-    const associatedLocationIds = serviceProvider.AssociatedLocationIds || [];
+    const associatedLocationIds = organisation.AssociatedLocationIds || [];
     if (hasCityAdminLocationAccess(userAuthClaims, associatedLocationIds)) {
       return next();
     }
@@ -434,11 +433,11 @@ export const requireServicesByProviderAccess = asyncHandler(async (req: Request,
 
   // CityAdmin access check
   if (userAuthClaims.includes(ROLES.CITY_ADMIN)) {
-    const serviceProvider = await ServiceProvider.findById(providerId).lean();
+    const organisation = await Organisation.findById(providerId).lean();
 
-    if (serviceProvider) {
+    if (organisation) {
       // Check CityAdmin access
-      const associatedLocationIds = serviceProvider.AssociatedLocationIds || [];
+      const associatedLocationIds = organisation.AssociatedLocationIds || [];
       if (hasCityAdminLocationAccess(userAuthClaims, associatedLocationIds)) {
         return next();
       }
@@ -642,13 +641,13 @@ export const requireUserCreationAccess = asyncHandler(async (req: Request, res: 
         
         if (adminForClaims.length > 0) {
           const orgName = adminForClaims[0].replace(ROLE_PREFIXES.ADMIN_FOR, '');
-          const serviceProvider = await ServiceProvider.findOne({ Key: orgName }).lean();
+          const organisation = await Organisation.findOne({ Key: orgName }).lean();
           
-          if (!serviceProvider) {
+          if (!organisation) {
             return sendNotFound(res, `Organization ${orgName} not found`);
           }
 
-          const associatedLocationIds = serviceProvider.AssociatedLocationIds || [];
+          const associatedLocationIds = organisation.AssociatedLocationIds || [];
           const hasLocationAccess = associatedLocationIds.some(locationId => 
             userLocations.includes(locationId)
           );
@@ -764,7 +763,7 @@ export const requireDeletionUserAccess = asyncHandler(async (req: Request, res: 
       const orgKey = targetAdminForClaims[0].replace(ROLE_PREFIXES.ADMIN_FOR, '');
 
       // Find the organization to get its associated locations
-      const organization = await ServiceProvider.findOne({ Key: orgKey }).lean();
+      const organization = await Organisation.findOne({ Key: orgKey }).lean();
 
       if (!organization) {
         return sendNotFound(res, `Organization not found: ${orgKey}`);
@@ -918,7 +917,7 @@ export const requireUserAccess = asyncHandler(async (req: Request, res: Response
           const hasOrgInUserCities = await Promise.all(
             targetOrgClaims.map(async (orgClaim) => {
               const orgKey = orgClaim.replace(ROLE_PREFIXES.ADMIN_FOR, '');
-              const sp = await ServiceProvider.findOne({ Key: orgKey }).lean();
+              const sp = await Organisation.findOne({ Key: orgKey }).lean();
               if (!sp) return false;
               const associated: string[] = Array.isArray(sp.AssociatedLocationIds) 
                 ? sp.AssociatedLocationIds 
@@ -996,7 +995,7 @@ export const requireUserAccess = asyncHandler(async (req: Request, res: Response
           } else if (removedRole.startsWith(ROLE_PREFIXES.ADMIN_FOR)) {
             // For OrgAdmin roles, validate org belongs to CityAdmin's location
             const orgKey = removedRole.replace(ROLE_PREFIXES.ADMIN_FOR, '');
-            const sp = await ServiceProvider.findOne({ Key: orgKey }).lean();
+            const sp = await Organisation.findOne({ Key: orgKey }).lean();
             
             if (sp) {
               const associated: string[] = Array.isArray(sp.AssociatedLocationIds) 
@@ -1048,7 +1047,7 @@ export const requireUserAccess = asyncHandler(async (req: Request, res: Response
           } else if (addedRole.startsWith(ROLE_PREFIXES.ADMIN_FOR)) {
             // For OrgAdmin roles, validate org belongs to CityAdmin's location
             const orgKey = addedRole.replace(ROLE_PREFIXES.ADMIN_FOR, '');
-            const sp = await ServiceProvider.findOne({ Key: orgKey }).lean();
+            const sp = await Organisation.findOne({ Key: orgKey }).lean();
             
             if (sp) {
               const associated: string[] = Array.isArray(sp.AssociatedLocationIds) 

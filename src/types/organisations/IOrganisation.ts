@@ -3,7 +3,7 @@ import { IAddress } from "./IAddress.js";
 import { INote } from "./INote.js";
 import { IAdministrator } from "./IAdministrator.js";
 
-export interface IServiceProvider extends Document {
+export interface IOrganisation extends Document {
     _id: Types.ObjectId;
     DocumentCreationDate: Date;
     DocumentModifiedDate: Date;

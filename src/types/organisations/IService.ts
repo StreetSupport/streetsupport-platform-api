@@ -2,7 +2,7 @@ import { Document, Types } from "mongoose";
 import { IOpeningTime } from "./IOpeningTime.js";
 import { IAddress } from "./IAddress.js";
 
-export interface IProvidedService extends Document {
+export interface IService extends Document {
   _id: Types.ObjectId;
   DocumentCreationDate: Date;
   DocumentModifiedDate: Date;

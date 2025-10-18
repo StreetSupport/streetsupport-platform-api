@@ -1,13 +1,13 @@
 import { Request, Response } from 'express';
-import ServiceProvider from '../models/serviceProviderModel.js';
+import Organisation from '../models/organisationModel.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { sendSuccess, sendCreated, sendNotFound, sendBadRequest, sendPaginatedSuccess, sendForbidden } from '../utils/apiResponses.js';
 import { ROLES, ROLE_PREFIXES } from '../constants/roles.js';
 
-// @desc    Get all service providers with optional filtering and search
-// @route   GET /api/service-providers
+// @desc    Get all organisations with optional filtering and search
+// @route   GET /api/organisations
 // @access  Private
-export const getServiceProviders = asyncHandler(async (req: Request, res: Response) => {
+export const getOrganisations = asyncHandler(async (req: Request, res: Response) => {
   const { 
     search,  // Name search
     location,
@@ -25,13 +25,13 @@ export const getServiceProviders = asyncHandler(async (req: Request, res: Respon
   
   // Get user auth claims for role-based filtering
   const requestingUserAuthClaims = req.user?.AuthClaims || [];
-  const userId = req.user?._id;
+  // const userId = req.user?._id;
   
   // Role-based filtering
   const isSuperAdmin = requestingUserAuthClaims.includes(ROLES.SUPER_ADMIN);
   const isVolunteerAdmin = requestingUserAuthClaims.includes(ROLES.VOLUNTEER_ADMIN);
   const isCityAdmin = requestingUserAuthClaims.includes(ROLES.CITY_ADMIN);
-  const isOrgAdmin = requestingUserAuthClaims.includes(ROLES.ORG_ADMIN);
+  // const isOrgAdmin = requestingUserAuthClaims.includes(ROLES.ORG_ADMIN);
   
   // OrgAdmin: only see their own organisations (based on Administrators field)
   // if (isOrgAdmin && !isSuperAdmin && !isVolunteerAdmin && !isCityAdmin) {
@@ -86,14 +86,14 @@ export const getServiceProviders = asyncHandler(async (req: Request, res: Respon
   const sortOptions: any = {};
   sortOptions[sortBy as string] = sortOrder === 'desc' ? -1 : 1;
   
-  const providers = await ServiceProvider.find(query)
+  const providers = await Organisation.find(query)
     .sort(sortOptions)
     .skip(skip)
     .limit(Number(limit))
     .lean();
 
   // Get total count using the same query
-  const total = await ServiceProvider.countDocuments(query);
+  const total = await Organisation.countDocuments(query);
 
   return sendPaginatedSuccess(res, providers, {
     page: Number(page),
@@ -103,30 +103,30 @@ export const getServiceProviders = asyncHandler(async (req: Request, res: Respon
   });
 });
 
-// @desc    Get single service provider by ID
-// @route   GET /api/providers/:id
+// @desc    Get single organisation by ID
+// @route   GET /api/organisations/:id
 // @access  Private
-export const getServiceProviderById = asyncHandler(async (req: Request, res: Response) => {
-  const provider = await ServiceProvider.findById(req.params.id);
+export const getOrganisationById = asyncHandler(async (req: Request, res: Response) => {
+  const provider = await Organisation.findById(req.params.id);
   if (!provider) {
-    return sendNotFound(res, 'Service provider not found');
+    return sendNotFound(res, 'Organisation not found');
   }
   return sendSuccess(res, provider);
 });
 
-// @desc    Create new service provider
-// @route   POST /api/providers
+// @desc    Create new organisation
+// @route   POST /api/organisations
 // @access  Private
-export const createServiceProvider = asyncHandler(async (req: Request, res: Response) => {
-  const provider = await ServiceProvider.create(req.body);
+export const createOrganisation = asyncHandler(async (req: Request, res: Response) => {
+  const provider = await Organisation.create(req.body);
   return sendCreated(res, provider);
 });
 
-// @desc    Update service provider
-// @route   PUT /api/providers/:id
+// @desc    Update organisation
+// @route   PUT /api/organisations/:id
 // @access  Private
-export const updateServiceProvider = asyncHandler(async (req: Request, res: Response) => {
-  const provider = await ServiceProvider.findByIdAndUpdate(
+export const updateOrganisation = asyncHandler(async (req: Request, res: Response) => {
+  const provider = await Organisation.findByIdAndUpdate(
     req.params.id, 
     req.body, 
     { new: true, runValidators: true }
@@ -137,11 +137,11 @@ export const updateServiceProvider = asyncHandler(async (req: Request, res: Resp
   return sendSuccess(res, provider);
 });
 
-// @desc    Delete service provider
-// @route   DELETE /api/service-providers/:id
+// @desc    Delete organisation
+// @route   DELETE /api/organisations/:id
 // @access  Private
-export const deleteServiceProvider = asyncHandler(async (req: Request, res: Response) => {
-  const provider = await ServiceProvider.findByIdAndDelete(req.params.id).lean();
+export const deleteOrganisation = asyncHandler(async (req: Request, res: Response) => {
+  const provider = await Organisation.findByIdAndDelete(req.params.id).lean();
   if (!provider) {
     return sendNotFound(res, 'Service provider not found');
   }
@@ -152,10 +152,10 @@ export const deleteServiceProvider = asyncHandler(async (req: Request, res: Resp
 // @route   PATCH /api/service-providers/:id/toggle-verified
 // @access  Private
 export const toggleVerified = asyncHandler(async (req: Request, res: Response) => {
-  const provider = await ServiceProvider.findById(req.params.id);
+  const provider = await Organisation.findById(req.params.id);
   
   if (!provider) {
-    return sendNotFound(res, 'Service provider not found');
+    return sendNotFound(res, 'Organisation not found');
   }
   
   // Toggle the IsVerified status
@@ -164,17 +164,17 @@ export const toggleVerified = asyncHandler(async (req: Request, res: Response) =
   
   await provider.save();
   
-  return sendSuccess(res, provider, `Service provider ${provider.IsVerified ? 'verified' : 'unverified'} successfully`);
+  return sendSuccess(res, provider, `Organisation ${provider.IsVerified ? 'verified' : 'unverified'} successfully`);
 });
 
-// @desc    Toggle service provider published status
-// @route   PATCH /api/service-providers/:id/toggle-published
+// @desc    Toggle organisation published status
+// @route   PATCH /api/organisations/:id/toggle-published
 // @access  Private
 export const togglePublished = asyncHandler(async (req: Request, res: Response) => {
-  const provider = await ServiceProvider.findById(req.params.id);
+  const provider = await Organisation.findById(req.params.id);
   
   if (!provider) {
-    return sendNotFound(res, 'Service provider not found');
+    return sendNotFound(res, 'Organisation not found');
   }
   
   // Toggle the IsPublished status
@@ -194,17 +194,17 @@ export const togglePublished = asyncHandler(async (req: Request, res: Response) 
   
   await provider.save();
   
-  return sendSuccess(res, provider, `Service provider ${provider.IsPublished ? 'published' : 'disabled'} successfully`);
+  return sendSuccess(res, provider, `Organisation ${provider.IsPublished ? 'published' : 'disabled'} successfully`);
 });
 
-// @desc    Clear all notes from service provider
-// @route   DELETE /api/service-providers/:id/notes
+// @desc    Clear all notes from organisation
+// @route   DELETE /api/organisations/:id/notes
 // @access  Private
 export const clearNotes = asyncHandler(async (req: Request, res: Response) => {
-  const provider = await ServiceProvider.findById(req.params.id);
+  const provider = await Organisation.findById(req.params.id);
   
   if (!provider) {
-    return sendNotFound(res, 'Service provider not found');
+    return sendNotFound(res, 'Organisation not found');
   }
   
   provider.Notes = [];
@@ -215,14 +215,14 @@ export const clearNotes = asyncHandler(async (req: Request, res: Response) => {
   return sendSuccess(res, provider, 'All notes cleared successfully');
 });
 
-// @desc    Add note to service provider
-// @route   POST /api/service-providers/:id/notes
+// @desc    Add note to organisation
+// @route   POST /api/organisations/:id/notes
 // @access  Private
 export const addNote = asyncHandler(async (req: Request, res: Response) => {
-  const provider = await ServiceProvider.findById(req.params.id);
+  const provider = await Organisation.findById(req.params.id);
   
   if (!provider) {
-    return sendNotFound(res, 'Service provider not found');
+    return sendNotFound(res, 'Organisation not found');
   }
   
   const { StaffName, Reason } = req.body;

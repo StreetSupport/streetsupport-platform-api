@@ -1,11 +1,11 @@
-export interface ILocation {
+export interface ILocationCoordinates {
   type: string;
   coordinates: [number, number];
 }
 
 import { Schema } from 'mongoose';
 
-export const LocationSchema = new Schema({
+export const LocationCoordinatesSchema = new Schema({
   type: {
     type: String,
     enum: ['Point'],

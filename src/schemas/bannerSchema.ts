@@ -197,17 +197,13 @@ const PreUploadBannerSchemaWithRefinements = applySharedRefinements(
 // Apply all refinements for the final validation
 export const BannerSchema = applySharedRefinements(BannerApiBaseSchema);
 
-// Type exports
-export type BannerInput = z.input<typeof BannerSchema>;
-export type BannerOutput = z.output<typeof BannerSchema>;
-
 // Validation functions using shared helper
 export function validateBannerPreUpload(data: unknown): ValidationResult<z.output<typeof BannerPreUploadApiSchema>> {
   const result = PreUploadBannerSchemaWithRefinements.safeParse(data);
   return createValidationResult(result);
 }
 
-export function validateBanner(data: unknown): ValidationResult<BannerOutput> {
+export function validateBanner(data: unknown): ValidationResult<z.output<typeof BannerSchema>> {
   const result = BannerSchema.safeParse(data);
   return createValidationResult(result);
 }

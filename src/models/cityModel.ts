@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import { LocationSchema, ICity } from "../types/index.js";
+import { LocationCoordinatesSchema, ICity } from "../types/index.js";
 
 const citySchema = new mongoose.Schema({
   _id: {
@@ -51,7 +51,7 @@ const citySchema = new mongoose.Schema({
     required: true,
   },
   Location: {
-    type: LocationSchema,
+    type: LocationCoordinatesSchema,
     required: true,
     index: '2dsphere'
   },

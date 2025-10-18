@@ -3,7 +3,7 @@ import cors from 'cors';
 import cityRoutes from './routes/cityRoutes.js';
 import faqRoutes from './routes/faqRoutes.js';
 import serviceRoutes from './routes/serviceRoutes.js';
-import serviceProviderRoutes from './routes/serviceProviderRoutes.js';
+import organisationRoutes from './routes/organisationRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import bannerRoutes from './routes/bannerRoutes.js';
 import swepBannerRoutes from './routes/swepBannerRoutes.js';
@@ -29,7 +29,7 @@ app.get("/debug-sentry", function mainHandler(req) {
 app.use('/api/cities', cityRoutes);
 app.use('/api/faqs', faqRoutes);
 app.use('/api/services', serviceRoutes);
-app.use('/api/service-providers', serviceProviderRoutes);
+app.use('/api/organisations', organisationRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/banners', bannerRoutes);
 app.use('/api/swep-banners', swepBannerRoutes);

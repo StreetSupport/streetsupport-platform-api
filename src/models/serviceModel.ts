@@ -1,7 +1,7 @@
 import mongoose, { Schema } from "mongoose";
-import { OpeningTimeSchema, AddressSchema, IProvidedService, IOpeningTime } from "../types/index.js";
+import { OpeningTimeSchema, AddressSchema, IService, IOpeningTime } from "../types/index.js";
 
-const serviceSchema = new Schema<IProvidedService>({
+const serviceSchema = new Schema<IService>({
   _id: {
     type: Schema.Types.ObjectId,
     required: true,
@@ -57,7 +57,10 @@ const serviceSchema = new Schema<IProvidedService>({
       message: 'At least one opening time is required'
     }
   },
-  Address: AddressSchema,
+  Address: {
+      type: AddressSchema,
+      required: true
+    },
   LocationDescription: String,
 }, { collection: 'ProvidedServices', versionKey: false });
 
@@ -67,6 +70,6 @@ serviceSchema.index({ ServiceProviderKey: 1 });
 serviceSchema.index({ ParentId: 1 });
 serviceSchema.index({ 'Address.Location': '2dsphere' });
 
-const Service = mongoose.model<IProvidedService>("ProvidedServices", serviceSchema);
+const Service = mongoose.model<IService>("ProvidedServices", serviceSchema);
 
 export default Service;

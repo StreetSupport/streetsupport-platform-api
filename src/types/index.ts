@@ -5,15 +5,17 @@ export * from './IUser.js';
 
 
 // Service provider related types
-export * from './serviceProviders/IServiceProvider.js';
-export * from './serviceProviders/IProvidedService.js';
-export * from './serviceProviders/IAccommodation.js';
-export * from './serviceProviders/IAddress.js';
-export * from './serviceProviders/IOpeningTime.js';
-export * from './serviceProviders/ILocation.js';
-export * from './serviceProviders/IAdministrator.js';
-export * from './serviceProviders/INote.js';
-export * from './serviceProviders/IServiceProviderAddress.js';
+export * from './organisations/IOrganisation.js';
+export * from './organisations/IService.js';
+export * from './organisations/IGroupedService.js';
+export * from './organisations/IAccommodation.js';
+export * from './organisations/IAddress.js';
+export * from './organisations/IOpeningTime.js';
+export * from './organisations/ILocation.js';
+export * from './organisations/ILocationCoordinates.js';
+export * from './organisations/ISubCategory.js';
+export * from './organisations/IAdministrator.js';
+export * from './organisations/INote.js';
 
 // Banner related types
 export * from './banners/IBanner.js';
