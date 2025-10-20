@@ -3,6 +3,7 @@ import Organisation from '../models/organisationModel.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { sendSuccess, sendCreated, sendNotFound, sendBadRequest, sendPaginatedSuccess, sendForbidden } from '../utils/apiResponses.js';
 import { ROLES, ROLE_PREFIXES } from '../constants/roles.js';
+import { validateOrganisation } from 'schemas/organisationSchema.js';
 
 // @desc    Get all organisations with optional filtering and search
 // @route   GET /api/organisations
@@ -118,7 +119,29 @@ export const getOrganisationById = asyncHandler(async (req: Request, res: Respon
 // @route   POST /api/organisations
 // @access  Private
 export const createOrganisation = asyncHandler(async (req: Request, res: Response) => {
-  const provider = await Organisation.create(req.body);
+  // Validate the request data first
+  const validation = validateOrganisation(req.body);
+  
+  if (!validation.success) {
+    const errorMessages = validation.errors.map(err => err.message).join(', ');
+    return sendBadRequest(res, `Validation failed: ${errorMessages}`);
+  }
+
+  if (!validation.data) {
+    return sendBadRequest(res, 'Validation data is missing');
+  }
+
+  // Add system fields
+  const organisationData = {
+    ...validation.data,
+    CreatedBy: req.user?._id || req.body?.CreatedBy,
+    DocumentCreationDate: new Date(),
+    DocumentModifiedDate: new Date(),
+    IsVerified: false,
+    IsPublished: false,
+  };
+
+  const provider = await Organisation.create(organisationData);
   return sendCreated(res, provider);
 });
 

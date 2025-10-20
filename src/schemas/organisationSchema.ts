@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { ValidationResult, createValidationResult } from './validationHelpers.js';
+import { isValidPostcodeFormat } from '../utils/postcodeValidation.js';
 
 // Preprocessing helpers
 const preprocessJSON = (val: unknown) => {
@@ -47,9 +48,14 @@ export const LocationCoordinatesSchema = z.object({
 });
 
 export const OpeningTimeSchema = z.object({
+  Day: z.preprocess(preprocessNumber, z.number().min(0).max(6, 'Day must be between 0 (Sunday) and 6 (Saturday)')),
   StartTime: z.preprocess(preprocessNumber, z.number().min(0).max(2359, 'Start time must be between 0 and 2359')),
   EndTime: z.preprocess(preprocessNumber, z.number().min(0).max(2359, 'End time must be between 0 and 2359')),
-  Day: z.preprocess(preprocessNumber, z.number().min(0).max(6, 'Day must be between 0 (Sunday) and 6 (Saturday)')),
+}).refine((data) => {
+  return data.StartTime < data.EndTime;
+}, {
+  message: 'End time must be after start time',
+  path: ['EndTime']
 });
 
 export const AddressSchema = z.object({
@@ -60,15 +66,25 @@ export const AddressSchema = z.object({
   Street2: z.string().optional(),
   Street3: z.string().optional(),
   City: z.string().optional(),
-  Postcode: z.string().min(1, 'Postcode is required').trim(),
+  Postcode: z.string().min(1, 'Postcode is required').trim().refine((postcode) => {
+    return isValidPostcodeFormat(postcode);
+  }, {
+    message: 'Invalid postcode format'
+  }),
   Telephone: z.string().optional(),
   IsOpen247: z.preprocess(preprocessBoolean, z.boolean().optional()),
   IsAppointmentOnly: z.preprocess(preprocessBoolean, z.boolean().optional()),
   Location: z.preprocess(preprocessJSON, LocationCoordinatesSchema.optional()),
   OpeningTimes: z.preprocess(preprocessJSON, z.array(OpeningTimeSchema).default([])),
-  // OpeningTimes: z
-  //   .array(OpeningTimeSchema)
-  //   .min(1, 'At least one opening time is required'),
+}).refine((data) => {
+  // If not open 24/7 and not appointment only, must have at least one opening time
+  if (!data.IsOpen247 && !data.IsAppointmentOnly) {
+    return data.OpeningTimes.length > 0;
+  }
+  return true;
+}, {
+  message: 'At least one opening time is required when location is not open 24/7 and not appointment only',
+  path: ['OpeningTimes']
 });
 
 export const NoteSchema = z.object({
@@ -87,20 +103,12 @@ export const OrganisationSchema = z.object({
     z.array(z.string()).min(1, 'At least one associated location is required')
   ),
   Name: z.string().min(1, 'Name is required').trim(),
-  ShortDescription: z
-    .string()
-    .max(50, 'Short description must be 50 characters or less')
-    .trim(),
+  ShortDescription: z.string().min(1, 'Short description is required'),
   Description: z.string().min(1, 'Description is required'),
   IsVerified: z.preprocess(preprocessBoolean, z.boolean()),
   IsPublished: z.preprocess(preprocessBoolean, z.boolean()),
   RegisteredCharity: z.preprocess(preprocessNumber, z.number().optional()),
-  AreaServiced: z.string().optional(),
   Tags: z.string().optional(),
-  DonationUrl: z.string().url('Invalid donation URL').optional().or(z.literal('')),
-  DonationDescription: z.string().optional(),
-  ItemsDonationUrl: z.string().url('Invalid items donation URL').optional().or(z.literal('')),
-  ItemsDonationDescription: z.string().optional(),
   Email: z.string().email('Invalid email address').toLowerCase().trim().optional().or(z.literal('')),
   Telephone: z.string().optional(),
   Website: z.string().url('Invalid website URL').optional().or(z.literal('')),

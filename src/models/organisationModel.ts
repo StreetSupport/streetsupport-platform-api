@@ -34,8 +34,7 @@ const organisationSchema = new Schema<IOrganisation>({
   },
   ShortDescription: {
     type: String,
-    required: true,
-    maxlength: 50,
+    required: true
   },
   Description: {
     type: String,

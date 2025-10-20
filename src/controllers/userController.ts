@@ -7,6 +7,7 @@ import { validateUser } from '../schemas/userSchema.js';
 import { createAuth0User, deleteAuth0User, blockAuth0User, unblockAuth0User, updateAuth0UserRoles } from '../services/auth0Service.js';
 import { sendSuccess, sendCreated, sendNotFound, sendBadRequest, sendInternalError, sendPaginatedSuccess, sendForbidden } from '../utils/apiResponses.js';
 import { ROLE_PREFIXES, ROLES } from '../constants/roles.js';
+import Organisation from 'models/organisationModel.js';
 
 // @desc    Get all users with optional filtering and search
 // @route   GET /api/users
@@ -201,10 +202,29 @@ const createUser = asyncHandler(async (req: Request, res: Response) => {
   // Create user in MongoDB with Auth0 ID
   let user;
   try {
+    // Check if user is OrgAdmin and add AssociatedProviderLocationIds
+    let associatedProviderLocationIds: string[] = [];
+    
+    if (userData.AuthClaims?.includes(ROLES.ORG_ADMIN)) {
+      // Find AdminFor claim to get organisation key
+      const adminForClaim = userData.AuthClaims.find((claim: string) => claim.startsWith(ROLE_PREFIXES.ADMIN_FOR));
+      if (adminForClaim) {
+        const organisationKey = adminForClaim.replace(ROLE_PREFIXES.ADMIN_FOR, '');
+        
+        // Find organisation and get its AssociatedLocationIds
+        const organisation = await Organisation.findOne({ Key: organisationKey }).lean();
+        
+        if (organisation && organisation.AssociatedLocationIds) {
+          associatedProviderLocationIds = organisation.AssociatedLocationIds;
+        }
+      }
+    }
+
     user = await User.create({
       ...userData,
       Email: encryptedEmail,
       Auth0Id: auth0Id,
+      AssociatedProviderLocationIds: associatedProviderLocationIds,
       CreatedBy: req.user?._id || req.body?.CreatedBy,
       DocumentCreationDate: new Date(),
       DocumentModifiedDate: new Date()
