@@ -1,7 +1,7 @@
 import { Document, Types } from "mongoose";
 import { IOpeningTime } from "./IOpeningTime.js";
 import { ILocation } from "./ILocation.js";
-import { ISubCategory } from "./ISubCategory.js";
+import { IServiceSubCategory } from "./IServiceSubCategory.js";
 
 export interface IGroupedService extends Document {
   _id: Types.ObjectId;
@@ -19,7 +19,7 @@ export interface IGroupedService extends Document {
   Location: ILocation;
   IsOpen247: boolean;
   OpeningTimes?: IOpeningTime[];
-  SubCategories: ISubCategory[];
+  SubCategories: IServiceSubCategory[];
   SubCategoriesIds?: string[];
   IsTelephoneService?: boolean;
   IsAppointmentOnly?: boolean;

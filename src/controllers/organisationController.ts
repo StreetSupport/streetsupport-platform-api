@@ -1,9 +1,10 @@
 import { Request, Response } from 'express';
 import Organisation from '../models/organisationModel.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
-import { sendSuccess, sendCreated, sendNotFound, sendBadRequest, sendPaginatedSuccess, sendForbidden } from '../utils/apiResponses.js';
+import { sendSuccess, sendCreated, sendNotFound, sendBadRequest, sendPaginatedSuccess } from '../utils/apiResponses.js';
 import { ROLES, ROLE_PREFIXES } from '../constants/roles.js';
 import { validateOrganisation } from 'schemas/organisationSchema.js';
+import { processAddressesWithCoordinates, updateLocationIfPostcodeChanged } from '../utils/postcodeValidation.js';
 
 // @desc    Get all organisations with optional filtering and search
 // @route   GET /api/organisations
@@ -130,8 +131,7 @@ export const createOrganisation = asyncHandler(async (req: Request, res: Respons
   if (!validation.data) {
     return sendBadRequest(res, 'Validation data is missing');
   }
-
-  // Add system fields
+  // Initialize location coordinates from postcodes for all addresses
   const organisationData = {
     ...validation.data,
     CreatedBy: req.user?._id || req.body?.CreatedBy,
@@ -141,6 +141,11 @@ export const createOrganisation = asyncHandler(async (req: Request, res: Respons
     IsPublished: false,
   };
 
+  // Process addresses to initialize Location coordinates from postcodes
+  if (organisationData.Addresses && organisationData.Addresses.length > 0) {
+    await processAddressesWithCoordinates(organisationData.Addresses);
+  }
+
   const provider = await Organisation.create(organisationData);
   return sendCreated(res, provider);
 });
@@ -149,14 +154,48 @@ export const createOrganisation = asyncHandler(async (req: Request, res: Respons
 // @route   PUT /api/organisations/:id
 // @access  Private
 export const updateOrganisation = asyncHandler(async (req: Request, res: Response) => {
+  // Get existing organisation to compare postcodes
+  const existingProvider = await Organisation.findById(req.params.id);
+  if (!existingProvider) {
+    return sendNotFound(res, 'Organisation not found');
+  }
+
+  // Prepare update data
+  const updateData = {
+    ...req.body,
+    DocumentModifiedDate: new Date()
+  };
+
+  // Check if any address postcodes have changed and update coordinates accordingly
+  if (updateData.Addresses && updateData.Addresses.length > 0) {
+    for (let i = 0; i < updateData.Addresses.length; i++) {
+      const newAddress = updateData.Addresses[i];
+      const oldAddress = existingProvider.Addresses?.[i];
+      
+      if (oldAddress && newAddress.Postcode) {
+        // Update location if postcode changed
+        await updateLocationIfPostcodeChanged(
+          oldAddress.Postcode, 
+          newAddress.Postcode, 
+          newAddress
+        );
+      } else if (newAddress.Postcode && !newAddress.Location) {
+        // Initialize location for new addresses
+        await processAddressesWithCoordinates([newAddress]);
+      }
+    }
+  }
+
   const provider = await Organisation.findByIdAndUpdate(
     req.params.id, 
-    req.body, 
+    updateData,
     { new: true, runValidators: true }
   );
+  
   if (!provider) {
-    return sendNotFound(res, 'Service provider not found');
+    return sendNotFound(res, 'Organisation not found');
   }
+  
   return sendSuccess(res, provider);
 });
 

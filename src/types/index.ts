@@ -13,7 +13,7 @@ export * from './organisations/IAddress.js';
 export * from './organisations/IOpeningTime.js';
 export * from './organisations/ILocation.js';
 export * from './organisations/ILocationCoordinates.js';
-export * from './organisations/ISubCategory.js';
+export * from './organisations/IServiceSubCategory.js';
 export * from './organisations/IAdministrator.js';
 export * from './organisations/INote.js';
 

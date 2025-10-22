@@ -120,13 +120,6 @@ BannerSchema.index({ LocationSlug: 1, IsActive: 1 });
 BannerSchema.index({ TemplateType: 1, IsActive: 1 });
 BannerSchema.index({ CreatedBy: 1 });
 
-// Pre-save middleware
-BannerSchema.pre('save', function(next) {
-  this.DocumentModifiedDate = new Date();
-
-  next();
-});
-
 // Instance methods
 BannerSchema.methods.IncrementDownloadCount = function() {
   if (this.TemplateType === BannerTemplateType.RESOURCE_PROJECT && this.ResourceProject?.ResourceFile) {

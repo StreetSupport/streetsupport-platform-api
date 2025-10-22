@@ -1,4 +1,5 @@
 import { Types } from "mongoose";
+import { ILocationCoordinates } from "./ILocationCoordinates.js";
 
 export interface IAccommodation {
   _id: Types.ObjectId;
@@ -31,10 +32,7 @@ export interface IAccommodation {
     Street3?: string;
     City: string;
     Postcode: string;
-    Location?: {
-      type: string;
-      coordinates: [number, number];
-    };
+    Location?: ILocationCoordinates; // Auto-initialized from Postcode using initializeLocationFromPostcode() utility
     AssociatedCityId: string;
   };
   FeaturesWithDiscretionary: {

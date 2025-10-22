@@ -1,13 +1,14 @@
 import { Request, Response } from 'express';
-import Service from '../models/serviceModel.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { sendSuccess, sendCreated, sendNotFound } from '../utils/apiResponses.js';
+import GroupedService from 'models/groupedServiceModel.js';
+import { processAddressesWithCoordinates, updateLocationIfPostcodeChanged } from 'utils/postcodeValidation.js';
 
 // @desc    Get all services
 // @route   GET /api/services
 // @access  Private
 export const getServices = asyncHandler(async (req: Request, res: Response) => {
-  const services = await Service.find({ IsPublished: true });
+  const services = await GroupedService.find({ IsPublished: true });
   return sendSuccess(res, services);
 });
 
@@ -15,7 +16,7 @@ export const getServices = asyncHandler(async (req: Request, res: Response) => {
 // @route   GET /api/services/:id
 // @access  Private
 export const getServiceById = asyncHandler(async (req: Request, res: Response) => {
-  const service = await Service.findById(req.params.id);
+  const service = await GroupedService.findById(req.params.id);
   if (!service) {
     return sendNotFound(res, 'Service not found');
   }
@@ -26,8 +27,8 @@ export const getServiceById = asyncHandler(async (req: Request, res: Response) =
 // @route   GET /api/services/provider/:providerId
 // @access  Private
 export const getServicesByProvider = asyncHandler(async (req: Request, res: Response) => {
-  const services = await Service.find({ 
-    ServiceProviderKey: req.params.providerId,
+  const services = await GroupedService.find({ 
+    ProviderId: req.params.providerId,
     IsPublished: true 
   });
   return sendSuccess(res, services);
@@ -37,7 +38,15 @@ export const getServicesByProvider = asyncHandler(async (req: Request, res: Resp
 // @route   POST /api/services
 // @access  Private
 export const createService = asyncHandler(async (req: Request, res: Response) => {
-  const service = await Service.create(req.body);
+  // Initialize location coordinates from postcodes for service locations
+  const serviceData = { ...req.body };
+  
+  // Process locations to initialize Location coordinates from postcodes
+  if (serviceData.Locations && serviceData.Locations.length > 0) {
+    await processAddressesWithCoordinates(serviceData.Locations);
+  }
+  
+  const service = await GroupedService.create(serviceData);
   return sendCreated(res, service);
 });
 
@@ -45,14 +54,45 @@ export const createService = asyncHandler(async (req: Request, res: Response) =>
 // @route   PUT /api/services/:id
 // @access  Private
 export const updateService = asyncHandler(async (req: Request, res: Response) => {
-  const service = await Service.findByIdAndUpdate(
+  // Get existing service to compare postcodes
+  const existingService = await GroupedService.findById(req.params.id);
+  if (!existingService) {
+    return sendNotFound(res, 'Service not found');
+  }
+
+  // Prepare update data
+  const updateData = { ...req.body };
+
+  // Check if any location postcodes have changed and update coordinates accordingly
+  if (updateData.Locations && updateData.Locations.length > 0) {
+    for (let i = 0; i < updateData.Locations.length; i++) {
+      const newLocation = updateData.Locations[i];
+      const oldLocation = existingService.Location;
+      
+      if (oldLocation && newLocation.Postcode) {
+        // Update location if postcode changed
+        await updateLocationIfPostcodeChanged(
+          oldLocation.Postcode, 
+          newLocation.Postcode, 
+          newLocation
+        );
+      } else if (newLocation.Postcode && !newLocation.Location) {
+        // Initialize location for new locations
+        await processAddressesWithCoordinates([newLocation]);
+      }
+    }
+  }
+
+  const service = await GroupedService.findByIdAndUpdate(
     req.params.id, 
-    req.body, 
+    updateData, 
     { new: true, runValidators: true }
   );
+  
   if (!service) {
     return sendNotFound(res, 'Service not found');
   }
+  
   return sendSuccess(res, service);
 });
 
@@ -60,7 +100,7 @@ export const updateService = asyncHandler(async (req: Request, res: Response) =>
 // @route   DELETE /api/services/:id
 // @access  Private
 export const deleteService = asyncHandler(async (req: Request, res: Response) => {
-  const service = await Service.findByIdAndDelete(req.params.id).lean();
+  const service = await GroupedService.findByIdAndDelete(req.params.id).lean();
   if (!service) {
     return sendNotFound(res, 'Service not found');
   }

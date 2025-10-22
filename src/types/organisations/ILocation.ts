@@ -9,7 +9,7 @@ export interface ILocation {
   StreetLine4?: string;
   City?: string;
   Postcode: string;
-  Location?: ILocationCoordinates;
+  Location?: ILocationCoordinates; // Auto-initialized from Postcode using initializeLocationFromPostcode() utility
 }
 
 export const LocationSchema = new mongoose.Schema<ILocation>({

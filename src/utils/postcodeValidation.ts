@@ -74,7 +74,7 @@ export async function validatePostcode(postcode: string): Promise<PostcodeData |
       return null;
     }
 
-    const data: PostcodeResponse = await response.json();
+    const data = await response.json() as PostcodeResponse;
     return data.result;
     
   } catch (error) {
@@ -113,4 +113,77 @@ export async function zodPostcodeValidation(postcode: string): Promise<string> {
   }
   
   return postcode;
+}
+
+/**
+ * Creates a GeoJSON Point object from longitude and latitude coordinates
+ * Equivalent to C# GeoJsonPoint<GeoJson2DGeographicCoordinates>
+ * @param longitude - The longitude coordinate
+ * @param latitude - The latitude coordinate
+ * @returns GeoJSON Point object compatible with MongoDB
+ */
+export function createGeoJsonPoint(longitude: number, latitude: number) {
+  return {
+    type: 'Point',
+    coordinates: [longitude, latitude]
+  };
+}
+
+/**
+ * Generic utility to initialize location coordinates from postcode
+ * Fetches postcode data and creates GeoJSON Point for MongoDB storage
+ * @param postcode - The postcode to get coordinates for
+ * @returns Promise<object | null> - Returns GeoJSON Point object or null if postcode invalid
+ */
+export async function initializeLocationFromPostcode(postcode: string) {
+  try {
+    const postcodeData = await validatePostcode(postcode);
+    if (!postcodeData) {
+      console.warn(`Could not get coordinates for postcode: ${postcode}`);
+      return null;
+    }
+    
+    // Create GeoJSON Point using longitude and latitude from postcode API
+    return createGeoJsonPoint(postcodeData.longitude, postcodeData.latitude);
+  } catch (error) {
+    console.error('Error initializing location from postcode:', error);
+    return null;
+  }
+}
+
+/**
+ * Generic utility to process addresses/locations and initialize their coordinates
+ * Handles arrays of addresses or single address objects
+ * @param addresses - Array of addresses or single address object with Postcode property
+ * @returns Promise<void> - Modifies addresses in-place by adding Location property
+ */
+export async function processAddressesWithCoordinates(addresses: any[] | any) {
+  const addressArray = Array.isArray(addresses) ? addresses : [addresses];
+  
+  for (const address of addressArray) {
+    if (address && address.Postcode && !address.Location) {
+      const location = await initializeLocationFromPostcode(address.Postcode);
+      if (location) {
+        address.Location = location;
+      }
+    }
+  }
+}
+
+/**
+ * Utility to check if postcode has changed and update location coordinates accordingly
+ * @param oldPostcode - The previous postcode value
+ * @param newPostcode - The new postcode value
+ * @param addressObject - The address object to update
+ * @returns Promise<boolean> - Returns true if location was updated, false otherwise
+ */
+export async function updateLocationIfPostcodeChanged(oldPostcode: string, newPostcode: string, addressObject: any): Promise<boolean> {
+  if (oldPostcode !== newPostcode) {
+    const location = await initializeLocationFromPostcode(newPostcode);
+    if (location) {
+      addressObject.Location = location;
+      return true;
+    }
+  }
+  return false;
 }

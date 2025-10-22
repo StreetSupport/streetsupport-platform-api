@@ -3,7 +3,7 @@ import User from '../models/userModel.js';
 import ArchivedUser from '../models/archivedUserModel.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { decryptUserEmail, encryptEmail } from '../utils/encryption.js';
-import { validateUser } from '../schemas/userSchema.js';
+import { validateUserCreate, validateUserUpdate } from '../schemas/userSchema.js';
 import { createAuth0User, deleteAuth0User, blockAuth0User, unblockAuth0User, updateAuth0UserRoles } from '../services/auth0Service.js';
 import { sendSuccess, sendCreated, sendNotFound, sendBadRequest, sendInternalError, sendPaginatedSuccess, sendForbidden } from '../utils/apiResponses.js';
 import { ROLE_PREFIXES, ROLES } from '../constants/roles.js';
@@ -169,7 +169,7 @@ const getUserByAuth0Id = asyncHandler(async (req: Request, res: Response) => {
 // @desc Create new user
 const createUser = asyncHandler(async (req: Request, res: Response) => {
   // Validate the request data first
-  const validation = validateUser(req.body);
+  const validation = validateUserCreate(req.body);
   if (!validation.success) {
     const errorMessages = validation.errors.map(err => err.message).join(', ');
     return sendBadRequest(res, `Validation failed: ${errorMessages}`);
@@ -255,9 +255,8 @@ const createUser = asyncHandler(async (req: Request, res: Response) => {
 // @route   PUT /api/users/:id
 // @access  Private
 const updateUser = asyncHandler(async (req: Request, res: Response) => {
-  // Validate the request data first
-  // Request body contains only AuthClaims because we don't need to update other fields
-  const validation = validateUser(req.body);
+  // Validate the request data first using UpdateUserSchema for partial updates
+  const validation = validateUserUpdate(req.body);
   if (!validation.success) {
     const errorMessages = validation.errors.map(err => err.message).join(', ');
     return sendBadRequest(res, `Validation failed: ${errorMessages}`);
@@ -268,7 +267,7 @@ const updateUser = asyncHandler(async (req: Request, res: Response) => {
   }
 
   const userData = { ...validation.data };
-
+  
   // Encrypt email if it's provided as a string
   const encryptedEmail = userData.Email && typeof userData.Email === 'string' ? encryptEmail(userData.Email) : undefined;
 

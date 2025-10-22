@@ -7,6 +7,122 @@ import { deleteFile } from '../middleware/uploadMiddleware.js';
 import { Types } from 'mongoose';
 import { sendSuccess, sendCreated, sendBadRequest, sendNotFound, sendPaginatedSuccess } from '../utils/apiResponses.js';
 
+// Get all banners with optional filtering
+export const getBanners = asyncHandler(async (req: Request, res: Response) => {
+  const { 
+    location,
+    locations, // New: comma-separated list of locations for CityAdmin filtering
+    templateType, 
+    isActive, 
+    search,
+    page = 1, 
+    limit = 10,
+    sortBy = 'Priority',
+    sortOrder = 'desc'
+  } = req.query;
+
+  const query: any = {};
+  
+  // Apply search filter
+  if (search && typeof search === 'string') {
+    const searchRegex = new RegExp(search, 'i'); // Case-insensitive search
+    query.$or = [
+      { Title: searchRegex },
+      { Description: searchRegex },
+      { Subtitle: searchRegex }
+    ];
+  }
+
+  // Apply location filters
+  // Priority: 'locations' (for CityAdmin bulk filtering) over 'location' (for single filter)
+  if (locations && typeof locations === 'string') {
+    // Multiple locations passed from admin side for CityAdmin users
+    const locationArray = locations.split(',').map(loc => loc.trim()).filter(Boolean);
+    if (locationArray.length > 0) {
+      const locationQuery = {
+        $or: [
+          { LocationSlug: { $in: locationArray } },
+          { LocationSlug: { $exists: false } },
+          { LocationSlug: null }
+        ]
+      };
+      
+      // Combine with search query if it exists
+      if (query.$or) {
+        query.$and = [
+          { $or: query.$or }, // Search conditions
+          locationQuery       // Location conditions
+        ];
+        delete query.$or;
+      } else {
+        query.$or = locationQuery.$or;
+      }
+    }
+  } else if (location && typeof location === 'string') {
+    // Single location filter from UI
+    const locationQuery = {
+      $or: [
+        { LocationSlug: location },
+        { LocationSlug: { $exists: false } },
+        { LocationSlug: null }
+      ]
+    };
+    
+    // Combine with search query if it exists
+    if (query.$or) {
+      query.$and = [
+        { $or: query.$or }, // Search conditions
+        locationQuery       // Location conditions
+      ];
+      delete query.$or;
+    } else {
+      query.$or = locationQuery.$or;
+    }
+  }
+  
+  if (templateType) {
+    query.TemplateType = templateType;
+  }
+  
+  if (isActive !== undefined) {
+    query.IsActive = isActive === 'true';
+  }
+
+  // Pagination
+  const skip = (Number(page) - 1) * Number(limit);
+  
+  // Sort options
+  const sortOptions: any = {};
+  sortOptions[sortBy as string] = sortOrder === 'desc' ? -1 : 1;
+  
+  const banners = await Banner.find(query)
+    .sort(sortOptions)
+    .skip(skip)
+    .limit(Number(limit));
+
+  const total = await Banner.countDocuments(query);
+
+  return sendPaginatedSuccess(res, banners, {
+    page: Number(page),
+    limit: Number(limit),
+    total: total,
+    pages: Math.ceil(total / Number(limit))
+  });
+});
+
+// Get banner by ID
+export const getBannerById = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = req.params;
+  
+  const banner = await Banner.findById(id);
+
+  if (!banner) {
+    return sendNotFound(res, 'Banner not found');
+  }
+
+  return sendSuccess(res, banner);
+});
+
 // Create new banner
 export const createBanner = asyncHandler(async (req: Request, res: Response) => {
   // Process media fields (existing assets + new uploads)
@@ -38,6 +154,141 @@ export const createBanner = asyncHandler(async (req: Request, res: Response) => 
 
   return sendCreated(res, banner, 'Banner created successfully');
 });
+
+// Update banner
+export const updateBanner = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = req.params;
+  
+  const banner = await Banner.findById(id).lean();
+  
+  if (!banner) {
+    return sendNotFound(res, 'Banner not found');
+  }
+
+  // Process media fields (existing assets + new uploads)
+  const processedData = processMediaFields(req);
+
+  // Validate and transform banner data using Zod (final validation after upload)
+  const validation = validateBanner(processedData);
+  
+  if (!validation.success) {
+    // Clean up any newly uploaded files since validation failed
+    await cleanupUploadedFiles(processedData);
+    const errorMessages = validation.errors.map(err => err.message).join(', ');
+    return sendBadRequest(res, `Validation failed: ${errorMessages}`);
+  }
+
+  // Store old banner data for file cleanup
+  const oldBannerData = banner.toObject();
+
+  // Handle resource project specific logic
+  const finalBannerData = _handleResourceProjectBannerLogic({ ...validation.data });
+
+  // Update banner
+  const updatedBanner = await Banner.findByIdAndUpdate(
+    id,
+    {
+      ...finalBannerData,
+      DocumentModifiedDate: new Date()
+    },
+    { new: true, runValidators: true }
+  );
+
+  // Clean up files that are no longer used after update
+  if (updatedBanner) {
+    await cleanupUnusedFiles(oldBannerData, updatedBanner.toObject());
+  }
+
+  return sendSuccess(res, updatedBanner, 'Banner updated successfully');
+});
+
+// Delete banner
+export const deleteBanner = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = req.params;
+  
+  const banner = await Banner.findById(id).lean();
+  
+  if (!banner) {
+    return sendNotFound(res, 'Banner not found');
+  }
+
+  // Extract all file URLs from the banner before deletion
+  const fileUrls = extractFileUrls(banner.toObject());
+  
+  // Delete the banner from database first
+  await Banner.findByIdAndDelete(id);
+
+  // Clean up all associated files
+  for (const url of fileUrls) {
+    try {
+      await deleteFile(url);
+      console.log(`Cleaned up file during banner deletion: ${url}`);
+    } catch (error) {
+      console.error(`Failed to delete file ${url} during banner deletion:`, error);
+      // Don't throw error - file cleanup failure shouldn't break the deletion response
+    }
+  }
+
+  return sendSuccess(res, {}, 'Banner and associated files deleted successfully');
+});
+
+// Toggle banner active status
+export const toggleBannerStatus = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = req.params;
+  
+  const banner = await Banner.findById(id);
+  
+  if (!banner) {
+    return sendNotFound(res, 'Banner not found');
+  }
+
+  banner.IsActive = !banner.IsActive;
+  await banner.save();
+
+  return sendSuccess(res, banner, `Banner ${banner.IsActive ? 'activated' : 'deactivated'} successfully`);
+});
+
+// Increment download count for resource banners
+export const incrementDownloadCount = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = req.params;
+  
+  const banner = await Banner.findById(id);
+  
+  if (!banner) {
+    return sendNotFound(res, 'Banner not found');
+  }
+
+  if (banner.TemplateType !== BannerTemplateType.RESOURCE_PROJECT) {
+    return sendBadRequest(res, 'Download count can only be incremented for resource project banners');
+  }
+
+  await banner.IncrementDownloadCount();
+
+  return sendSuccess(res, { DownloadCount: banner.ResourceProject?.ResourceFile?.DownloadCount || 0 }, 'Download count incremented');
+});
+
+// Private helper to handle resource project specific logic
+function _handleResourceProjectBannerLogic(bannerData: any): any {
+  if (bannerData.TemplateType === BannerTemplateType.RESOURCE_PROJECT && bannerData.ResourceProject?.ResourceFile) {
+    const resourceFile = bannerData.ResourceProject.ResourceFile;
+
+    // If a new file was uploaded, its URL is in `Url`. We make this the permanent `FileUrl`.
+    if (resourceFile.Url && !resourceFile.FileUrl) {
+      bannerData.ResourceProject.ResourceFile.FileUrl = resourceFile.Url;
+    }
+    // Add foreach to populate Url depending on AutomaticallyPopulatedUrl
+    // Update the 'Download' CTA button URL to use the file URL
+    const fileUrl = bannerData.ResourceProject.ResourceFile.FileUrl;
+    if (bannerData.CtaButtons && bannerData.CtaButtons.length > 0 && fileUrl) {
+      const downloadButtonIndex = 0;
+      const button = bannerData.CtaButtons[downloadButtonIndex];
+      if (button && button.AutomaticallyPopulatedUrl) {
+        button.Url = fileUrl;
+      }
+    }
+  }
+  return bannerData;
+}
 
 // Helper function to extract all file URLs from a banner
 function extractFileUrls(banner: any): string[] {
@@ -199,256 +450,3 @@ async function cleanupUploadedFiles(processedData: any): Promise<void> {
     }
   }
 }
-
-// Get all banners with optional filtering
-export const getBanners = asyncHandler(async (req: Request, res: Response) => {
-  const { 
-    location,
-    locations, // New: comma-separated list of locations for CityAdmin filtering
-    templateType, 
-    isActive, 
-    search,
-    page = 1, 
-    limit = 10,
-    sortBy = 'Priority',
-    sortOrder = 'desc'
-  } = req.query;
-
-  const query: any = {};
-  
-  // Apply search filter
-  if (search && typeof search === 'string') {
-    const searchRegex = new RegExp(search, 'i'); // Case-insensitive search
-    query.$or = [
-      { Title: searchRegex },
-      { Description: searchRegex },
-      { Subtitle: searchRegex }
-    ];
-  }
-
-  // Apply location filters
-  // Priority: 'locations' (for CityAdmin bulk filtering) over 'location' (for single filter)
-  if (locations && typeof locations === 'string') {
-    // Multiple locations passed from admin side for CityAdmin users
-    const locationArray = locations.split(',').map(loc => loc.trim()).filter(Boolean);
-    if (locationArray.length > 0) {
-      const locationQuery = {
-        $or: [
-          { LocationSlug: { $in: locationArray } },
-          { LocationSlug: { $exists: false } },
-          { LocationSlug: null }
-        ]
-      };
-      
-      // Combine with search query if it exists
-      if (query.$or) {
-        query.$and = [
-          { $or: query.$or }, // Search conditions
-          locationQuery       // Location conditions
-        ];
-        delete query.$or;
-      } else {
-        query.$or = locationQuery.$or;
-      }
-    }
-  } else if (location && typeof location === 'string') {
-    // Single location filter from UI
-    const locationQuery = {
-      $or: [
-        { LocationSlug: location },
-        { LocationSlug: { $exists: false } },
-        { LocationSlug: null }
-      ]
-    };
-    
-    // Combine with search query if it exists
-    if (query.$or) {
-      query.$and = [
-        { $or: query.$or }, // Search conditions
-        locationQuery       // Location conditions
-      ];
-      delete query.$or;
-    } else {
-      query.$or = locationQuery.$or;
-    }
-  }
-  
-  if (templateType) {
-    query.TemplateType = templateType;
-  }
-  
-  if (isActive !== undefined) {
-    query.IsActive = isActive === 'true';
-  }
-
-  // Pagination
-  const skip = (Number(page) - 1) * Number(limit);
-  
-  // Sort options
-  const sortOptions: any = {};
-  sortOptions[sortBy as string] = sortOrder === 'desc' ? -1 : 1;
-  
-  const banners = await Banner.find(query)
-    .sort(sortOptions)
-    .skip(skip)
-    .limit(Number(limit));
-
-  const total = await Banner.countDocuments(query);
-
-  return sendPaginatedSuccess(res, banners, {
-    page: Number(page),
-    limit: Number(limit),
-    total: total,
-    pages: Math.ceil(total / Number(limit))
-  });
-});
-
-// Get banner by ID
-export const getBannerById = asyncHandler(async (req: Request, res: Response) => {
-  const { id } = req.params;
-  
-  const banner = await Banner.findById(id);
-
-  if (!banner) {
-    return sendNotFound(res, 'Banner not found');
-  }
-
-  return sendSuccess(res, banner);
-});
-
-// Update banner
-export const updateBanner = asyncHandler(async (req: Request, res: Response) => {
-  const { id } = req.params;
-  
-  const banner = await Banner.findById(id).lean();
-  
-  if (!banner) {
-    return sendNotFound(res, 'Banner not found');
-  }
-
-  // Process media fields (existing assets + new uploads)
-  const processedData = processMediaFields(req);
-
-  // Validate and transform banner data using Zod (final validation after upload)
-  const validation = validateBanner(processedData);
-  
-  if (!validation.success) {
-    // Clean up any newly uploaded files since validation failed
-    await cleanupUploadedFiles(processedData);
-    const errorMessages = validation.errors.map(err => err.message).join(', ');
-    return sendBadRequest(res, `Validation failed: ${errorMessages}`);
-  }
-
-  // Store old banner data for file cleanup
-  const oldBannerData = banner.toObject();
-
-  // Handle resource project specific logic
-  const finalBannerData = _handleResourceProjectBannerLogic({ ...validation.data });
-
-  // Update banner
-  const updatedBanner = await Banner.findByIdAndUpdate(
-    id,
-    {
-      ...finalBannerData,
-      DocumentModifiedDate: new Date()
-    },
-    { new: true, runValidators: true }
-  );
-
-  // Clean up files that are no longer used after update
-  if (updatedBanner) {
-    await cleanupUnusedFiles(oldBannerData, updatedBanner.toObject());
-  }
-
-  return sendSuccess(res, updatedBanner, 'Banner updated successfully');
-});
-
-// Delete banner
-export const deleteBanner = asyncHandler(async (req: Request, res: Response) => {
-  const { id } = req.params;
-  
-  const banner = await Banner.findById(id).lean();
-  
-  if (!banner) {
-    return sendNotFound(res, 'Banner not found');
-  }
-
-  // Extract all file URLs from the banner before deletion
-  const fileUrls = extractFileUrls(banner.toObject());
-  
-  // Delete the banner from database first
-  await Banner.findByIdAndDelete(id);
-
-  // Clean up all associated files
-  for (const url of fileUrls) {
-    try {
-      await deleteFile(url);
-      console.log(`Cleaned up file during banner deletion: ${url}`);
-    } catch (error) {
-      console.error(`Failed to delete file ${url} during banner deletion:`, error);
-      // Don't throw error - file cleanup failure shouldn't break the deletion response
-    }
-  }
-
-  return sendSuccess(res, {}, 'Banner and associated files deleted successfully');
-});
-
-// Toggle banner active status
-export const toggleBannerStatus = asyncHandler(async (req: Request, res: Response) => {
-  const { id } = req.params;
-  
-  const banner = await Banner.findById(id);
-  
-  if (!banner) {
-    return sendNotFound(res, 'Banner not found');
-  }
-
-  banner.IsActive = !banner.IsActive;
-  await banner.save();
-
-  return sendSuccess(res, banner, `Banner ${banner.IsActive ? 'activated' : 'deactivated'} successfully`);
-});
-
-// Increment download count for resource banners
-export const incrementDownloadCount = asyncHandler(async (req: Request, res: Response) => {
-  const { id } = req.params;
-  
-  const banner = await Banner.findById(id);
-  
-  if (!banner) {
-    return sendNotFound(res, 'Banner not found');
-  }
-
-  if (banner.TemplateType !== BannerTemplateType.RESOURCE_PROJECT) {
-    return sendBadRequest(res, 'Download count can only be incremented for resource project banners');
-  }
-
-  await banner.IncrementDownloadCount();
-
-  return sendSuccess(res, { DownloadCount: banner.ResourceProject?.ResourceFile?.DownloadCount || 0 }, 'Download count incremented');
-});
-
-// Private helper to handle resource project specific logic
-function _handleResourceProjectBannerLogic(bannerData: any): any {
-  if (bannerData.TemplateType === BannerTemplateType.RESOURCE_PROJECT && bannerData.ResourceProject?.ResourceFile) {
-    const resourceFile = bannerData.ResourceProject.ResourceFile;
-
-    // If a new file was uploaded, its URL is in `Url`. We make this the permanent `FileUrl`.
-    if (resourceFile.Url && !resourceFile.FileUrl) {
-      bannerData.ResourceProject.ResourceFile.FileUrl = resourceFile.Url;
-    }
-    // Add foreach to populate Url depending on AutomaticallyPopulatedUrl
-    // Update the 'Download' CTA button URL to use the file URL
-    const fileUrl = bannerData.ResourceProject.ResourceFile.FileUrl;
-    if (bannerData.CtaButtons && bannerData.CtaButtons.length > 0 && fileUrl) {
-      const downloadButtonIndex = 0;
-      const button = bannerData.CtaButtons[downloadButtonIndex];
-      if (button && button.AutomaticallyPopulatedUrl) {
-        button.Url = fileUrl;
-      }
-    }
-  }
-  return bannerData;
-}
-
-

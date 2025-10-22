@@ -14,19 +14,11 @@ export interface IAddress {
   Telephone?: string;
   IsOpen247?: boolean;
   IsAppointmentOnly?: boolean;
-  Location?: ILocationCoordinates;
+  Location?: ILocationCoordinates; // Auto-initialized from Postcode using initializeLocationFromPostcode() utility
   OpeningTimes: IOpeningTime[];
 }
 
 export const AddressSchema = new mongoose.Schema<IAddress>({
-  Primary: {
-    type: Boolean,
-    required: false,
-  },
-  Key: {
-    type: String,
-    required: true,
-  },
   Street: {
     type: String,
     required: true,

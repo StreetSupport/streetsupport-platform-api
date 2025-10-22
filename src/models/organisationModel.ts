@@ -48,10 +48,6 @@ const organisationSchema = new Schema<IOrganisation>({
     type: Boolean,
     required: true
   },
-  RegisteredCharity: {
-    type: Number,
-    required: false,
-  },
   Tags: {
     type: String,
     required: false,
@@ -93,13 +89,6 @@ const organisationSchema = new Schema<IOrganisation>({
   //   // }
   // }
 }, { collection: 'ServiceProviders', versionKey: false });
-
-// Pre-save middleware
-organisationSchema.pre('save', function(next) {
-  this.DocumentModifiedDate = new Date();
-
-  next();
-});
 
 // Indexes for performance based on database structure
 // Note: _id index is created automatically by MongoDB, no need to define it explicitly
