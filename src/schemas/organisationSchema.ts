@@ -58,18 +58,24 @@ export const OpeningTimeSchema = z.object({
   path: ['EndTime']
 });
 
+// Preprocessing helper to convert null/undefined to empty string
+const preprocessNullableString = (val: unknown) => {
+  if (val === null || val === undefined) return '';
+  return val;
+};
+
 export const AddressSchema = z.object({
   Street: z.string().min(1, 'Street is required').trim(),
-  Street1: z.string().optional(),
-  Street2: z.string().optional(),
-  Street3: z.string().optional(),
-  City: z.string().optional(),
+  Street1: z.preprocess(preprocessNullableString, z.string().optional()),
+  Street2: z.preprocess(preprocessNullableString, z.string().optional()),
+  Street3: z.preprocess(preprocessNullableString, z.string().optional()),
+  City: z.preprocess(preprocessNullableString, z.string().optional()),
   Postcode: z.string().min(1, 'Postcode is required').trim().refine((postcode) => {
     return isValidPostcodeFormat(postcode);
   }, {
     message: 'Invalid postcode format'
   }),
-  Telephone: z.string().optional(),
+  Telephone: z.preprocess(preprocessNullableString, z.string().optional()),
   IsOpen247: z.preprocess(preprocessBoolean, z.boolean().optional()),
   IsAppointmentOnly: z.preprocess(preprocessBoolean, z.boolean().optional()),
   Location: z.preprocess(preprocessJSON, LocationCoordinatesSchema.optional()),
@@ -105,12 +111,18 @@ export const OrganisationSchema = z.object({
   Description: z.string().min(1, 'Description is required'),
   IsVerified: z.preprocess(preprocessBoolean, z.boolean()),
   IsPublished: z.preprocess(preprocessBoolean, z.boolean()),
-  Tags: z.string().optional(),
-  Email: z.string().email('Invalid email address').toLowerCase().trim().optional().or(z.literal('')),
-  Telephone: z.string().optional(),
-  Website: z.string().url('Invalid website URL').optional().or(z.literal('')),
-  Facebook: z.string().optional(),
-  Twitter: z.string().optional(),
+  Tags: z.preprocess(preprocessNullableString, z.string().optional()),
+  Email: z.preprocess(
+    preprocessNullableString,
+    z.string().email('Invalid email address').toLowerCase().trim().optional().or(z.literal(''))
+  ),
+  Telephone: z.preprocess(preprocessNullableString, z.string().optional()),
+  Website: z.preprocess(
+    preprocessNullableString,
+    z.string().url('Invalid website URL').optional().or(z.literal(''))
+  ),
+  Facebook: z.preprocess(preprocessNullableString, z.string().optional()),
+  Twitter: z.preprocess(preprocessNullableString, z.string().optional()),
   Addresses: z.preprocess(preprocessJSON, z.array(AddressSchema).optional().default([])),
   Notes: z.preprocess(preprocessJSON, z.array(NoteSchema).optional().default([])),
 });

@@ -9,14 +9,20 @@ const preprocessNumber = (val: any) => {
   return val;
 };
 
+// Preprocessing helper to convert null/undefined to empty string
+const preprocessNullableString = (val: unknown) => {
+  if (val === null || val === undefined) return '';
+  return val;
+};
+
 // Location Schema for services
 export const ServiceLocationSchema = z.object({
-  OutreachLocationDescription: z.string().optional(),
+  OutreachLocationDescription: z.preprocess(preprocessNullableString, z.string().optional()),
   StreetLine1: z.string().min(1, 'Street address is required'),
-  StreetLine2: z.string().optional(),
-  StreetLine3: z.string().optional(),
-  StreetLine4: z.string().optional(),
-  City: z.string().optional(),
+  StreetLine2: z.preprocess(preprocessNullableString, z.string().optional()),
+  StreetLine3: z.preprocess(preprocessNullableString, z.string().optional()),
+  StreetLine4: z.preprocess(preprocessNullableString, z.string().optional()),
+  City: z.preprocess(preprocessNullableString, z.string().optional()),
   Postcode: z.string().min(1, 'Postcode is required'),
   Location: z.object({
     Latitude: z.number(),
@@ -40,22 +46,22 @@ export const OpeningTimeSchema = z.object({
 export const ServiceSubCategorySchema = z.object({
   _id: z.string(),
   Name: z.string(),
-  Synopsis: z.string().optional()
+  Synopsis: z.preprocess(preprocessNullableString, z.string().optional())
 });
 
 // Main Grouped Service Schema
 export const GroupedServiceSchema = z.object({
-  _id: z.string().optional(),
+  _id: z.preprocess(preprocessNullableString, z.string().optional()),
   DocumentCreationDate: z.date().optional(),
   DocumentModifiedDate: z.date().optional(),
-  CreatedBy: z.string().optional(),
+  CreatedBy: z.preprocess(preprocessNullableString, z.string().optional()),
   ProviderId: z.string().min(1, 'Provider ID is required'),
-  ProviderName: z.string().optional(),
+  ProviderName: z.preprocess(preprocessNullableString, z.string().optional()),
   ProviderAssociatedLocationIds: z.array(z.string()).optional(),
   CategoryId: z.string().min(1, 'Category is required'),
-  CategoryName: z.string().optional(),
-  CategorySynopsis: z.string().optional(),
-  Info: z.string().optional(),
+  CategoryName: z.preprocess(preprocessNullableString, z.string().optional()),
+  CategorySynopsis: z.preprocess(preprocessNullableString, z.string().optional()),
+  Info: z.preprocess(preprocessNullableString, z.string().optional()),
   Tags: z.array(z.string()).optional(),
   Location: ServiceLocationSchema,
   IsOpen247: z.boolean().default(false),

@@ -22,6 +22,12 @@ const preprocessBoolean = (val: unknown) => {
   return val;
 };
 
+// Preprocessing helper to convert null/undefined to empty string
+const preprocessNullableString = (val: unknown) => {
+  if (val === null || val === undefined) return '';
+  return val;
+};
+
 // Provided Service schema (works for both create and update)
 // Controller should validate these requirements for create operations
 export const ServiceSchema = z.object({
@@ -32,7 +38,7 @@ export const ServiceSchema = z.object({
   ParentCategoryKey: z.string().min(1, 'Parent category key is required').trim(),
   SubCategoryKey: z.string().min(1, 'Sub-category key is required').trim(),
   SubCategoryName: z.string().min(1, 'Sub-category name is required').trim(),
-  Info: z.string().optional(),
+  Info: z.preprocess(preprocessNullableString, z.string().optional()),
   Tags: z.preprocess(preprocessJSON, z.array(z.string()).optional()),
   OpeningTimes: z.preprocess(
     preprocessJSON,
@@ -40,7 +46,7 @@ export const ServiceSchema = z.object({
     .min(1, 'At least one opening time is required')
   ),
   Address: z.preprocess(preprocessJSON, AddressSchema),
-  LocationDescription: z.string().optional(),
+  LocationDescription: z.preprocess(preprocessNullableString, z.string().optional()),
 });
 
 // Validation function
