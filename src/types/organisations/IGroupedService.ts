@@ -8,19 +8,19 @@ export interface IGroupedService extends Document {
   DocumentCreationDate: Date;
   DocumentModifiedDate: Date;
   CreatedBy: string;
+  IsPublished: boolean;
   ProviderId: string;
   ProviderName?: string;
-  ProviderAssociatedLocationIds?: string[];
   CategoryId: string;
   CategoryName?: string;
   CategorySynopsis?: string;
   Info?: string;
-  Tags?: string[];
   Location: ILocation;
   IsOpen247: boolean;
   OpeningTimes?: IOpeningTime[];
   SubCategories: IServiceSubCategory[];
-  SubCategoriesIds?: string[];
+  SubCategoryIds?: string[];
   IsTelephoneService?: boolean;
   IsAppointmentOnly?: boolean;
+  Telephone?: string;
 }

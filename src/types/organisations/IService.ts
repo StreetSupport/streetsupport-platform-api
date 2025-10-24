@@ -15,8 +15,9 @@ export interface IService extends Document {
   SubCategoryKey: string;
   SubCategoryName: string;
   Info?: string;
-  Tags?: string[];
   OpeningTimes: IOpeningTime[];
   Address: IAddress;
   LocationDescription?: string;
+  IsAppointmentOnly?: boolean;
+  IsTelephoneService?: boolean;
 }

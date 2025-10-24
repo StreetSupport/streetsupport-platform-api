@@ -1,5 +1,7 @@
 import { Request, Response } from 'express';
 import Organisation from '../models/organisationModel.js';
+import GroupedService from '../models/groupedServiceModel.js';
+import Service from '../models/serviceModel.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { sendSuccess, sendCreated, sendNotFound, sendBadRequest, sendPaginatedSuccess } from '../utils/apiResponses.js';
 import { ROLES, ROLE_PREFIXES } from '../constants/roles.js';
@@ -160,9 +162,24 @@ export const updateOrganisation = asyncHandler(async (req: Request, res: Respons
     return sendNotFound(res, 'Organisation not found');
   }
 
-  // Prepare update data
+  // Validate the request data first
+  const { validateOrganisation } = await import('../schemas/organisationSchema.js');
+  const validation = validateOrganisation(req.body);
+  
+  if (!validation.success) {
+    const errorMessages = validation.errors.map(err => err.message).join(', ');
+    return sendBadRequest(res, `Validation failed: ${errorMessages}`);
+  }
+
+  if (!validation.data) {
+    return sendBadRequest(res, 'Validation data is missing');
+  }
+
+  // Prepare update data using validated data
+  // Exclude Key field - it should never be updated after creation
+  const { Key, ...validatedDataWithoutKey } = validation.data;
   const updateData = {
-    ...req.body,
+    ...validatedDataWithoutKey,
     DocumentModifiedDate: new Date()
   };
 
@@ -199,7 +216,7 @@ export const updateOrganisation = asyncHandler(async (req: Request, res: Respons
   return sendSuccess(res, provider);
 });
 
-// @desc    Delete organisation
+// @desc    Delete organisation and all related services
 // @route   DELETE /api/organisations/:id
 // @access  Private
 export const deleteOrganisation = asyncHandler(async (req: Request, res: Response) => {
@@ -207,7 +224,20 @@ export const deleteOrganisation = asyncHandler(async (req: Request, res: Respons
   if (!provider) {
     return sendNotFound(res, 'Service provider not found');
   }
-  return sendSuccess(res, {}, 'Service provider deleted');
+  
+  // Delete all grouped services associated with this organisation (using Key, not _id)
+  const groupedServices = await GroupedService.find({ ProviderId: provider.Key }).lean();
+  const groupedServiceIds = groupedServices.map(gs => gs._id);
+  
+  // Delete all individual services (ProvidedServices) for these grouped services
+  if (groupedServiceIds.length > 0) {
+    await Service.deleteMany({ ServiceProviderKey: provider.Key },);
+  }
+  
+  // Delete all grouped services
+  await GroupedService.deleteMany({ ProviderId: provider.Key });
+  
+  return sendSuccess(res, {}, 'Organisation and all related services deleted successfully');
 });
 
 // @desc    Toggle service provider verified status
@@ -229,7 +259,7 @@ export const toggleVerified = asyncHandler(async (req: Request, res: Response) =
   return sendSuccess(res, provider, `Organisation ${provider.IsVerified ? 'verified' : 'unverified'} successfully`);
 });
 
-// @desc    Toggle organisation published status
+// @desc    Toggle organisation published status and cascade to related services
 // @route   PATCH /api/organisations/:id/toggle-published
 // @access  Private
 export const togglePublished = asyncHandler(async (req: Request, res: Response) => {
@@ -256,7 +286,32 @@ export const togglePublished = asyncHandler(async (req: Request, res: Response) 
   
   await provider.save();
   
-  return sendSuccess(res, provider, `Organisation ${provider.IsPublished ? 'published' : 'disabled'} successfully`);
+  // Cascade IsPublished status to all related grouped services
+  const groupedServices = await GroupedService.find({ ProviderId: provider.Key });
+  
+  // Update all grouped services
+  await GroupedService.updateMany(
+    { ProviderId: provider.Key },
+    { 
+      $set: { 
+        IsPublished: provider.IsPublished,
+        DocumentModifiedDate: new Date()
+      } 
+    }
+  );
+  
+  // Update all individual services (ProvidedServices) using ServiceProviderKey
+  await Service.updateMany(
+    { ServiceProviderKey: provider.Key },
+    { 
+      $set: { 
+        IsPublished: provider.IsPublished,
+        DocumentModifiedDate: new Date()
+      } 
+    }
+  );
+  
+  return sendSuccess(res, provider, `Organisation ${provider.IsPublished ? 'published' : 'disabled'} successfully. ${groupedServices.length} related services also updated.`);
 });
 
 // @desc    Clear all notes from organisation

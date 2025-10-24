@@ -1,4 +1,4 @@
-import mongoose, { Schema } from "mongoose";
+import { model, Schema } from "mongoose";
 import { 
   IGroupedService, 
   OpeningTimeSchema, 
@@ -7,10 +7,6 @@ import {
 } from "../types/index.js";
 
 const groupedServiceSchema = new Schema<IGroupedService>({
-  // _id: {
-  //   type: Schema.Types.ObjectId,
-  //   required: true,
-  // },
   DocumentCreationDate: {
     type: Date,
     default: Date.now,
@@ -29,11 +25,11 @@ const groupedServiceSchema = new Schema<IGroupedService>({
   },
   ProviderName: {
     type: String,
-    required: false,
+    required: true,
   },
-  ProviderAssociatedLocationIds: {
-    type: [String],
-    required: false,
+  IsPublished: {
+    type: Boolean,
+    required: true,
   },
   CategoryId: {
     type: String,
@@ -49,10 +45,6 @@ const groupedServiceSchema = new Schema<IGroupedService>({
   },
   Info: {
     type: String,
-    required: false,
-  },
-  Tags: {
-    type: [String],
     required: false,
   },
   Location: {
@@ -71,9 +63,9 @@ const groupedServiceSchema = new Schema<IGroupedService>({
     type: [SubCategorySchema],
     required: true,
   },
-  SubCategoriesIds: {
+  SubCategoryIds: {
     type: [String],
-    required: false,
+    required: true,
   },
   IsTelephoneService: {
     type: Boolean,
@@ -83,6 +75,10 @@ const groupedServiceSchema = new Schema<IGroupedService>({
     type: Boolean,
     required: false,
   },
+  Telephone: {
+    type: String,
+    required: false,
+  }
 }, { collection: 'GroupedProvidedServices', versionKey: false });
 
 // Indexes for performance based on database structure
@@ -103,6 +99,6 @@ groupedServiceSchema.index({ IsPublished: 1, ProviderCityId: 1 });
 // Regular index: ProviderId_1
 groupedServiceSchema.index({ ProviderId: 1 });
 
-const GroupedService = mongoose.model<IGroupedService>("GroupedProvidedServices", groupedServiceSchema);
+const GroupedService = model<IGroupedService>("GroupedProvidedServices", groupedServiceSchema);
 
 export default GroupedService;

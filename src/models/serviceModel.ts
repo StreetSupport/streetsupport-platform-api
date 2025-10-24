@@ -1,11 +1,34 @@
-import mongoose, { Schema } from "mongoose";
-import { OpeningTimeSchema, AddressSchema, IService, IOpeningTime } from "../types/index.js";
+import mongoose, { model, Schema } from "mongoose";
+import { OpeningTimeSchema, AddressSchema, IService, IOpeningTime, IAddress, LocationCoordinatesSchema } from "../types/index.js";
+
+// Organisation-specific Address Schema with required Street and Postcode
+const ServiceAddressSchema = new mongoose.Schema<IAddress>({
+  // It's required only on frontend. I decided to omit DB validation. We will see if it works in this way.
+  Street: {
+    type: String,
+    required: false,
+  },
+  Street1: String,
+  Street2: String,
+  Street3: String,
+  City: String,
+  // It's required only on frontend. I decided to omit DB validation. We will see if it works in this way.
+  Postcode: {
+    type: String,
+    required: false,
+  },
+  Telephone: String,
+  IsOpen247: Boolean,
+  IsAppointmentOnly: Boolean,
+  Location: LocationCoordinatesSchema,
+  OpeningTimes: {
+    type: [OpeningTimeSchema],
+    default: [],
+    required: false
+  }
+}, { _id: false });
 
 const serviceSchema = new Schema<IService>({
-  // _id: {
-  //   type: Schema.Types.ObjectId,
-  //   required: true,
-  // },
   DocumentCreationDate: {
     type: Date,
     default: Date.now,
@@ -32,7 +55,7 @@ const serviceSchema = new Schema<IService>({
   },
   ServiceProviderName: {
     type: String,
-    required: true,
+    required: false,
   },
   ParentCategoryKey: {
     type: String,
@@ -44,24 +67,30 @@ const serviceSchema = new Schema<IService>({
   },
   SubCategoryName: {
     type: String,
-    required: true,
+    required: false,
   },
   Info: String,
-  Tags: [String],
   OpeningTimes: {
     type: [OpeningTimeSchema],
-    validate: {
-      validator: function(v: IOpeningTime[]) {
-        return v.length > 0;
-      },
-      message: 'At least one opening time is required'
-    }
+    default: [],
+    required: false
   },
   Address: {
-      type: AddressSchema,
-      required: true
-    },
-  LocationDescription: String,
+    type: ServiceAddressSchema,
+    required: false
+  },
+  LocationDescription: {
+    type: String,
+    required: false
+  },
+  IsTelephoneService: {
+    type: Boolean,
+    required: false,
+  },
+  IsAppointmentOnly: {
+    type: Boolean,
+    required: false,
+  }
 }, { collection: 'ProvidedServices', versionKey: false });
 
 // Indexes for performance based on database structure
@@ -70,6 +99,6 @@ serviceSchema.index({ ServiceProviderKey: 1 });
 serviceSchema.index({ ParentId: 1 });
 serviceSchema.index({ 'Address.Location': '2dsphere' });
 
-const Service = mongoose.model<IService>("ProvidedServices", serviceSchema);
+const Service = model<IService>("ProvidedServices", serviceSchema);
 
 export default Service;

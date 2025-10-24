@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import { IServiceCategory } from "types/organisations/IServiceCategory.js";
+import { CategorySubCategorySchema, IServiceCategory } from "types/organisations/IServiceCategory.js";
 
 const serviceCategorySchema = new mongoose.Schema({
   _id: {
@@ -15,7 +15,7 @@ const serviceCategorySchema = new mongoose.Schema({
     required: false
   },
   SubCategories: {
-    type: [String],
+    type: [CategorySubCategorySchema],
     required: false
   }
 }, { collection: 'NestedServiceCategories', versionKey: false })

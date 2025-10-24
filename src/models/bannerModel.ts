@@ -34,6 +34,7 @@ const ResourceProjectSchema = new Schema({
 
 // Main Banner Schema
 export const BannerSchema = new Schema({
+  // We should check if we need it
   // _id: {
   //   type: mongoose.Schema.Types.ObjectId,
   //   required: true,

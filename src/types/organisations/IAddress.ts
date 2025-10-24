@@ -1,9 +1,8 @@
-import mongoose, { Document, Types } from "mongoose";
+import mongoose, { Types } from "mongoose";
 import { LocationCoordinatesSchema, ILocationCoordinates } from "./ILocationCoordinates.js";
 import { IOpeningTime, OpeningTimeSchema } from "./IOpeningTime.js";
 
 export interface IAddress {
-  Primary?: boolean;
   Key: string;
   Street: string;
   Street1?: string;

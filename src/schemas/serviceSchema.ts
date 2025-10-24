@@ -1,3 +1,4 @@
+// We don't use it. Then we will remove this document.
 import { z } from 'zod';
 import { ValidationResult, createValidationResult } from './validationHelpers.js';
 import { OpeningTimeSchema, AddressSchema } from './organisationSchema.js';
@@ -39,7 +40,6 @@ export const ServiceSchema = z.object({
   SubCategoryKey: z.string().min(1, 'Sub-category key is required').trim(),
   SubCategoryName: z.string().min(1, 'Sub-category name is required').trim(),
   Info: z.preprocess(preprocessNullableString, z.string().optional()),
-  Tags: z.preprocess(preprocessJSON, z.array(z.string()).optional()),
   OpeningTimes: z.preprocess(
     preprocessJSON,
     z.array(OpeningTimeSchema)
@@ -47,6 +47,8 @@ export const ServiceSchema = z.object({
   ),
   Address: z.preprocess(preprocessJSON, AddressSchema),
   LocationDescription: z.preprocess(preprocessNullableString, z.string().optional()),
+  IsTelephoneService: z.boolean().optional().default(false),
+  IsAppointmentOnly: z.boolean().optional().default(false)
 });
 
 // Validation function
