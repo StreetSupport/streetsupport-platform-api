@@ -1,9 +1,8 @@
-import mongoose, { Types } from "mongoose";
+import { Schema, Types } from "mongoose";
 import { LocationCoordinatesSchema, ILocationCoordinates } from "./ILocationCoordinates.js";
 import { IOpeningTime, OpeningTimeSchema } from "./IOpeningTime.js";
 
 export interface IAddress {
-  Key: string;
   Street: string;
   Street1?: string;
   Street2?: string;
@@ -17,7 +16,7 @@ export interface IAddress {
   OpeningTimes: IOpeningTime[];
 }
 
-export const AddressSchema = new mongoose.Schema<IAddress>({
+export const AddressSchema = new Schema<IAddress>({
   Street: {
     type: String,
     required: true,

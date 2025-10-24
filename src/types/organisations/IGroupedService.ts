@@ -9,6 +9,7 @@ export interface IGroupedService extends Document {
   DocumentModifiedDate: Date;
   CreatedBy: string;
   IsPublished: boolean;
+  IsVerified: boolean;
   ProviderId: string;
   ProviderName?: string;
   CategoryId: string;

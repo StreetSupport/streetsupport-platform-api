@@ -8,6 +8,8 @@ export interface IAccommodation {
     Synopsis?: string;
     Description?: string;
     AccommodationType: string;
+    // We have this field i nthe DB but we use another field SupportProvidedInfo.SupportOffered on WEB
+    // SupportOffered: string[];
     ServiceProviderId: string;
     IsOpenAccess: boolean;
     IsPubliclyVisible?: boolean;

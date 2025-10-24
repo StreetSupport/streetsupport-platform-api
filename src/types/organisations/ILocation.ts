@@ -21,10 +21,12 @@ export interface ILocation {
 }
 
 export const LocationSchema = new mongoose.Schema<ILocation>({
+  // We have it in the DB but we don't use it.
   IsOutreachLocation: {
     type: Boolean,
     required: false,
   },
+  // We have it in the DB but we don't use it. It's related to IsOutreachLocation.
   Description: {
     type: String,
     required: false,

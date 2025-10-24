@@ -69,6 +69,10 @@ const organisationSchema = new Schema<IOrganisation>({
     type: String,
     required: false,
   },
+  Bluesky: {
+    type: String,
+    required: false,
+  },
   Addresses: [AddressSchema],
   Notes: {
     type: [NoteSchema],

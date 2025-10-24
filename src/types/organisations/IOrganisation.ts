@@ -21,6 +21,7 @@ export interface IOrganisation extends Document {
     Website?: string;
     Facebook?: string;
     Twitter?: string;
+    Bluesky?: string;
     Addresses: IAddress[];
     Notes: INote[];
     //Administrators: IAdministrator[];

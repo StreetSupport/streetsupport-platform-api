@@ -13,6 +13,7 @@ import { errorHandler, notFound } from './middleware/errorMiddleware.js';
 import checkJwt from './middleware/checkJwt.js';
 import './instrument.js';
 import * as Sentry from "@sentry/node";
+import accommodationRoutes from 'routes/accommodationRoutes.js';
 
 const app = express();
 
@@ -31,6 +32,7 @@ app.use('/api/cities', cityRoutes);
 app.use('/api/faqs', faqRoutes);
 app.use('/api/services', serviceRoutes);
 app.use('/api/organisations', organisationRoutes);
+app.use('/api/accommodation', accommodationRoutes);
 app.use('/api/service-categories', serviceCategoryRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/banners', bannerRoutes);

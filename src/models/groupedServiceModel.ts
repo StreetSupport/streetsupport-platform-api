@@ -31,6 +31,10 @@ const groupedServiceSchema = new Schema<IGroupedService>({
     type: Boolean,
     required: true,
   },
+  IsVerified: {
+    type: Boolean,
+    required: true,
+  },
   CategoryId: {
     type: String,
     required: true,
@@ -39,6 +43,7 @@ const groupedServiceSchema = new Schema<IGroupedService>({
     type: String,
     required: false,
   },
+  // We have it in the DB but we don't use it.
   CategorySynopsis: {
     type: String,
     required: false,
@@ -63,10 +68,11 @@ const groupedServiceSchema = new Schema<IGroupedService>({
     type: [SubCategorySchema],
     required: true,
   },
-  SubCategoryIds: {
-    type: [String],
-    required: true,
-  },
+  // I decided to remove this property because it's duplicated and SubCategories already contains ids
+  // SubCategoryIds: {
+  //   type: [String],
+  //   required: true,
+  // },
   IsTelephoneService: {
     type: Boolean,
     required: false,
@@ -75,6 +81,7 @@ const groupedServiceSchema = new Schema<IGroupedService>({
     type: Boolean,
     required: false,
   },
+  // We have it in the DB but we don't use it.
   Telephone: {
     type: String,
     required: false,

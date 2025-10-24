@@ -9,6 +9,7 @@ export interface IService extends Document {
   CreatedBy: string;
   ParentId: Types.ObjectId;
   IsPublished: boolean;
+  IsVerified: boolean;
   ServiceProviderKey: string;
   ServiceProviderName: string;
   ParentCategoryKey: string;
@@ -17,7 +18,8 @@ export interface IService extends Document {
   Info?: string;
   OpeningTimes: IOpeningTime[];
   Address: IAddress;
-  LocationDescription?: string;
   IsAppointmentOnly?: boolean;
   IsTelephoneService?: boolean;
+  // I'm not sure if we use LocationDescription somewhere
+  LocationDescription?: string;
 }

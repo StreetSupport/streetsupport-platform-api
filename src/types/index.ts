@@ -16,6 +16,7 @@ export * from './organisations/ILocationCoordinates.js';
 export * from './organisations/IServiceSubCategory.js';
 export * from './organisations/IAdministrator.js';
 export * from './organisations/INote.js';
+export * from './organisations/IServiceAddress.js';
 
 // Banner related types
 export * from './banners/IBanner.js';

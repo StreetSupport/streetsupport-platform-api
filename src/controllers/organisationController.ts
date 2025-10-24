@@ -240,7 +240,7 @@ export const deleteOrganisation = asyncHandler(async (req: Request, res: Respons
   return sendSuccess(res, {}, 'Organisation and all related services deleted successfully');
 });
 
-// @desc    Toggle service provider verified status
+// @desc    Toggle service provider verified status and cascade to related services
 // @route   PATCH /api/service-providers/:id/toggle-verified
 // @access  Private
 export const toggleVerified = asyncHandler(async (req: Request, res: Response) => {
@@ -251,12 +251,37 @@ export const toggleVerified = asyncHandler(async (req: Request, res: Response) =
   }
   
   // Toggle the IsVerified status
-  provider.IsVerified = !provider.IsVerified;
+  provider.IsVerified = !(provider.IsVerified ?? false);
   provider.DocumentModifiedDate = new Date();
   
   await provider.save();
   
-  return sendSuccess(res, provider, `Organisation ${provider.IsVerified ? 'verified' : 'unverified'} successfully`);
+  // Cascade IsVerified status to all related grouped services
+  const groupedServices = await GroupedService.find({ ProviderId: provider.Key });
+  
+  // Update all grouped services
+  await GroupedService.updateMany(
+    { ProviderId: provider.Key },
+    { 
+      $set: { 
+        IsVerified: provider.IsVerified,
+        DocumentModifiedDate: new Date()
+      } 
+    }
+  );
+  
+  // Update all individual services (ProvidedServices) using ServiceProviderKey
+  await Service.updateMany(
+    { ServiceProviderKey: provider.Key },
+    { 
+      $set: { 
+        IsVerified: provider.IsVerified,
+        DocumentModifiedDate: new Date()
+      } 
+    }
+  );
+  
+  return sendSuccess(res, provider, `Organisation ${provider.IsVerified ? 'verified' : 'unverified'} successfully. ${groupedServices.length} related services also updated.`);
 });
 
 // @desc    Toggle organisation published status and cascade to related services
@@ -270,7 +295,7 @@ export const togglePublished = asyncHandler(async (req: Request, res: Response) 
   }
   
   // Toggle the IsPublished status
-  provider.IsPublished = !provider.IsPublished;
+  provider.IsPublished = !(provider.IsPublished ?? false);
   provider.DocumentModifiedDate = new Date();
   
   // If disabling, optionally add a note from the request body

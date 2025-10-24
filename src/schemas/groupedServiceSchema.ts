@@ -93,6 +93,7 @@ export const GroupedServiceSchema = z.object({
   DocumentModifiedDate: z.date().optional(),
   CreatedBy: z.preprocess(preprocessNullableString, z.string().optional()),
   IsPublished: z.boolean().default(false),
+  IsVerified: z.boolean().default(false),
   ProviderId: z.string().min(1, 'Provider ID is required'),
   ProviderName: z.preprocess(preprocessNullableString, z.string().optional()),
   CategoryId: z.string().min(1, 'Category is required'),
@@ -103,7 +104,6 @@ export const GroupedServiceSchema = z.object({
   IsOpen247: z.boolean().default(false),
   OpeningTimes: z.array(OpeningTimeSchema).optional(),
   SubCategories: z.array(ServiceSubCategorySchema).min(1, 'At least one subcategory is required'),
-  SubCategoryIds: z.array(z.string()).min(1, 'At least one subcategory is required'),
   IsTelephoneService: z.boolean().optional().default(false),
   IsAppointmentOnly: z.boolean().optional().default(false),
   Telephone: z.preprocess(preprocessNullableString, z.string().optional())

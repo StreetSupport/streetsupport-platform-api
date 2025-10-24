@@ -101,6 +101,7 @@ export const NoteSchema = z.object({
 // Service Provider schema (works for both create and update)
 // Controller should validate these requirements for create operations
 export const OrganisationSchema = z.object({
+  // General Details
   Key: z.string().min(1, 'Key is required').trim(),
   AssociatedLocationIds: z.preprocess(
     preprocessJSON,
@@ -109,21 +110,23 @@ export const OrganisationSchema = z.object({
   Name: z.string().min(1, 'Name is required').trim(),
   ShortDescription: z.string().min(1, 'Short description is required'),
   Description: z.string().min(1, 'Description is required'),
-  IsVerified: z.preprocess(preprocessBoolean, z.boolean()),
-  IsPublished: z.preprocess(preprocessBoolean, z.boolean()),
   Tags: z.preprocess(preprocessNullableString, z.string().optional()),
-  Email: z.preprocess(
-    preprocessNullableString,
-    z.string().email('Invalid email address').toLowerCase().trim().optional().or(z.literal(''))
-  ),
+
+    // Contact Information
   Telephone: z.preprocess(preprocessNullableString, z.string().optional()),
-  Website: z.preprocess(
-    preprocessNullableString,
-    z.string().url('Invalid website URL').optional().or(z.literal(''))
-  ),
-  Facebook: z.preprocess(preprocessNullableString, z.string().optional()),
-  Twitter: z.preprocess(preprocessNullableString, z.string().optional()),
+  Email: z.preprocess(preprocessNullableString, z.string().email('Invalid email address').optional().or(z.literal(''))),
+  Website: z.preprocess(preprocessNullableString, z.string().url('Invalid website URL').optional().or(z.literal(''))),
+  Facebook: z.preprocess(preprocessNullableString, z.string().url('Invalid Facebook URL').optional().or(z.literal(''))),
+  Twitter: z.preprocess(preprocessNullableString, z.string().url('Invalid Twitter URL').optional().or(z.literal(''))),
+  Bluesky: z.preprocess(preprocessNullableString, z.string().url('Invalid Bluesky URL').optional().or(z.literal(''))),
+  
+    
+  // Locations
   Addresses: z.preprocess(preprocessJSON, z.array(AddressSchema).optional().default([])),
+
+  // System fields
+  IsVerified: z.preprocess(preprocessBoolean, z.boolean()).default(false),
+  IsPublished: z.preprocess(preprocessBoolean, z.boolean()).default(false),
   Notes: z.preprocess(preprocessJSON, z.array(NoteSchema).optional().default([])),
 });
 

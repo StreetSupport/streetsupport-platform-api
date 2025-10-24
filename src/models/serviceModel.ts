@@ -1,32 +1,5 @@
-import mongoose, { model, Schema } from "mongoose";
-import { OpeningTimeSchema, AddressSchema, IService, IOpeningTime, IAddress, LocationCoordinatesSchema } from "../types/index.js";
-
-// Organisation-specific Address Schema with required Street and Postcode
-const ServiceAddressSchema = new mongoose.Schema<IAddress>({
-  // It's required only on frontend. I decided to omit DB validation. We will see if it works in this way.
-  Street: {
-    type: String,
-    required: false,
-  },
-  Street1: String,
-  Street2: String,
-  Street3: String,
-  City: String,
-  // It's required only on frontend. I decided to omit DB validation. We will see if it works in this way.
-  Postcode: {
-    type: String,
-    required: false,
-  },
-  Telephone: String,
-  IsOpen247: Boolean,
-  IsAppointmentOnly: Boolean,
-  Location: LocationCoordinatesSchema,
-  OpeningTimes: {
-    type: [OpeningTimeSchema],
-    default: [],
-    required: false
-  }
-}, { _id: false });
+import { model, Schema } from "mongoose";
+import { OpeningTimeSchema, IService, ServiceAddressSchema } from "../types/index.js";
 
 const serviceSchema = new Schema<IService>({
   DocumentCreationDate: {
@@ -42,10 +15,14 @@ const serviceSchema = new Schema<IService>({
     required: true,
   },
   ParentId: {
-    type: mongoose.Schema.Types.ObjectId,
+    type: Schema.Types.ObjectId,
     required: true,
   },
   IsPublished: {
+    type: Boolean,
+    required: true,
+  },
+  IsVerified: {
     type: Boolean,
     required: true,
   },
@@ -79,10 +56,6 @@ const serviceSchema = new Schema<IService>({
     type: ServiceAddressSchema,
     required: false
   },
-  LocationDescription: {
-    type: String,
-    required: false
-  },
   IsTelephoneService: {
     type: Boolean,
     required: false,
@@ -90,6 +63,11 @@ const serviceSchema = new Schema<IService>({
   IsAppointmentOnly: {
     type: Boolean,
     required: false,
+  },
+  // We have it in the DB but we don't use it.
+  LocationDescription: {
+    type: String,
+    required: false
   }
 }, { collection: 'ProvidedServices', versionKey: false });
 

@@ -51,6 +51,7 @@ async function createIndividualServices(groupedService: IGroupedService): Promis
     DocumentModifiedDate: new Date(),
     ParentId: groupedService._id,
     IsPublished: groupedService.IsPublished,
+    IsVerified: groupedService.IsVerified,
     ServiceProviderKey: groupedService.ProviderId,
     ServiceProviderName: groupedService.ProviderName || '',
     ParentCategoryKey: groupedService.CategoryId,
@@ -67,9 +68,7 @@ async function createIndividualServices(groupedService: IGroupedService): Promis
       Postcode: groupedService.Location.Postcode || '',
       Location: groupedService.Location.Location,
       Telephone: groupedService.Telephone || '',
-      IsOpen247: groupedService.IsOpen247,
-      IsAppointmentOnly: groupedService.IsAppointmentOnly || false,
-      OpeningTimes: groupedService.OpeningTimes || [],
+      IsOpen247: groupedService.IsOpen247
     },
     LocationDescription: groupedService.Location.Description || '',
     IsTelephoneService: groupedService.IsTelephoneService || false,
@@ -91,6 +90,7 @@ async function updateIndividualServices(oldGroupedService: IGroupedService, newG
     oldGroupedService.CategoryId !== newGroupedService.CategoryId ||
     oldGroupedService.Info !== newGroupedService.Info ||
     oldGroupedService.IsPublished !== newGroupedService.IsPublished ||
+    oldGroupedService.IsVerified !== newGroupedService.IsVerified ||
     oldGroupedService.Location.StreetLine1 !== newGroupedService.Location.StreetLine1 ||
     oldGroupedService.Location.StreetLine2 !== newGroupedService.Location.StreetLine2 ||
     oldGroupedService.Location.StreetLine3 !== newGroupedService.Location.StreetLine3 ||

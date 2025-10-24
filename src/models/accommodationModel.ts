@@ -1,11 +1,11 @@
 import { Schema, model } from 'mongoose';
 import { IAccommodation } from '../types/index.js';
 
-// Enum for discretionary values: 0 = No, 1 = Yes, 3 = Don't Know/Ask
+// Enum for discretionary values: 0 = No, 1 = Yes, 2 = Don't Know/Ask
 enum DiscretionaryValue {
   No = 0,
   Yes = 1,
-  DontKnowAsk = 3
+  DontKnowAsk = 2
 }
 
 const AccommodationSchema = new Schema<IAccommodation>({
