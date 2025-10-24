@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import Organisation from '../models/organisationModel.js';
 import GroupedService from '../models/groupedServiceModel.js';
 import Service from '../models/serviceModel.js';
+import Accommodation from '../models/accommodationModel.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { sendSuccess, sendCreated, sendNotFound, sendBadRequest, sendPaginatedSuccess } from '../utils/apiResponses.js';
 import { ROLES, ROLE_PREFIXES } from '../constants/roles.js';
@@ -251,7 +252,8 @@ export const toggleVerified = asyncHandler(async (req: Request, res: Response) =
   }
   
   // Toggle the IsVerified status
-  provider.IsVerified = !(provider.IsVerified ?? false);
+  const currentStatus = provider.IsVerified ?? true;
+  provider.IsVerified = !currentStatus;
   provider.DocumentModifiedDate = new Date();
   
   await provider.save();
@@ -295,7 +297,8 @@ export const togglePublished = asyncHandler(async (req: Request, res: Response) 
   }
   
   // Toggle the IsPublished status
-  provider.IsPublished = !(provider.IsPublished ?? false);
+  const currentStatus = provider.IsPublished ?? true;
+  provider.IsPublished = !currentStatus;
   provider.DocumentModifiedDate = new Date();
   
   // If disabling, optionally add a note from the request body
@@ -332,6 +335,16 @@ export const togglePublished = asyncHandler(async (req: Request, res: Response) 
       $set: { 
         IsPublished: provider.IsPublished,
         DocumentModifiedDate: new Date()
+      } 
+    }
+  );
+  
+  // Update all accommodations
+  await Accommodation.updateMany(
+    { 'GeneralInfo.ServiceProviderId': provider.Key },
+    { 
+      $set: { 
+        'GeneralInfo.IsPublished': provider.IsPublished
       } 
     }
   );

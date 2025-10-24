@@ -39,7 +39,7 @@ const DiscretionaryValueSchema = z.union([
 
 // Nested schemas for accommodation sections
 const GeneralInfoSchema = z.object({
-  Name: z.string().min(1, 'Name is required').trim(),
+  Name: z.string().min(1, 'Accommodation Name is required').trim(),
   Synopsis: z.string().optional(),
   Description: z.string().optional(),
   AccommodationType: z.string().min(1, 'Accommodation type is required').trim(),
@@ -65,7 +65,7 @@ const ContactInformationSchema = z.object({
 });
 
 const AccommodationAddressSchema = z.object({
-  Street1: z.string().min(1, 'Street 1 is required').trim(),
+  Street1: z.string().min(1, 'Street is required').trim(),
   Street2: z.string().optional(),
   Street3: z.string().optional(),
   City: z.string().min(1, 'City is required').trim(),

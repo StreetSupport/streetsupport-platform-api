@@ -242,15 +242,14 @@ const AccommodationSchema = new Schema<IAccommodation>({
   }
 }, { collection: 'TemporaryAccommodation', versionKey: false });
 
-// Remove commented indexes from DB
 // Indexes for performance based on database structure
-AccommodationSchema.index({ _id: 1 }, { unique: true });
+// Note: _id index is created automatically by MongoDB, no need to define it explicitly
 AccommodationSchema.index({ 'GeneralInfo.ServiceProviderId': 1, 'GeneralInfo.Name': 1 });
-// AccommodationSchema.index({ 'GeneralInfo.ServiceProviderId': 1, 'GeneralInfo.IsPubliclyVisible': 1, 'GeneralInfo.Name': 1 }, { name: 'GeneralInfo.ServiceProviderId_1_GeneralInfo.IsPubliclyVisible_1_GeneralInfo.Name_1' });
+AccommodationSchema.index({ 'GeneralInfo.ServiceProviderId': 1, 'GeneralInfo.IsPubliclyVisible': 1, 'GeneralInfo.Name': 1 }, { name: 'GeneralInfo.ServiceProviderId_1_GeneralInfo.IsPubliclyVisible_1_GeneralInfo.Name_1' });
 AccommodationSchema.index({ 'Address.AssociatedCityId': 1, 'GeneralInfo.Name': 1 });
 AccommodationSchema.index({ 'Address.Location': '2dsphere' });
 AccommodationSchema.index({ 'GeneralInfo.Name': -1 });
-// AccommodationSchema.index({ 'GeneralInfo.IsPubliclyVisible': 1, 'GeneralInfo.Name': -1 });
+AccommodationSchema.index({ 'GeneralInfo.IsPubliclyVisible': 1, 'GeneralInfo.Name': -1 });
 
 const Accommodation = model<IAccommodation>('TemporaryAccommodation', AccommodationSchema);
 

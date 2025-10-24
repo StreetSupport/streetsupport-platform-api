@@ -93,9 +93,10 @@ const organisationSchema = new Schema<IOrganisation>({
 
 // Indexes for performance based on database structure
 // Note: _id index is created automatically by MongoDB, no need to define it explicitly
+// Note: Key field already has unique: true in schema definition, no need for separate index
 organisationSchema.index({ Name: 1 });
 organisationSchema.index({ IsPublished: 1, AssociatedLocationIds: 1 });
-organisationSchema.index({ Key: 1 }, { unique: true }); // Unique index to prevent duplicate keys
+// organisationSchema.index({ Key: 1 }, { unique: true }); // Unique index to prevent duplicate keys
 organisationSchema.index({ AssociatedLocationIds: 1, Name: 1 });
 organisationSchema.index({ IsPublished: 1, DocumentCreationDate: -1 });
 organisationSchema.index({ AssociatedCityId: 1 });
