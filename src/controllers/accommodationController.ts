@@ -68,7 +68,10 @@ export const createAccommodation = asyncHandler(async (req: Request, res: Respon
       ...validation.data.GeneralInfo,
       IsPublished: organisation.IsPublished
     },
-    Address: addressData
+    Address: addressData,
+    DocumentCreationDate: new Date(),
+    DocumentModifiedDate: new Date(),
+    CreatedBy: req.user?._id || req.body?.CreatedBy,
   };
 
   const accommodation = await Accommodation.create(accommodationData);
@@ -103,13 +106,23 @@ export const updateAccommodation = asyncHandler(async (req: Request, res: Respon
     await processAddressesWithCoordinates(addressData);
   }
 
-  // Update accommodation
-  Object.assign(accommodation, {
+  // Create update data object with explicit field updates
+  const updateData = {
     ...validation.data,
-    Address: addressData
-  });
+    Address: addressData,
+    DocumentModifiedDate: new Date()
+  };
 
-  await accommodation.save();
+  // Apply updates using findByIdAndUpdate for atomic update
+  const updatedAccommodation = await Accommodation.findByIdAndUpdate(
+    req.params.id,
+    updateData,
+    { new: true, runValidators: true }
+  );
+  
+  if (!updatedAccommodation) {
+    return sendNotFound(res, 'Accommodation not found');
+  }
   return sendSuccess(res, accommodation, 'Accommodation updated successfully');
 });
 

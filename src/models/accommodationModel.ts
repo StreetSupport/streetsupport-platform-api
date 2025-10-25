@@ -9,6 +9,15 @@ enum DiscretionaryValue {
 }
 
 const AccommodationSchema = new Schema<IAccommodation>({
+  DocumentCreationDate: {
+    type: Date,
+    default: Date.now,
+  },
+  DocumentModifiedDate: {
+    type: Date,
+    default: Date.now,
+  },
+  CreatedBy: String,
   GeneralInfo: {
     Name: {
       type: String,

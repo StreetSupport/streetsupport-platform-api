@@ -1,8 +1,40 @@
 import { Types } from "mongoose";
 import { ILocationCoordinates } from "./ILocationCoordinates.js";
 
+// Discretionary Values: 0 = No, 1 = Yes, 2 = Don't Know/Ask
+export enum DiscretionaryValue {
+  No = 0,
+  Yes = 1,
+  DontKnowAsk = 2
+}
+
+// Accommodation Type Enum
+export enum AccommodationType {
+  EMERGENCY = 'emergency',
+  HOSTELS = 'hostel',
+  HOSTED = 'hosted',
+  RENTED = 'rented',
+  SUPPORTED = 'supported',
+  SOCIAL_HOUSING = 'social',
+  NIGHT_SHELTER = 'shelter',
+  LETTINGS_AGENCIES = 'lettings-agencies',
+  BNBS = 'b-and-bs'
+}
+
+// Support Offered Enum
+export enum SupportOfferedType {
+  ALCOHOL = 'alcohol',
+  DOMESTIC_VIOLENCE = 'domestic violence',
+  MENTAL_HEALTH = 'mental health',
+  PHYSICAL_HEALTH = 'physical health',
+  DRUG_DEPENDENCY = 'substances'
+}
+
 export interface IAccommodation {
   _id: Types.ObjectId;
+  DocumentCreationDate: Date;
+  DocumentModifiedDate: Date;
+  CreatedBy: string;
   GeneralInfo: {
     Name: string;
     Synopsis?: string;
