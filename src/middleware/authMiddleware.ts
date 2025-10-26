@@ -18,6 +18,7 @@ import {
   sendUnauthorized
 } from '../utils/apiResponses.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
+import Accommodation from 'models/accommodationModel.js';
 
 type PreValidatedBannerData = z.output<typeof BannerPreUploadApiSchema>;
 // Extend Request interface to include user
@@ -245,6 +246,62 @@ export const citiesAuth = [
 /**
  * Middleware for organisation access control based on location and organization
  */
+export const requireOrganisationByKeyAccess = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {  
+  if (ensureAuthenticated(req, res)) { return; }
+
+  const userAuthClaims = req.user?.AuthClaims || [];
+
+  // SuperAdmin global rule
+  if (handleSuperAdminAccess(userAuthClaims)) { return next(); }
+
+  // For operations on specific organisations, check access based on role
+  const organisationId = req.params.id;
+  if (organisationId && (req.method === HTTP_METHODS.GET || req.method === HTTP_METHODS.PUT || req.method === HTTP_METHODS.PATCH || req.method === HTTP_METHODS.DELETE)) {
+    // find by key instead of id
+    const organisation = await Organisation.findOne({ Key: organisationId }).lean();
+    
+    if (!organisation) {
+      return sendNotFound(res, 'Organisation');
+    }
+
+    // Check OrgAdmin access
+    if (hasOrgAdminAccess(userAuthClaims, organisation.Key)) {
+      return next();
+    }
+
+    // Check CityAdmin access
+    const associatedLocationIds = organisation.AssociatedLocationIds || [];
+    if (hasCityAdminLocationAccess(userAuthClaims, associatedLocationIds)) {
+      return next();
+    }
+
+    return sendForbidden(res);
+  }
+
+  if (req.body && req.method === HTTP_METHODS.POST) {
+    // Check CityAdmin access
+    if (userAuthClaims.includes(ROLES.CITY_ADMIN)) {
+      const associatedLocationIds = req.body?.AssociatedLocationIds || [];
+      if (hasCityAdminLocationAccess(userAuthClaims, associatedLocationIds)) {
+        return next();
+      }
+    }
+  }
+
+  return sendForbidden(res);
+});
+
+/**
+ * Combined middleware for service providers endpoint
+ */
+export const organisationsByKeyAuth = [
+  authenticate,
+  requireOrganisationByKeyAccess
+];
+
+/**
+ * Middleware for organisation access control based on location and organization
+ */
 export const requireOrganisationAccess = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
   if (ensureAuthenticated(req, res)) { return; }
 
@@ -453,6 +510,126 @@ export const requireServicesByProviderAccess = asyncHandler(async (req: Request,
 export const servicesByProviderAuth = [
   authenticate,
   requireServicesByProviderAccess
+];
+
+/**
+ * Middleware for accommodations access control based on service provider ownership
+ */
+export const requireAccommodationsAccess = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
+  if (ensureAuthenticated(req, res)) { return; }
+
+  const userAuthClaims = req.user?.AuthClaims || [];
+  
+  // SuperAdmin global rule
+  if (handleSuperAdminAccess(userAuthClaims)) { return next(); }
+
+  // For operations on specific accommodations, check access based on role
+  const accommodationId = req.params.id;
+  if (accommodationId && (req.method === HTTP_METHODS.GET || req.method === HTTP_METHODS.PUT || req.method === HTTP_METHODS.PATCH || req.method === HTTP_METHODS.DELETE)) {
+    const accommodation = await Accommodation.findById(accommodationId).lean();
+    
+    if (!accommodation) {
+      return sendNotFound(res, 'Accommodation not found');
+    }
+
+    // Check OrgAdmin access by ServiceProviderKey
+    if (hasOrgAdminAccess(userAuthClaims, accommodation.GeneralInfo.ServiceProviderId)) {
+      return next();
+    }
+
+    // Check CityAdmin access by finding the service provider
+    if (userAuthClaims.includes(ROLES.CITY_ADMIN)) {
+      const organisation = await Organisation.findOne({ Key: accommodation.GeneralInfo.ServiceProviderId }).lean();
+      
+      if (!organisation) {
+        return sendNotFound(res, 'Associated service provider not found');
+      }
+
+      const associatedLocationIds = organisation.AssociatedLocationIds || [];
+      if (hasCityAdminLocationAccess(userAuthClaims, associatedLocationIds)) {
+        return next();
+      }
+    }
+
+    return sendForbidden(res);
+  }
+
+  if (req.body && req.method === HTTP_METHODS.POST) {
+    const organisation = await Organisation.findOne({ 
+      Key: req.body.GeneralInfo.ServiceProviderId 
+    }).lean();
+    
+    if (!organisation) {
+      return sendNotFound(res, 'Associated service provider not found');
+    }
+
+    // Check OrgAdmin access
+    if (hasOrgAdminAccess(userAuthClaims, organisation.Key)) {
+      return next();
+    }
+
+    // Check CityAdmin access
+    const associatedLocationIds = organisation.AssociatedLocationIds || [];
+    if (hasCityAdminLocationAccess(userAuthClaims, associatedLocationIds)) {
+      return next();
+    }
+  }
+
+  return sendForbidden(res);
+});
+
+/**
+ * Combined middleware for accommodations endpoint
+ */
+export const accommodationsAuth = [
+  authenticate,
+  requireAccommodationsAccess
+];
+
+/**
+ * Middleware for accommodations access control based on provider ownership
+ */
+export const requireAccommodationsByProviderAccess = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
+  if (ensureAuthenticated(req, res)) { return; }
+
+  if (req.method !== HTTP_METHODS.GET && !req.params.providerId) {
+    return sendForbidden(res, 'Invalid HTTP method for this endpoint');
+  }
+
+  const userAuthClaims = req.user?.AuthClaims || [];
+
+  // SuperAdmin global rule
+  if (handleSuperAdminAccess(userAuthClaims)) { return next(); }
+
+  const providerId = req.params.providerId;
+
+  // Check OrgAdmin access
+  if (hasOrgAdminAccess(userAuthClaims, providerId)) {
+    return next();
+  }
+
+  // CityAdmin access check
+  if (userAuthClaims.includes(ROLES.CITY_ADMIN)) {
+    const organisation = await Organisation.findById(providerId).lean();
+
+    if (organisation) {
+      // Check CityAdmin access
+      const associatedLocationIds = organisation.AssociatedLocationIds || [];
+      if (hasCityAdminLocationAccess(userAuthClaims, associatedLocationIds)) {
+        return next();
+      }
+    }
+  }
+
+  return sendForbidden(res);
+});
+
+/**
+ * Combined middleware for accommodations by provider endpoint
+ */
+export const accommodationsByProviderAuth = [
+  authenticate,
+  requireAccommodationsByProviderAccess
 ];
 
 /**

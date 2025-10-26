@@ -24,5 +24,5 @@ export interface IOrganisation extends Document {
     Bluesky?: string;
     Addresses: IAddress[];
     Notes: INote[];
-    //Administrators: IAdministrator[];
+    Administrators: IAdministrator[];
 }

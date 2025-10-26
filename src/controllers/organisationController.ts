@@ -3,11 +3,14 @@ import Organisation from '../models/organisationModel.js';
 import GroupedService from '../models/groupedServiceModel.js';
 import Service from '../models/serviceModel.js';
 import Accommodation from '../models/accommodationModel.js';
+import User from '../models/userModel.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { sendSuccess, sendCreated, sendNotFound, sendBadRequest, sendPaginatedSuccess } from '../utils/apiResponses.js';
 import { ROLES, ROLE_PREFIXES } from '../constants/roles.js';
 import { validateOrganisation } from 'schemas/organisationSchema.js';
 import { processAddressesWithCoordinates, updateLocationIfPostcodeChanged } from '../utils/postcodeValidation.js';
+import { decryptEmail } from '../utils/encryption.js';
+import { INote } from 'types/index.js';
 
 // @desc    Get all organisations with optional filtering and search
 // @route   GET /api/organisations
@@ -108,11 +111,22 @@ export const getOrganisations = asyncHandler(async (req: Request, res: Response)
   });
 });
 
-// @desc    Get single organisation by ID
-// @route   GET /api/organisations/:id
+// // @desc    Get single organisation by ID
+// // @route   GET /api/organisations/:id
+// // @access  Private
+// export const getOrganisationById = asyncHandler(async (req: Request, res: Response) => {
+//   const provider = await Organisation.findById(req.params.id);
+//   if (!provider) {
+//     return sendNotFound(res, 'Organisation not found');
+//   }
+//   return sendSuccess(res, provider);
+// });
+
+// @desc    Get single organisation by Key
+// @route   GET /api/organisations/:key
 // @access  Private
-export const getOrganisationById = asyncHandler(async (req: Request, res: Response) => {
-  const provider = await Organisation.findById(req.params.id);
+export const getOrganisationByKey = asyncHandler(async (req: Request, res: Response) => {
+  const provider = await Organisation.findOne({ Key: req.params.id });
   if (!provider) {
     return sendNotFound(res, 'Organisation not found');
   }
@@ -134,6 +148,16 @@ export const createOrganisation = asyncHandler(async (req: Request, res: Respons
   if (!validation.data) {
     return sendBadRequest(res, 'Validation data is missing');
   }
+
+  // Get creator's email to add to Administrators
+  let creatorEmail: string | null = null;
+  if (req.user?._id) {
+    const creator = await User.findById(req.user._id);
+    if (creator && creator.Email) {
+      creatorEmail = decryptEmail(creator.Email);
+    }
+  }
+
   // Initialize location coordinates from postcodes for all addresses
   const organisationData = {
     ...validation.data,
@@ -142,6 +166,8 @@ export const createOrganisation = asyncHandler(async (req: Request, res: Respons
     DocumentModifiedDate: new Date(),
     IsVerified: false,
     IsPublished: false,
+    // Add creator as selected administrator
+    Administrators: creatorEmail ? [{ Email: creatorEmail, IsSelected: true }] : [],
   };
 
   // Process addresses to initialize Location coordinates from postcodes
@@ -390,7 +416,7 @@ export const addNote = asyncHandler(async (req: Request, res: Response) => {
     return sendBadRequest(res, 'Reason is required');
   }
   
-  const note = {
+  const note: INote = {
     CreationDate: new Date(),
     Date: new Date(),
     StaffName: StaffName,
@@ -403,4 +429,59 @@ export const addNote = asyncHandler(async (req: Request, res: Response) => {
   await provider.save();
   
   return sendSuccess(res, provider, 'Note added successfully');
+});
+
+// @desc    Confirm organisation information is up to date (updates only DocumentModifiedDate)
+// @route   POST /api/organisations/:id/confirm-info
+// @access  Private
+export const confirmOrganisationInfo = asyncHandler(async (req: Request, res: Response) => {
+  const provider = await Organisation.findById(req.params.id);
+  
+  if (!provider) {
+    return sendNotFound(res, 'Organisation not found');
+  }
+  
+  // Update only DocumentModifiedDate to reset the 90-day timer
+  provider.DocumentModifiedDate = new Date();
+  
+  await provider.save();
+  
+  return sendSuccess(res, provider, 'Organisation information confirmed as up to date');
+});
+
+// @desc    Update selected administrator for organisation
+// @route   PUT /api/organisations/:id/administrator
+// @access  Private
+export const updateAdministrator = asyncHandler(async (req: Request, res: Response) => {
+  const provider = await Organisation.findById(req.params.id);
+  
+  if (!provider) {
+    return sendNotFound(res, 'Organisation not found');
+  }
+  
+  const { selectedEmail } = req.body;
+  
+  if (!selectedEmail || !selectedEmail.trim()) {
+    return sendBadRequest(res, 'Administrator email is required');
+  }
+  
+  // Check if email exists in Administrators array
+  const adminExists = provider.Administrators.some(admin => admin.Email === selectedEmail);
+  
+  if (!adminExists) {
+    return sendBadRequest(res, 'Email not found in administrators list');
+  }
+  
+  // Update IsSelected for all administrators
+  provider.Administrators = provider.Administrators.map(admin => ({
+    ...admin,
+    IsSelected: admin.Email === selectedEmail
+  }));
+  
+  // Update DocumentModifiedDate to reset the 90-day timer
+  provider.DocumentModifiedDate = new Date();
+  
+  await provider.save();
+  
+  return sendSuccess(res, provider, 'Administrator updated successfully');
 });

@@ -32,7 +32,7 @@ app.use('/api/cities', cityRoutes);
 app.use('/api/faqs', faqRoutes);
 app.use('/api/services', serviceRoutes);
 app.use('/api/organisations', organisationRoutes);
-app.use('/api/accommodation', accommodationRoutes);
+app.use('/api/accommodations', accommodationRoutes);
 app.use('/api/service-categories', serviceCategoryRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/banners', bannerRoutes);

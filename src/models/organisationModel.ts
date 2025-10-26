@@ -1,5 +1,5 @@
 import mongoose, { model, Schema } from "mongoose";
-import { AddressSchema, IOrganisation, NoteSchema } from "../types/index.js";
+import { AddressSchema, AdministratorSchema, IOrganisation, NoteSchema } from "../types/index.js";
 
 const organisationSchema = new Schema<IOrganisation>({
   DocumentCreationDate: {
@@ -79,16 +79,11 @@ const organisationSchema = new Schema<IOrganisation>({
     default: [],
     required: false,
   },
-  // Administrators: {
-  //   type: [AdministratorSchema],
-  //   default: [],
-  //   required: false,
-  //   // required: [true, 'At least one administrator is required'],
-  //   // validate: {
-  //   //   validator: (v: string[]) => Array.isArray(v) && v.length > 0,
-  //   //   message: 'At least one administrator is required'
-  //   // }
-  // }
+  Administrators: {
+    type: [AdministratorSchema],
+    default: [],
+    required: false
+  }
 }, { collection: 'ServiceProviders', versionKey: false });
 
 // Indexes for performance based on database structure

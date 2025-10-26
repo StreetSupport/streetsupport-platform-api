@@ -91,13 +91,6 @@ export const AddressSchema = z.object({
   path: ['OpeningTimes']
 });
 
-export const NoteSchema = z.object({
-  CreationDate: z.preprocess(preprocessDate, z.date()),
-  Date: z.preprocess(preprocessDate, z.date()),
-  StaffName: z.string().min(1, 'Staff name is required').trim(),
-  Reason: z.string().min(1, 'Reason is required'),
-});
-
 // Service Provider schema (works for both create and update)
 // Controller should validate these requirements for create operations
 export const OrganisationSchema = z.object({
@@ -127,7 +120,6 @@ export const OrganisationSchema = z.object({
   // System fields
   IsVerified: z.preprocess(preprocessBoolean, z.boolean()).default(false),
   IsPublished: z.preprocess(preprocessBoolean, z.boolean()).default(false),
-  Notes: z.preprocess(preprocessJSON, z.array(NoteSchema).optional().default([])),
 });
 
 // Validation function
