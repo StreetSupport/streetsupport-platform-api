@@ -1,4 +1,4 @@
-import mongoose, { Schema, Types } from "mongoose";
+import { Schema } from "mongoose";
 import { LocationCoordinatesSchema, ILocationCoordinates } from "./ILocationCoordinates.js";
 
 export interface IServiceAddress {

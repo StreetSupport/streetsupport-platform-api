@@ -18,7 +18,7 @@ const serviceCategorySchema = new mongoose.Schema({
     type: [CategorySubCategorySchema],
     required: false
   }
-}, { collection: 'NestedServiceCategories', versionKey: false })
+}, { collection: 'NestedServiceCategories', versionKey: false });
 
 const ServiceCategory = mongoose.model<IServiceCategory>("NestedServiceCategories", serviceCategorySchema);
 

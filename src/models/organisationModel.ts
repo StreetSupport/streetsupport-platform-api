@@ -1,4 +1,4 @@
-import mongoose, { model, Schema } from "mongoose";
+import { model, Schema } from "mongoose";
 import { AddressSchema, AdministratorSchema, IOrganisation, NoteSchema } from "../types/index.js";
 
 const organisationSchema = new Schema<IOrganisation>({

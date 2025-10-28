@@ -2,12 +2,15 @@ import app from './app.js';
 import connectDB from './config/dbConnection.js';
 import dotenv from 'dotenv';
 import { startVerificationJob } from './jobs/verificationJob.js';
+import { startDisablingJob } from './jobs/disablingJob.js';
 
 dotenv.config();
 connectDB();
 
-// Start background verification job
+// Start background jobs
+// TODO: think how to restrict this job to run only on production
 startVerificationJob();
+startDisablingJob();
 
 const PORT:any = process.env.PORT;
 

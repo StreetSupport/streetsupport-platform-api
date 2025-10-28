@@ -30,17 +30,6 @@ const preprocessNumber = (val: unknown) => {
   return val;
 };
 
-const preprocessDate = (val: unknown) => {
-  if (typeof val === 'string') {
-    // Handle quoted date strings
-    const dateStr = val.replace(/^"(.*)"$/, '$1');
-    const date = new Date(dateStr);
-    if (!isNaN(date.getTime())) return date;
-  }
-  if (val instanceof Date) return val;
-  return val;
-};
-
 // Nested schemas for service provider components
 export const LocationCoordinatesSchema = z.object({
   type: z.string().min(1, 'Location type is required'),
@@ -105,7 +94,7 @@ export const OrganisationSchema = z.object({
   Description: z.string().min(1, 'Description is required'),
   Tags: z.preprocess(preprocessNullableString, z.string().optional()),
 
-    // Contact Information
+  // Contact Information
   Telephone: z.preprocess(preprocessNullableString, z.string().optional()),
   Email: z.preprocess(preprocessNullableString, z.string().email('Invalid email address').optional().or(z.literal(''))),
   Website: z.preprocess(preprocessNullableString, z.string().url('Invalid website URL').optional().or(z.literal(''))),
@@ -113,7 +102,6 @@ export const OrganisationSchema = z.object({
   Twitter: z.preprocess(preprocessNullableString, z.string().url('Invalid Twitter URL').optional().or(z.literal(''))),
   Bluesky: z.preprocess(preprocessNullableString, z.string().url('Invalid Bluesky URL').optional().or(z.literal(''))),
   
-    
   // Locations
   Addresses: z.preprocess(preprocessJSON, z.array(AddressSchema).optional().default([])),
 

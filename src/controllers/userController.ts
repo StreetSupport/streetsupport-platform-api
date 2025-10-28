@@ -217,6 +217,12 @@ const createUser = asyncHandler(async (req: Request, res: Response) => {
         if (organisation && organisation.AssociatedLocationIds) {
           associatedProviderLocationIds = organisation.AssociatedLocationIds;
         }
+
+        // Update organisation with new user ID
+        await Organisation.updateOne(
+          { Key: organisationKey },
+          { $addToSet: { Administrators: { Email: userData.Email, IsSelected: false } } }
+        );
       }
     }
 
@@ -373,18 +379,24 @@ const toggleUserActive = asyncHandler(async (req: Request, res: Response) => {
   }
   
   // Toggle the IsActive status in database
-  user.IsActive = newStatus;
-  user.DocumentModifiedDate = new Date();
-  
-  await user.save();
+  const updatedUser = await User.findByIdAndUpdate(
+    req.params.id,
+    {
+      $set: {
+        IsActive: newStatus,
+        DocumentModifiedDate: new Date()
+      }
+    },
+    { new: true }
+  );
   
   // Return user with decrypted email
   const userResponse = {
-    ...user.toObject(),
-    Email: decryptUserEmail(user.Email as any) || ''
+    ...updatedUser!.toObject(),
+    Email: decryptUserEmail(updatedUser!.Email as any) || ''
   };
   
-  return sendSuccess(res, userResponse, `User ${user.IsActive ? 'activated' : 'deactivated'} successfully`);
+  return sendSuccess(res, userResponse, `User ${updatedUser!.IsActive ? 'activated' : 'deactivated'} successfully`);
 });
 
 export {

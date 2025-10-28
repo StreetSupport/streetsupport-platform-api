@@ -1,4 +1,4 @@
-import { Schema, Types } from "mongoose";
+import { Schema } from "mongoose";
 import { LocationCoordinatesSchema, ILocationCoordinates } from "./ILocationCoordinates.js";
 import { IOpeningTime, OpeningTimeSchema } from "./IOpeningTime.js";
 

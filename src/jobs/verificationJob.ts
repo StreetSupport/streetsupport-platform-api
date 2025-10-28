@@ -14,19 +14,24 @@ export function startVerificationJob() {
       console.log('Running verification check job...');
       
       const today = new Date();
+      today.setUTCHours(0, 0, 0, 0); // Set to UTC midnight for consistent day calculations
       let remindersCount = 0;
       let unverifiedCount = 0;
       const errors: string[] = [];
 
       // Find all organisations with selected administrators
       const organisations = await Organisation.find({ 
-        'Administrators.IsSelected': true 
+        'Administrators.IsSelected': true,
+        // TODO: remove this after testing
+        DocumentCreationDate: { $gte: new Date('2025-10-27') }
       });
 
       for (const org of organisations) {
         try {
-          // Calculate days since last update
+          // Calculate days since last update using UTC for consistent calculations
           const lastUpdate = new Date(org.DocumentModifiedDate);
+          lastUpdate.setUTCHours(0, 0, 0, 0); // Set to UTC midnight for accurate day comparison
+          
           const daysSinceUpdate = Math.floor(
             (today.getTime() - lastUpdate.getTime()) / (1000 * 60 * 60 * 24)
           );
@@ -40,6 +45,7 @@ export function startVerificationJob() {
 
           // Check if exactly 90 days (send reminder)
           if (daysSinceUpdate === 90) {
+            console.log(`Reminder sent for: ${org.Name} (${selectedAdmin.Email})`);
             const emailSent = await sendVerificationReminderEmail(
               selectedAdmin.Email,
               org.Name,
@@ -52,10 +58,8 @@ export function startVerificationJob() {
             } else {
               errors.push(`Failed to send reminder for ${org.Name}`);
             }
-          }
-
-          // Check if 100 days or more (unverify and send notification)
-          if (daysSinceUpdate >= 100 && org.IsVerified) {
+          } // Check if 100 days or more (unverify and send notification)
+          else if (daysSinceUpdate >= 100 && org.IsVerified) {
             // Mark as unverified
             org.IsVerified = false;
             await org.save();
@@ -107,6 +111,7 @@ export async function runVerificationCheckNow() {
     console.log('Running immediate verification check...');
     
     const today = new Date();
+    today.setUTCHours(0, 0, 0, 0); // Set to UTC midnight for consistent day calculations
     const stats = {
       total: 0,
       needsReminder: 0,
@@ -122,6 +127,8 @@ export async function runVerificationCheckNow() {
 
     for (const org of organisations) {
       const lastUpdate = new Date(org.DocumentModifiedDate);
+      lastUpdate.setUTCHours(0, 0, 0, 0); // Set to UTC midnight for accurate day comparison
+      
       const daysSinceUpdate = Math.floor(
         (today.getTime() - lastUpdate.getTime()) / (1000 * 60 * 60 * 24)
       );

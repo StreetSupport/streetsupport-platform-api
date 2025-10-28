@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import mongoose from 'mongoose';
 import Organisation from '../models/organisationModel.js';
 import GroupedService from '../models/groupedServiceModel.js';
 import Service from '../models/serviceModel.js';
@@ -39,13 +40,7 @@ export const getOrganisations = asyncHandler(async (req: Request, res: Response)
   const isSuperAdmin = requestingUserAuthClaims.includes(ROLES.SUPER_ADMIN);
   const isVolunteerAdmin = requestingUserAuthClaims.includes(ROLES.VOLUNTEER_ADMIN);
   const isCityAdmin = requestingUserAuthClaims.includes(ROLES.CITY_ADMIN);
-  // const isOrgAdmin = requestingUserAuthClaims.includes(ROLES.ORG_ADMIN);
-  
-  // OrgAdmin: only see their own organisations (based on Administrators field)
-  // if (isOrgAdmin && !isSuperAdmin && !isVolunteerAdmin && !isCityAdmin) {
-  //   conditions.push({ Administrators: userId });
-  // }
-  
+
   // CityAdmin: only see organisations from their cities
   if (isCityAdmin && !isSuperAdmin && !isVolunteerAdmin) {
     const cityAdminLocations = requestingUserAuthClaims
@@ -110,17 +105,6 @@ export const getOrganisations = asyncHandler(async (req: Request, res: Response)
     pages: Math.ceil(total / Number(limit))
   });
 });
-
-// // @desc    Get single organisation by ID
-// // @route   GET /api/organisations/:id
-// // @access  Private
-// export const getOrganisationById = asyncHandler(async (req: Request, res: Response) => {
-//   const provider = await Organisation.findById(req.params.id);
-//   if (!provider) {
-//     return sendNotFound(res, 'Organisation not found');
-//   }
-//   return sendSuccess(res, provider);
-// });
 
 // @desc    Get single organisation by Key
 // @route   GET /api/organisations/:key
@@ -243,208 +227,263 @@ export const updateOrganisation = asyncHandler(async (req: Request, res: Respons
   return sendSuccess(res, provider);
 });
 
-// @desc    Delete organisation and all related services
-// @route   DELETE /api/organisations/:id
-// @access  Private
-export const deleteOrganisation = asyncHandler(async (req: Request, res: Response) => {
-  const provider = await Organisation.findByIdAndDelete(req.params.id).lean();
-  if (!provider) {
-    return sendNotFound(res, 'Service provider not found');
-  }
-  
-  // Delete all grouped services associated with this organisation (using Key, not _id)
-  const groupedServices = await GroupedService.find({ ProviderId: provider.Key }).lean();
-  const groupedServiceIds = groupedServices.map(gs => gs._id);
-  
-  // Delete all individual services (ProvidedServices) for these grouped services
-  if (groupedServiceIds.length > 0) {
-    await Service.deleteMany({ ServiceProviderKey: provider.Key },);
-  }
-  
-  // Delete all grouped services
-  await GroupedService.deleteMany({ ProviderId: provider.Key });
-  
-  return sendSuccess(res, {}, 'Organisation and all related services deleted successfully');
-});
-
 // @desc    Toggle service provider verified status and cascade to related services
 // @route   PATCH /api/service-providers/:id/toggle-verified
 // @access  Private
 export const toggleVerified = asyncHandler(async (req: Request, res: Response) => {
-  const provider = await Organisation.findById(req.params.id);
+  // Start a MongoDB session for transaction
+  const session = await mongoose.startSession();
   
-  if (!provider) {
-    return sendNotFound(res, 'Organisation not found');
+  try {
+    // Start transaction
+    await session.startTransaction();
+    
+    const provider = await Organisation.findById(req.params.id).session(session);
+    
+    if (!provider) {
+      await session.abortTransaction();
+      return sendNotFound(res, 'Organisation not found');
+    }
+    
+    // Toggle the IsVerified status
+    const currentStatus = provider.IsVerified ?? true;
+    const newStatus = !currentStatus;
+    
+    // Update the organisation
+    const updatedProvider = await Organisation.findByIdAndUpdate(
+      req.params.id,
+      {
+        $set: {
+          IsVerified: newStatus,
+          DocumentModifiedDate: new Date()
+        }
+      },
+      { new: true, session }
+    );
+    
+    if (!updatedProvider) {
+      await session.abortTransaction();
+      return sendNotFound(res, 'Organisation not found');
+    }
+    
+    // Update all grouped services and get the count of updated documents
+    const groupedServicesResult = await GroupedService.updateMany(
+      { ProviderId: updatedProvider.Key },
+      { 
+        $set: { 
+          IsVerified: updatedProvider.IsVerified,
+          DocumentModifiedDate: new Date()
+        } 
+      },
+      { session }
+    );
+    
+    // Update all individual services (ProvidedServices) using ServiceProviderKey
+    const servicesResult = await Service.updateMany(
+      { ServiceProviderKey: updatedProvider.Key },
+      { 
+        $set: { 
+          IsVerified: updatedProvider.IsVerified,
+          DocumentModifiedDate: new Date()
+        } 
+      },
+      { session }
+    );
+    
+    const totalUpdated = groupedServicesResult.modifiedCount + servicesResult.modifiedCount;
+    
+    // Commit the transaction
+    await session.commitTransaction();
+    
+    return sendSuccess(res, updatedProvider, `Organisation ${updatedProvider.IsVerified ? 'verified' : 'unverified'} successfully. ${totalUpdated} related services also updated.`);
+  } catch (error) {
+    // Abort transaction on error
+    await session.abortTransaction();
+    throw error;
+  } finally {
+    // End session
+    session.endSession();
   }
-  
-  // Toggle the IsVerified status
-  const currentStatus = provider.IsVerified ?? true;
-  provider.IsVerified = !currentStatus;
-  provider.DocumentModifiedDate = new Date();
-  
-  await provider.save();
-  
-  // Cascade IsVerified status to all related grouped services
-  const groupedServices = await GroupedService.find({ ProviderId: provider.Key });
-  
-  // Update all grouped services
-  await GroupedService.updateMany(
-    { ProviderId: provider.Key },
-    { 
-      $set: { 
-        IsVerified: provider.IsVerified,
-        DocumentModifiedDate: new Date()
-      } 
-    }
-  );
-  
-  // Update all individual services (ProvidedServices) using ServiceProviderKey
-  await Service.updateMany(
-    { ServiceProviderKey: provider.Key },
-    { 
-      $set: { 
-        IsVerified: provider.IsVerified,
-        DocumentModifiedDate: new Date()
-      } 
-    }
-  );
-  
-  return sendSuccess(res, provider, `Organisation ${provider.IsVerified ? 'verified' : 'unverified'} successfully. ${groupedServices.length} related services also updated.`);
 });
 
 // @desc    Toggle organisation published status and cascade to related services
 // @route   PATCH /api/organisations/:id/toggle-published
 // @access  Private
 export const togglePublished = asyncHandler(async (req: Request, res: Response) => {
-  const provider = await Organisation.findById(req.params.id);
+  // Start a MongoDB session for transaction
+  const session = await mongoose.startSession();
   
-  if (!provider) {
-    return sendNotFound(res, 'Organisation not found');
-  }
-  
-  // Toggle the IsPublished status
-  const currentStatus = provider.IsPublished ?? true;
-  provider.IsPublished = !currentStatus;
-  provider.DocumentModifiedDate = new Date();
-  
-  // If disabling, optionally add a note from the request body
-  if (!provider.IsPublished && req.body.note) {
-    const note = {
-      CreationDate: new Date(),
-      Date: new Date(),
-      StaffName: req.body.note.StaffName || req.user?.UserName || 'System',
-      Reason: req.body.note.Reason || 'Organisation disabled'
+  try {
+    // Start transaction
+    await session.startTransaction();
+    
+    const provider = await Organisation.findById(req.params.id).session(session);
+    
+    if (!provider) {
+      await session.abortTransaction();
+      return sendNotFound(res, 'Organisation not found');
+    }
+    
+    // Toggle the IsPublished status
+    const currentStatus = provider.IsPublished ?? true;
+    const newStatus = !currentStatus;
+    
+    // Check if disabling date is provided and if it's today
+    let shouldDisableNow = newStatus === false; // Default: disable if toggling to false
+    let disablingDate = new Date(); // Default to today
+    disablingDate.setUTCHours(0, 0, 0, 0); // Set to UTC midnight
+    
+    if (!newStatus && req.body.note && req.body.note.Date) {
+      // Parse the disabling date from the request and set to UTC midnight
+      // This ensures the date matches what the user selected, regardless of timezone
+      const inputDate = new Date(req.body.note.Date);
+      disablingDate = new Date(Date.UTC(
+        inputDate.getFullYear(),
+        inputDate.getMonth(),
+        inputDate.getDate(),
+        0, 0, 0, 0
+      ));
+      
+      const today = new Date();
+      today.setUTCHours(0, 0, 0, 0); // Compare at UTC midnight
+      
+      // Only disable now if the disabling date is today
+      shouldDisableNow = disablingDate.getTime() === today.getTime();
+    }
+    
+    // Prepare update fields
+    const updateFields: any = {
+      $set: {
+        IsPublished: newStatus === true ? true : (shouldDisableNow ? false : currentStatus), // Publish immediately or disable based on date
+        DocumentModifiedDate: new Date()
+      }
     };
-    provider.Notes.push(note);
+    
+    // Add note if disabling (always add note, regardless of when disabling happens)
+    if (!newStatus && req.body.note) {
+      const note: INote = {
+        CreationDate: new Date(),
+        Date: disablingDate, // Use the selected disabling date
+        StaffName: req.body.note.StaffName || req.user?.UserName || 'System',
+        Reason: req.body.note.Reason || 'Organisation disabled'
+      };
+      updateFields.$push = { Notes: note };
+    }
+    
+    // Update the organisation
+    const updatedProvider = await Organisation.findByIdAndUpdate(
+      req.params.id,
+      updateFields,
+      { new: true, session }
+    );
+    
+    if (!updatedProvider) {
+      await session.abortTransaction();
+      return sendNotFound(res, 'Organisation not found');
+    }
+    
+    let totalUpdated = 0;
+    
+    // Only update services if we're actually changing the published status
+    if (shouldDisableNow || newStatus === true) {
+      // Update all grouped services and get the count of updated documents
+      const groupedServicesResult = await GroupedService.updateMany(
+        { ProviderId: updatedProvider.Key },
+        { 
+          $set: { 
+            IsPublished: updatedProvider.IsPublished,
+            DocumentModifiedDate: new Date()
+          } 
+        },
+        { session }
+      );
+      
+      // Update all individual services (ProvidedServices) using ServiceProviderKey
+      const servicesResult = await Service.updateMany(
+        { ServiceProviderKey: updatedProvider.Key },
+        { 
+          $set: { 
+            IsPublished: updatedProvider.IsPublished,
+            DocumentModifiedDate: new Date()
+          } 
+        },
+        { session }
+      );
+
+      // Update all accommodations
+      const accommodationsResult = await Accommodation.updateMany(
+        { 'GeneralInfo.ServiceProviderId': updatedProvider.Key },
+        { 
+          $set: { 
+            'GeneralInfo.IsPublished': updatedProvider.IsPublished,
+            DocumentModifiedDate: new Date()
+          } 
+        },
+        { session }
+      );
+      
+      totalUpdated = groupedServicesResult.modifiedCount + servicesResult.modifiedCount + accommodationsResult.modifiedCount;
+    }
+    
+    // Commit the transaction
+    await session.commitTransaction();
+    
+    // Customize message based on action
+    let message = '';
+    if (shouldDisableNow) {
+      message = `Organisation disabled successfully. ${totalUpdated} related services also updated.`;
+    } else if (!newStatus && !shouldDisableNow) {
+      message = `Organisation disabling scheduled for ${disablingDate.toLocaleDateString()}. Note added successfully.`;
+    } else {
+      message = `Organisation ${updatedProvider.IsPublished ? 'published' : 'unpublished'} successfully. ${totalUpdated} related services also updated.`;
+    }
+    
+    return sendSuccess(res, updatedProvider, message);
+  } catch (error) {
+    // Abort transaction on error
+    await session.abortTransaction();
+    throw error;
+  } finally {
+    // End session
+    session.endSession();
   }
-  
-  await provider.save();
-  
-  // Cascade IsPublished status to all related grouped services
-  const groupedServices = await GroupedService.find({ ProviderId: provider.Key });
-  
-  // Update all grouped services
-  await GroupedService.updateMany(
-    { ProviderId: provider.Key },
-    { 
-      $set: { 
-        IsPublished: provider.IsPublished,
-        DocumentModifiedDate: new Date()
-      } 
-    }
-  );
-  
-  // Update all individual services (ProvidedServices) using ServiceProviderKey
-  await Service.updateMany(
-    { ServiceProviderKey: provider.Key },
-    { 
-      $set: { 
-        IsPublished: provider.IsPublished,
-        DocumentModifiedDate: new Date()
-      } 
-    }
-  );
-  
-  // Update all accommodations
-  await Accommodation.updateMany(
-    { 'GeneralInfo.ServiceProviderId': provider.Key },
-    { 
-      $set: { 
-        'GeneralInfo.IsPublished': provider.IsPublished
-      } 
-    }
-  );
-  
-  return sendSuccess(res, provider, `Organisation ${provider.IsPublished ? 'published' : 'disabled'} successfully. ${groupedServices.length} related services also updated.`);
 });
 
 // @desc    Clear all notes from organisation
 // @route   DELETE /api/organisations/:id/notes
 // @access  Private
 export const clearNotes = asyncHandler(async (req: Request, res: Response) => {
-  const provider = await Organisation.findById(req.params.id);
+  const provider = await Organisation.findByIdAndUpdate(
+    req.params.id,
+    {
+      $set: {
+        Notes: [],
+        DocumentModifiedDate: new Date()
+      }
+    },
+    { new: true }
+  );
   
   if (!provider) {
     return sendNotFound(res, 'Organisation not found');
   }
-  
-  provider.Notes = [];
-  provider.DocumentModifiedDate = new Date();
-  
-  await provider.save();
   
   return sendSuccess(res, provider, 'All notes cleared successfully');
-});
-
-// @desc    Add note to organisation
-// @route   POST /api/organisations/:id/notes
-// @access  Private
-export const addNote = asyncHandler(async (req: Request, res: Response) => {
-  const provider = await Organisation.findById(req.params.id);
-  
-  if (!provider) {
-    return sendNotFound(res, 'Organisation not found');
-  }
-  
-  const { StaffName, Reason } = req.body;
-  
-  if (!StaffName || !StaffName.trim()) {
-    return sendBadRequest(res, 'Staff name is required');
-  }
-
-  if (!Reason || !Reason.trim()) {
-    return sendBadRequest(res, 'Reason is required');
-  }
-  
-  const note: INote = {
-    CreationDate: new Date(),
-    Date: new Date(),
-    StaffName: StaffName,
-    Reason: Reason.trim()
-  };
-  
-  provider.Notes.push(note);
-  provider.DocumentModifiedDate = new Date();
-  
-  await provider.save();
-  
-  return sendSuccess(res, provider, 'Note added successfully');
 });
 
 // @desc    Confirm organisation information is up to date (updates only DocumentModifiedDate)
 // @route   POST /api/organisations/:id/confirm-info
 // @access  Private
 export const confirmOrganisationInfo = asyncHandler(async (req: Request, res: Response) => {
-  const provider = await Organisation.findById(req.params.id);
+  const provider = await Organisation.findByIdAndUpdate(
+    req.params.id,
+    { $set: { DocumentModifiedDate: new Date() } },
+    { new: true }
+  );
   
   if (!provider) {
     return sendNotFound(res, 'Organisation not found');
   }
-  
-  // Update only DocumentModifiedDate to reset the 90-day timer
-  provider.DocumentModifiedDate = new Date();
-  
-  await provider.save();
   
   return sendSuccess(res, provider, 'Organisation information confirmed as up to date');
 });
@@ -453,35 +492,46 @@ export const confirmOrganisationInfo = asyncHandler(async (req: Request, res: Re
 // @route   PUT /api/organisations/:id/administrator
 // @access  Private
 export const updateAdministrator = asyncHandler(async (req: Request, res: Response) => {
-  const provider = await Organisation.findById(req.params.id);
-  
-  if (!provider) {
-    return sendNotFound(res, 'Organisation not found');
-  }
-  
   const { selectedEmail } = req.body;
   
   if (!selectedEmail || !selectedEmail.trim()) {
     return sendBadRequest(res, 'Administrator email is required');
   }
   
+  // First, check if the organisation exists and email is in administrators list
+  const existingProvider = await Organisation.findById(req.params.id).lean();
+  
+  if (!existingProvider) {
+    return sendNotFound(res, 'Organisation not found');
+  }
+  
   // Check if email exists in Administrators array
-  const adminExists = provider.Administrators.some(admin => admin.Email === selectedEmail);
+  const adminExists = existingProvider.Administrators.some(admin => admin.Email === selectedEmail);
   
   if (!adminExists) {
     return sendBadRequest(res, 'Email not found in administrators list');
   }
   
   // Update IsSelected for all administrators
-  provider.Administrators = provider.Administrators.map(admin => ({
+  const updatedAdministrators = existingProvider.Administrators.map(admin => ({
     ...admin,
     IsSelected: admin.Email === selectedEmail
   }));
   
-  // Update DocumentModifiedDate to reset the 90-day timer
-  provider.DocumentModifiedDate = new Date();
+  const provider = await Organisation.findByIdAndUpdate(
+    req.params.id,
+    {
+      $set: {
+        Administrators: updatedAdministrators,
+        DocumentModifiedDate: new Date()
+      }
+    },
+    { new: true }
+  );
   
-  await provider.save();
+  if (!provider) {
+    return sendNotFound(res, 'Organisation not found');
+  }
   
   return sendSuccess(res, provider, 'Administrator updated successfully');
 });
