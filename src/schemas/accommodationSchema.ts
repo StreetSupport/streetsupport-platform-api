@@ -1,8 +1,8 @@
 import { z } from 'zod';
 import { ValidationResult, createValidationResult } from './validationHelpers.js';
 import { LocationCoordinatesSchema } from './organisationSchema.js';
-import { AccommodationType, DiscretionaryValue, SupportOfferedType } from 'types/index.js';
-import { isValidPostcodeFormat } from 'utils/postcodeValidation.js';
+import { AccommodationType, DiscretionaryValue, SupportOfferedType } from '../types/index.js';
+import { isValidPostcodeFormat } from '../utils/postcodeValidation.js';
 
 // Preprocessing helpers
 const preprocessJSON = (val: unknown) => {

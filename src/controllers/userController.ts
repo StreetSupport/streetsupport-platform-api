@@ -7,7 +7,7 @@ import { validateUserCreate, validateUserUpdate } from '../schemas/userSchema.js
 import { createAuth0User, deleteAuth0User, blockAuth0User, unblockAuth0User, updateAuth0UserRoles } from '../services/auth0Service.js';
 import { sendSuccess, sendCreated, sendNotFound, sendBadRequest, sendInternalError, sendPaginatedSuccess, sendForbidden } from '../utils/apiResponses.js';
 import { ROLE_PREFIXES, ROLES } from '../constants/roles.js';
-import Organisation from 'models/organisationModel.js';
+import Organisation from '../models/organisationModel.js';
 
 // @desc    Get all users with optional filtering and search
 // @route   GET /api/users

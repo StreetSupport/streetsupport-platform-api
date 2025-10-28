@@ -8,10 +8,10 @@ import User from '../models/userModel.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { sendSuccess, sendCreated, sendNotFound, sendBadRequest, sendPaginatedSuccess } from '../utils/apiResponses.js';
 import { ROLES, ROLE_PREFIXES } from '../constants/roles.js';
-import { validateOrganisation } from 'schemas/organisationSchema.js';
+import { validateOrganisation } from '../schemas/organisationSchema.js';
 import { processAddressesWithCoordinates, updateLocationIfPostcodeChanged } from '../utils/postcodeValidation.js';
 import { decryptEmail } from '../utils/encryption.js';
-import { INote } from 'types/index.js';
+import { INote } from '../types/index.js';
 
 // @desc    Get all organisations with optional filtering and search
 // @route   GET /api/organisations
