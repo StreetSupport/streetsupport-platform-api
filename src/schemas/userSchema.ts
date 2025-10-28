@@ -14,8 +14,8 @@ const preprocessJSON = (val: unknown) => {
   return val;
 };
 
-// User creation schema for API backend
-export const CreateUserSchema = z.object({
+// User schema for API backend (for creation)
+export const UserSchema = z.object({
   Email: z
     .string()
     .min(1, 'Email is required')
@@ -95,16 +95,14 @@ export const UpdateUserSchema = z.object({
   message: 'At least one field must be provided for update',
 });
 
-export type CreateUserInput = z.infer<typeof CreateUserSchema>;
-export type UpdateUserInput = z.infer<typeof UpdateUserSchema>;
-
-// Validation functions
-export function validateCreateUser(data: unknown): ValidationResult<CreateUserInput> {
-  const result = CreateUserSchema.safeParse(data);
+// Validation function for creation
+export function validateUserCreate(data: unknown): ValidationResult<z.output<typeof UserSchema>> {
+  const result = UserSchema.safeParse(data);
   return createValidationResult(result);
 }
 
-export function validateUpdateUser(data: unknown): ValidationResult<UpdateUserInput> {
+// Validation function for updates
+export function validateUserUpdate(data: unknown): ValidationResult<z.output<typeof UpdateUserSchema>> {
   const result = UpdateUserSchema.safeParse(data);
   return createValidationResult(result);
 }

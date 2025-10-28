@@ -3,7 +3,6 @@ import {
   BannerTemplateType, 
   CharterType, 
   IBanner, 
-  IBannerModel, 
   LayoutStyle, 
   TextColour, 
   UrgencyLevel,
@@ -35,10 +34,11 @@ const ResourceProjectSchema = new Schema({
 
 // Main Banner Schema
 export const BannerSchema = new Schema({
-  _id: {
-    type: mongoose.Schema.Types.ObjectId,
-    required: true,
-  },
+  // We should check if we need it
+  // _id: {
+  //   type: mongoose.Schema.Types.ObjectId,
+  //   required: true,
+  // },
   DocumentCreationDate: {
     type: Date,
     default: Date.now,
@@ -121,33 +121,7 @@ BannerSchema.index({ LocationSlug: 1, IsActive: 1 });
 BannerSchema.index({ TemplateType: 1, IsActive: 1 });
 BannerSchema.index({ CreatedBy: 1 });
 
-// Virtuals
-BannerSchema.virtual('IsExpired').get(function() {
-  if (!this.EndDate) return false;
-  return new Date() > this.EndDate;
-});
-
-BannerSchema.virtual('DaysRemaining').get(function() {
-  if (!this.EndDate) return null;
-  const now = new Date();
-  const end = new Date(this.EndDate);
-  const diffTime = end.getTime() - now.getTime();
-  return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-});
-
-// Pre-save middleware
-BannerSchema.pre('save', function(next) {
-  this.DocumentModifiedDate = new Date();
-
-  next();
-});
-
 // Instance methods
-BannerSchema.methods.CalculateProgress = function() {
-  if (!this.GivingCampaign?.DonationGoal) return 0;
-  return Math.min(Math.round((this.GivingCampaign.DonationGoal.Current / this.GivingCampaign.DonationGoal.Target) * 100), 100);
-};
-
 BannerSchema.methods.IncrementDownloadCount = function() {
   if (this.TemplateType === BannerTemplateType.RESOURCE_PROJECT && this.ResourceProject?.ResourceFile) {
     this.ResourceProject.ResourceFile.DownloadCount = (this.ResourceProject.ResourceFile.DownloadCount || 0) + 1;
@@ -155,29 +129,7 @@ BannerSchema.methods.IncrementDownloadCount = function() {
   }
 };
 
-// Static methods
-BannerSchema.statics.findActive = function(locationSlug?: string) {
-  const query: any = { IsActive: true };
-  
-  if (locationSlug) {
-    query.$or = [
-      { LocationSlug: locationSlug },
-      { LocationSlug: { $exists: false } },
-      { LocationSlug: null }
-    ];
-  }
-  
-  return this.find(query)
-    .sort({ Priority: -1, DocumentCreationDate: -1 })
-    .populate('CreatedBy', 'UserName Email');
-};
-
-BannerSchema.statics.findByTemplate = function(templateType: BannerTemplateType) {
-  return this.find({ TemplateType: templateType, IsActive: true })
-    .sort({ Priority: -1, DocumentCreationDate: -1 });
-};
-
 // Create and export the model
-export const Banner = mongoose.model<IBanner, IBannerModel>('Banners', BannerSchema);
+export const Banner = mongoose.model<IBanner>('Banners', BannerSchema);
 
 export default Banner;

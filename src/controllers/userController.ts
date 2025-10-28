@@ -3,10 +3,11 @@ import User from '../models/userModel.js';
 import ArchivedUser from '../models/archivedUserModel.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { decryptUserEmail, encryptEmail } from '../utils/encryption.js';
-import { validateCreateUser, validateUpdateUser } from '../schemas/userSchema.js';
+import { validateUserCreate, validateUserUpdate } from '../schemas/userSchema.js';
 import { createAuth0User, deleteAuth0User, blockAuth0User, unblockAuth0User, updateAuth0UserRoles } from '../services/auth0Service.js';
 import { sendSuccess, sendCreated, sendNotFound, sendBadRequest, sendInternalError, sendPaginatedSuccess, sendForbidden } from '../utils/apiResponses.js';
 import { ROLE_PREFIXES, ROLES } from '../constants/roles.js';
+import Organisation from 'models/organisationModel.js';
 
 // @desc    Get all users with optional filtering and search
 // @route   GET /api/users
@@ -165,10 +166,10 @@ const getUserByAuth0Id = asyncHandler(async (req: Request, res: Response) => {
   return sendSuccess(res, userWithDecryptedEmail);
 });
 
-// @desc    Create new user
+// @desc Create new user
 const createUser = asyncHandler(async (req: Request, res: Response) => {
   // Validate the request data first
-  const validation = validateCreateUser(req.body);
+  const validation = validateUserCreate(req.body);
   if (!validation.success) {
     const errorMessages = validation.errors.map(err => err.message).join(', ');
     return sendBadRequest(res, `Validation failed: ${errorMessages}`);
@@ -201,10 +202,35 @@ const createUser = asyncHandler(async (req: Request, res: Response) => {
   // Create user in MongoDB with Auth0 ID
   let user;
   try {
+    // Check if user is OrgAdmin and add AssociatedProviderLocationIds
+    let associatedProviderLocationIds: string[] = [];
+    
+    if (userData.AuthClaims?.includes(ROLES.ORG_ADMIN)) {
+      // Find AdminFor claim to get organisation key
+      const adminForClaim = userData.AuthClaims.find((claim: string) => claim.startsWith(ROLE_PREFIXES.ADMIN_FOR));
+      if (adminForClaim) {
+        const organisationKey = adminForClaim.replace(ROLE_PREFIXES.ADMIN_FOR, '');
+        
+        // Find organisation and get its AssociatedLocationIds
+        const organisation = await Organisation.findOne({ Key: organisationKey }).lean();
+        
+        if (organisation && organisation.AssociatedLocationIds) {
+          associatedProviderLocationIds = organisation.AssociatedLocationIds;
+        }
+
+        // Update organisation with new user ID
+        await Organisation.updateOne(
+          { Key: organisationKey },
+          { $addToSet: { Administrators: { Email: userData.Email, IsSelected: false } } }
+        );
+      }
+    }
+
     user = await User.create({
       ...userData,
       Email: encryptedEmail,
       Auth0Id: auth0Id,
+      AssociatedProviderLocationIds: associatedProviderLocationIds,
       CreatedBy: req.user?._id || req.body?.CreatedBy,
       DocumentCreationDate: new Date(),
       DocumentModifiedDate: new Date()
@@ -235,9 +261,8 @@ const createUser = asyncHandler(async (req: Request, res: Response) => {
 // @route   PUT /api/users/:id
 // @access  Private
 const updateUser = asyncHandler(async (req: Request, res: Response) => {
-  // Validate the request data first
-  // Request body contains only AuthClaims because we don't need to update other fields
-  const validation = validateUpdateUser(req.body);
+  // Validate the request data first using UpdateUserSchema for partial updates
+  const validation = validateUserUpdate(req.body);
   if (!validation.success) {
     const errorMessages = validation.errors.map(err => err.message).join(', ');
     return sendBadRequest(res, `Validation failed: ${errorMessages}`);
@@ -248,7 +273,7 @@ const updateUser = asyncHandler(async (req: Request, res: Response) => {
   }
 
   const userData = { ...validation.data };
-
+  
   // Encrypt email if it's provided as a string
   const encryptedEmail = userData.Email && typeof userData.Email === 'string' ? encryptEmail(userData.Email) : undefined;
 
@@ -354,18 +379,24 @@ const toggleUserActive = asyncHandler(async (req: Request, res: Response) => {
   }
   
   // Toggle the IsActive status in database
-  user.IsActive = newStatus;
-  user.DocumentModifiedDate = new Date();
-  
-  await user.save();
+  const updatedUser = await User.findByIdAndUpdate(
+    req.params.id,
+    {
+      $set: {
+        IsActive: newStatus,
+        DocumentModifiedDate: new Date()
+      }
+    },
+    { new: true }
+  );
   
   // Return user with decrypted email
   const userResponse = {
-    ...user.toObject(),
-    Email: decryptUserEmail(user.Email as any) || ''
+    ...updatedUser!.toObject(),
+    Email: decryptUserEmail(updatedUser!.Email as any) || ''
   };
   
-  return sendSuccess(res, userResponse, `User ${user.IsActive ? 'activated' : 'deactivated'} successfully`);
+  return sendSuccess(res, userResponse, `User ${updatedUser!.IsActive ? 'activated' : 'deactivated'} successfully`);
 });
 
 export {

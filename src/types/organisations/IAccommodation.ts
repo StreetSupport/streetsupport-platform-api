@@ -1,0 +1,102 @@
+import { Types } from "mongoose";
+import { ILocationCoordinates } from "./ILocationCoordinates.js";
+
+// Discretionary Values: 0 = No, 1 = Yes, 2 = Don't Know/Ask
+export enum DiscretionaryValue {
+  No = 0,
+  Yes = 1,
+  DontKnowAsk = 2
+}
+
+// Accommodation Type Enum
+export enum AccommodationType {
+  EMERGENCY = 'emergency',
+  HOSTELS = 'hostel',
+  HOSTED = 'hosted',
+  RENTED = 'rented',
+  SUPPORTED = 'supported',
+  SOCIAL_HOUSING = 'social',
+  NIGHT_SHELTER = 'shelter',
+  LETTINGS_AGENCIES = 'lettings-agencies',
+  BNBS = 'b-and-bs'
+}
+
+// Support Offered Enum
+export enum SupportOfferedType {
+  ALCOHOL = 'alcohol',
+  DOMESTIC_VIOLENCE = 'domestic violence',
+  MENTAL_HEALTH = 'mental health',
+  PHYSICAL_HEALTH = 'physical health',
+  DRUG_DEPENDENCY = 'substances'
+}
+
+export interface IAccommodation {
+  _id: Types.ObjectId;
+  DocumentCreationDate: Date;
+  DocumentModifiedDate: Date;
+  CreatedBy: string;
+  GeneralInfo: {
+    Name: string;
+    Synopsis?: string;
+    Description?: string;
+    AccommodationType: string;
+    // We have this field i nthe DB but we use another field SupportProvidedInfo.SupportOffered on WEB
+    // SupportOffered: string[];
+    ServiceProviderId: string;
+    IsOpenAccess: boolean;
+    IsPubliclyVisible?: boolean;
+    IsPublished?: boolean;
+  };
+  PricingAndRequirementsInfo: {
+    ReferralIsRequired: boolean;
+    ReferralNotes?: string;
+    Price: string;
+    FoodIsIncluded: number;
+    AvailabilityOfMeals?: string;
+  };
+  ContactInformation: {
+    Name: string;
+    Email: string;
+    Telephone?: string;
+    AdditionalInfo?: string;
+  };
+  Address: {
+    Street1: string;
+    Street2?: string;
+    Street3?: string;
+    City: string;
+    Postcode: string;
+    Location?: ILocationCoordinates; // Auto-initialized from Postcode using initializeLocationFromPostcode() utility
+    AssociatedCityId: string;
+  };
+  FeaturesWithDiscretionary: {
+    AcceptsHousingBenefit?: number;
+    AcceptsPets?: number;
+    AcceptsCouples?: number;
+    HasDisabledAccess?: number;
+    IsSuitableForWomen?: number;
+    IsSuitableForYoungPeople?: number;
+    HasSingleRooms?: number;
+    HasSharedRooms?: number;
+    HasShowerBathroomFacilities?: number;
+    HasAccessToKitchen?: number;
+    HasLaundryFacilities?: number;
+    HasLounge?: number;
+    AllowsVisitors?: number;
+    HasOnSiteManager?: number;
+    AdditionalFeatures?: string;
+  };
+  ResidentCriteriaInfo: {
+    AcceptsMen?: boolean;
+    AcceptsWomen?: boolean;
+    AcceptsCouples?: boolean;
+    AcceptsYoungPeople?: boolean;
+    AcceptsFamilies?: boolean;
+    AcceptsBenefitsClaimants?: boolean;
+  };
+  SupportProvidedInfo: {
+    HasOnSiteManager?: number;
+    SupportOffered?: string[];
+    SupportInfo?: string;
+  };
+}

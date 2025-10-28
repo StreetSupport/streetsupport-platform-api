@@ -9,14 +9,17 @@ export interface IService extends Document {
   CreatedBy: string;
   ParentId: Types.ObjectId;
   IsPublished: boolean;
+  IsVerified: boolean;
   ServiceProviderKey: string;
   ServiceProviderName: string;
-  ParentCategoryKey?: string;
-  SubCategoryKey?: string;
-  SubCategoryName?: string;
+  ParentCategoryKey: string;
+  SubCategoryKey: string;
+  SubCategoryName: string;
   Info?: string;
-  Tags?: string[];
-  OpeningTimes?: IOpeningTime[];
-  Address?: IAddress;
+  OpeningTimes: IOpeningTime[];
+  Address: IAddress;
+  IsAppointmentOnly?: boolean;
+  IsTelephoneService?: boolean;
+  // I'm not sure if we use LocationDescription somewhere
   LocationDescription?: string;
 }
