@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import { CategorySubCategorySchema, IServiceCategory } from "types/organisations/IServiceCategory.js";
+import { CategorySubCategorySchema, IServiceCategory } from "../types/organisations/IServiceCategory.js";
 
 const serviceCategorySchema = new mongoose.Schema({
   _id: {

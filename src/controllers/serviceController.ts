@@ -2,9 +2,9 @@ import { Request, Response } from 'express';
 import mongoose from 'mongoose';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { sendSuccess, sendCreated, sendNotFound, sendBadRequest } from '../utils/apiResponses.js';
-import GroupedService from 'models/groupedServiceModel.js';
-import Service from 'models/serviceModel.js';
-import { processAddressesWithCoordinates, updateLocationIfPostcodeChanged } from 'utils/postcodeValidation.js';
+import GroupedService from '../models/groupedServiceModel.js';
+import Service from '../models/serviceModel.js';
+import { processAddressesWithCoordinates, updateLocationIfPostcodeChanged } from '../utils/postcodeValidation.js';
 import { validateGroupedService } from '../schemas/groupedServiceSchema.js';
 import { IGroupedService } from '../types/index.js';
 

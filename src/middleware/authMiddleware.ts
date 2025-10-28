@@ -18,8 +18,8 @@ import {
   sendUnauthorized
 } from '../utils/apiResponses.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
-import Accommodation from 'models/accommodationModel.js';
-import GroupedService from 'models/groupedServiceModel.js';
+import Accommodation from '../models/accommodationModel.js';
+import GroupedService from '../models/groupedServiceModel.js';
 
 type PreValidatedBannerData = z.output<typeof BannerPreUploadApiSchema>;
 // Extend Request interface to include user

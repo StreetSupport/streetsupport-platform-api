@@ -7,7 +7,7 @@ import {
   updateAccommodation,
   deleteAccommodation
 } from '../controllers/accommodationController.js';
-import { accommodationsAuth } from 'middleware/authMiddleware.js';
+import { accommodationsAuth } from '../middleware/authMiddleware.js';
 
 const router = Router();
 
