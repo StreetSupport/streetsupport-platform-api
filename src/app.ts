@@ -13,7 +13,7 @@ import { errorHandler, notFound } from './middleware/errorMiddleware.js';
 import checkJwt from './middleware/checkJwt.js';
 import './instrument.js';
 import * as Sentry from "@sentry/node";
-import accommodationRoutes from 'routes/accommodationRoutes.js';
+import accommodationRoutes from './routes/accommodationRoutes.js';
 
 const app = express();
 
