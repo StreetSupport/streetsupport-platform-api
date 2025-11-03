@@ -4,7 +4,6 @@ import User from '../models/userModel.js';
 import { IUser } from '../types/index.js';
 import Organisation from '../models/organisationModel.js';
 import Faq from '../models/faqsModel.js';
-import Service from '../models/serviceModel.js';
 import Banner from '../models/bannerModel.js';
 import { z } from 'zod';
 import { BannerPreUploadApiSchema } from '../schemas/bannerSchema.js';

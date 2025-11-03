@@ -214,6 +214,19 @@ export const updateOrganisation = asyncHandler(async (req: Request, res: Respons
     }
   }
 
+  // Auto-verify if last modification was 100 days or more ago
+  const daysSinceLastUpdate = Math.floor(
+    (new Date().getTime() - existingProvider.DocumentModifiedDate.getTime()) / (1000 * 60 * 60 * 24)
+  );
+  
+  if (daysSinceLastUpdate >= 100 && !updateData.IsVerified) {
+    updateData.IsVerified = true;
+  }
+
+  // Check if IsVerified status is being changed
+  const verificationChanged = updateData.IsVerified !== undefined && 
+                              updateData.IsVerified !== existingProvider.IsVerified;
+  
   const provider = await Organisation.findByIdAndUpdate(
     req.params.id, 
     updateData,
@@ -224,7 +237,17 @@ export const updateOrganisation = asyncHandler(async (req: Request, res: Respons
     return sendNotFound(res, 'Organisation not found');
   }
   
-  return sendSuccess(res, provider);
+  // Cascade IsVerified status to related services if it changed
+  let message = 'Organisation updated successfully';
+  if (verificationChanged && provider.Key) {
+    const totalUpdated = await updateRelatedServices(
+      provider.Key, 
+      { IsVerified: provider.IsVerified }
+    );
+    message = `Organisation updated successfully. ${totalUpdated} related services also updated.`;
+  }
+  
+  return sendSuccess(res, provider, message);
 });
 
 // @desc    Toggle service provider verified status and cascade to related services
@@ -266,31 +289,12 @@ export const toggleVerified = asyncHandler(async (req: Request, res: Response) =
       return sendNotFound(res, 'Organisation not found');
     }
     
-    // Update all grouped services and get the count of updated documents
-    const groupedServicesResult = await GroupedService.updateMany(
-      { ProviderId: updatedProvider.Key },
-      { 
-        $set: { 
-          IsVerified: updatedProvider.IsVerified,
-          DocumentModifiedDate: new Date()
-        } 
-      },
-      { session }
+    // Update related services using the helper function
+    const totalUpdated = await updateRelatedServices(
+      updatedProvider.Key,
+      { IsVerified: updatedProvider.IsVerified },
+      session
     );
-    
-    // Update all individual services (ProvidedServices) using ServiceProviderKey
-    const servicesResult = await Service.updateMany(
-      { ServiceProviderKey: updatedProvider.Key },
-      { 
-        $set: { 
-          IsVerified: updatedProvider.IsVerified,
-          DocumentModifiedDate: new Date()
-        } 
-      },
-      { session }
-    );
-    
-    const totalUpdated = groupedServicesResult.modifiedCount + servicesResult.modifiedCount;
     
     // Commit the transaction
     await session.commitTransaction();
@@ -386,43 +390,12 @@ export const togglePublished = asyncHandler(async (req: Request, res: Response) 
     
     // Only update services if we're actually changing the published status
     if (shouldDisableNow || newStatus === true) {
-      // Update all grouped services and get the count of updated documents
-      const groupedServicesResult = await GroupedService.updateMany(
-        { ProviderId: updatedProvider.Key },
-        { 
-          $set: { 
-            IsPublished: updatedProvider.IsPublished,
-            DocumentModifiedDate: new Date()
-          } 
-        },
-        { session }
+      // Update related services using the helper function
+      totalUpdated = await updateRelatedServices(
+        updatedProvider.Key,
+        { IsPublished: updatedProvider.IsPublished },
+        session
       );
-      
-      // Update all individual services (ProvidedServices) using ServiceProviderKey
-      const servicesResult = await Service.updateMany(
-        { ServiceProviderKey: updatedProvider.Key },
-        { 
-          $set: { 
-            IsPublished: updatedProvider.IsPublished,
-            DocumentModifiedDate: new Date()
-          } 
-        },
-        { session }
-      );
-
-      // Update all accommodations
-      const accommodationsResult = await Accommodation.updateMany(
-        { 'GeneralInfo.ServiceProviderId': updatedProvider.Key },
-        { 
-          $set: { 
-            'GeneralInfo.IsPublished': updatedProvider.IsPublished,
-            DocumentModifiedDate: new Date()
-          } 
-        },
-        { session }
-      );
-      
-      totalUpdated = groupedServicesResult.modifiedCount + servicesResult.modifiedCount + accommodationsResult.modifiedCount;
     }
     
     // Commit the transaction
@@ -471,21 +444,71 @@ export const clearNotes = asyncHandler(async (req: Request, res: Response) => {
   return sendSuccess(res, provider, 'All notes cleared successfully');
 });
 
-// @desc    Confirm organisation information is up to date (updates only DocumentModifiedDate)
+// @desc    Confirm organisation information is up to date and set as verified
 // @route   POST /api/organisations/:id/confirm-info
 // @access  Private
 export const confirmOrganisationInfo = asyncHandler(async (req: Request, res: Response) => {
-  const provider = await Organisation.findByIdAndUpdate(
-    req.params.id,
-    { $set: { DocumentModifiedDate: new Date() } },
-    { new: true }
-  );
+  // Start a MongoDB session for transaction
+  const session = await mongoose.startSession();
   
-  if (!provider) {
-    return sendNotFound(res, 'Organisation not found');
+  try {
+    // Start transaction
+    await session.startTransaction();
+    
+    const provider = await Organisation.findById(req.params.id).session(session);
+    
+    if (!provider) {
+      await session.abortTransaction();
+      return sendNotFound(res, 'Organisation not found');
+    }
+    
+    // Check if last modification was less than 100 days ago
+    const daysSinceLastUpdate = Math.floor(
+      (new Date().getTime() - provider.DocumentModifiedDate.getTime()) / (1000 * 60 * 60 * 24)
+    );
+    
+    // Update organisation: set IsVerified to true only if 100+ days old, otherwise just update DocumentModifiedDate
+    const updateFields: any = { DocumentModifiedDate: new Date() };
+    if (daysSinceLastUpdate >= 100) {
+      updateFields.IsVerified = true;
+    }
+    
+    const updatedProvider = await Organisation.findByIdAndUpdate(
+      req.params.id,
+      { $set: updateFields },
+      { new: true, session }
+    );
+    
+    if (!updatedProvider) {
+      await session.abortTransaction();
+      return sendNotFound(res, 'Organisation not found');
+    }
+    
+    // Update related services using the helper function only if IsVerified was set to true
+    let totalUpdated = 0;
+    let message = 'Organisation information confirmed as up to date';
+    
+    if (daysSinceLastUpdate >= 100 && updatedProvider.IsVerified) {
+      totalUpdated = await updateRelatedServices(
+        updatedProvider.Key,
+        { IsVerified: true },
+        session
+      );
+      message = `Organisation verified successfully. ${totalUpdated} related services also updated.`;
+    }
+    
+    // Commit the transaction
+    await session.commitTransaction();
+    
+    return sendSuccess(res, updatedProvider, message);
+  } catch (error) {
+    // Abort transaction on error
+    await session.abortTransaction();
+    throw error;
+  } finally {
+    // End session
+    session.endSession();
   }
-  
-  return sendSuccess(res, provider, 'Organisation information confirmed as up to date');
 });
 
 // @desc    Update selected administrator for organisation
@@ -535,3 +558,60 @@ export const updateAdministrator = asyncHandler(async (req: Request, res: Respon
   
   return sendSuccess(res, provider, 'Administrator updated successfully');
 });
+
+/**
+ * Helper function to update related services when organisation status changes
+ * @param organisationKey - The organisation's Key field
+ * @param updates - Object containing IsVerified and/or IsPublished values to update
+ * @param session - Optional MongoDB session for transactions
+ * @returns Total count of updated documents
+ */
+export const updateRelatedServices = async (
+  organisationKey: string,
+  updates: { IsVerified?: boolean; IsPublished?: boolean },
+  session?: mongoose.ClientSession
+): Promise<number> => {
+  const options = session ? { session } : {};
+  const updateFields: any = { DocumentModifiedDate: new Date() };
+  
+  // Build update object based on provided fields
+  if (updates.IsVerified !== undefined) {
+    updateFields.IsVerified = updates.IsVerified;
+  }
+  if (updates.IsPublished !== undefined) {
+    updateFields.IsPublished = updates.IsPublished;
+  }
+  
+  // Update all grouped services
+  const groupedServicesResult = await GroupedService.updateMany(
+    { ProviderId: organisationKey },
+    { $set: updateFields },
+    options
+  );
+  
+  // Update all individual services using ServiceProviderKey
+  const servicesResult = await Service.updateMany(
+    { ServiceProviderKey: organisationKey },
+    { $set: updateFields },
+    options
+  );
+  
+  // Update accommodations (only if IsPublished is being updated, not IsVerified)
+  let accommodationsResult = { modifiedCount: 0 };
+  if (updates.IsPublished !== undefined) {
+    const accommodationUpdateFields: any = {
+      'GeneralInfo.IsPublished': updates.IsPublished,
+      DocumentModifiedDate: new Date()
+    };
+    
+    accommodationsResult = await Accommodation.updateMany(
+      { 'GeneralInfo.ServiceProviderId': organisationKey },
+      { $set: accommodationUpdateFields },
+      options
+    );
+  }
+  
+  return groupedServicesResult.modifiedCount + 
+         servicesResult.modifiedCount + 
+         accommodationsResult.modifiedCount;
+};

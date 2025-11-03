@@ -1,8 +1,7 @@
 import cron from 'node-cron';
 import mongoose from 'mongoose';
 import Organisation from '../models/organisationModel.js';
-import Service from '../models/serviceModel.js';
-import GroupedService from '../models/groupedServiceModel.js';
+import { updateRelatedServices } from '../controllers/organisationController.js';
 
 /**
  * Background job that runs daily to check organisation disabling dates
@@ -60,28 +59,11 @@ export function startDisablingJob() {
               { session }
             );
 
-            // Update all grouped services for this organisation
-            const groupedServicesResult = await GroupedService.updateMany(
-              { ProviderId: org.Key },
-              { 
-                $set: { 
-                  IsPublished: false,
-                  DocumentModifiedDate: new Date()
-                } 
-              },
-              { session }
-            );
-
-            // Update all individual services for this organisation
-            const servicesResult = await Service.updateMany(
-              { ServiceProviderKey: org.Key },
-              { 
-                $set: { 
-                  IsPublished: false,
-                  DocumentModifiedDate: new Date()
-                } 
-              },
-              { session }
+            // Update all related services using the helper function
+            const totalUpdated = await updateRelatedServices(
+              org.Key,
+              { IsPublished: false },
+              session
             );
 
             // Commit the transaction
@@ -90,8 +72,7 @@ export function startDisablingJob() {
             disabledCount++;
             console.log(`Organisation disabled: ${org.Name} (Key: ${org.Key})`);
             console.log(`  - Last note date: ${lastNote.Date.toISOString()}`);
-            console.log(`  - Grouped services updated: ${groupedServicesResult.modifiedCount}`);
-            console.log(`  - Individual services updated: ${servicesResult.modifiedCount}`);
+            console.log(`  - Total services updated: ${totalUpdated}`);
           } else {
             // No action needed, abort transaction
             await session.abortTransaction();

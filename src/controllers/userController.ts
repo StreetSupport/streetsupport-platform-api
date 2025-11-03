@@ -326,6 +326,21 @@ const deleteUser = asyncHandler(async (req: Request, res: Response) => {
     return sendNotFound(res, 'User not found');
   }
 
+  // Decrypt user email for organisation administrator cleanup
+  const userEmail = decryptUserEmail(user.Email as any) || '';
+  
+  // Remove user from organisation administrators if they have org-related roles
+  const hasOrgRoles = user.AuthClaims?.some((claim: string) => 
+    claim === ROLES.SUPER_ADMIN || 
+    claim === ROLES.VOLUNTEER_ADMIN ||
+    claim.startsWith(ROLE_PREFIXES.ADMIN_FOR) ||
+    claim.startsWith(ROLE_PREFIXES.CITY_ADMIN_FOR)
+  );
+  
+  if (hasOrgRoles && userEmail) {
+    await removeUserFromOrganisationAdministrators(userEmail);
+  }
+
   // Delete user from Auth0 if Auth0Id exists
   if (user.Auth0Id) {
     await deleteAuth0User(user.Auth0Id);
@@ -407,4 +422,34 @@ export {
   updateUser,
   deleteUser,
   toggleUserActive
+};
+
+// Helper function to remove user email from organisation administrators
+const removeUserFromOrganisationAdministrators = async (userEmail: string): Promise<void> => {
+  try {
+    // Find all organisations where this email exists in Administrators array
+    const organisations = await Organisation.find({
+      'Administrators.Email': userEmail
+    });
+    
+    if (organisations.length > 0) {
+      // Remove the email from each organisation's Administrators array
+      await Promise.all(
+        organisations.map(org => 
+          Organisation.findByIdAndUpdate(
+            org._id,
+            { 
+              $pull: { Administrators: { Email: userEmail } },
+              $set: { DocumentModifiedDate: new Date() }
+            }
+          )
+        )
+      );
+      
+      console.log(`Removed user ${userEmail} from ${organisations.length} organisation(s)`);
+    }
+  } catch (error) {
+    console.error('Failed to remove user from organisation administrators:', error);
+    // Non-blocking - log error but don't fail the operation
+  }
 };
