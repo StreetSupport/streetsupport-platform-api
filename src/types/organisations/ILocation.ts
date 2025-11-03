@@ -1,4 +1,4 @@
-import mongoose, { Types } from "mongoose";
+import mongoose from "mongoose";
 import { LocationCoordinatesSchema, ILocationCoordinates } from "./ILocationCoordinates.js";
 
 /**

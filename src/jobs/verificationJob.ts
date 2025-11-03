@@ -1,5 +1,6 @@
 import cron from 'node-cron';
 import Organisation from '../models/organisationModel.js';
+import { updateRelatedServices } from '../controllers/organisationController.js';
 import { sendVerificationReminderEmail, sendVerificationExpiredEmail } from '../services/emailService.js';
 
 /**
@@ -23,7 +24,7 @@ export function startVerificationJob() {
       const organisations = await Organisation.find({ 
         'Administrators.IsSelected': true,
         // TODO: remove this after testing
-        DocumentCreationDate: { $gte: new Date('2025-10-27') }
+        DocumentCreationDate: { $gte: new Date('2025-11-01') }
       });
 
       for (const org of organisations) {
@@ -60,9 +61,15 @@ export function startVerificationJob() {
             }
           } // Check if 100 days or more (unverify and send notification)
           else if (daysSinceUpdate >= 100 && org.IsVerified) {
-            // Mark as unverified
+            // Mark as unverified and cascade to related services
             org.IsVerified = false;
             await org.save();
+            
+            // Update related services to unverified status
+            const totalUpdated = await updateRelatedServices(
+              org.Key,
+              { IsVerified: false }
+            );
 
             // Send notification email
             const emailSent = await sendVerificationExpiredEmail(
@@ -73,6 +80,7 @@ export function startVerificationJob() {
             if (emailSent) {
               unverifiedCount++;
               console.log(`Organisation unverified: ${org.Name} (${selectedAdmin.Email})`);
+              console.log(`  - Related services updated: ${totalUpdated}`);
             } else {
               errors.push(`Failed to send expiration email for ${org.Name}`);
             }
