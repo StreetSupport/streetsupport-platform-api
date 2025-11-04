@@ -46,7 +46,7 @@ export const createAccommodation = asyncHandler(async (req: Request, res: Respon
     return sendBadRequest(res, 'Validation data is missing');
   }
 
-  // Get organisation to inherit IsPublished status
+  // Get organisation to inherit IsPublished status and Name
   const organisation = await Organisation.findOne({ 
     Key: validation.data.GeneralInfo.ServiceProviderId 
   }).lean();
@@ -61,12 +61,14 @@ export const createAccommodation = asyncHandler(async (req: Request, res: Respon
     await processAddressesWithCoordinates(addressData);
   }
 
-  // Create accommodation with organisation's IsPublished status
+  // Create accommodation with organisation's IsPublished status and Name
   const accommodationData = {
     ...validation.data,
     GeneralInfo: {
       ...validation.data.GeneralInfo,
-      IsPublished: organisation.IsPublished
+      IsPublished: organisation.IsPublished,
+      IsVerified: organisation.IsVerified,
+      ServiceProviderName: organisation.Name,
     },
     Address: addressData,
     DocumentCreationDate: new Date(),

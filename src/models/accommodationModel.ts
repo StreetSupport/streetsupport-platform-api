@@ -39,6 +39,10 @@ const AccommodationSchema = new Schema<IAccommodation>({
       type: String,
       required: true
     },
+    ServiceProviderName: {
+      type: String,
+      required: false
+    },
     IsOpenAccess: {
       type: Boolean,
       required: true
@@ -49,6 +53,11 @@ const AccommodationSchema = new Schema<IAccommodation>({
       default: false
     },
     IsPublished: {
+      type: Boolean,
+      required: false,
+      default: false
+    },
+    IsVerified: {
       type: Boolean,
       required: false,
       default: false
@@ -235,6 +244,7 @@ const AccommodationSchema = new Schema<IAccommodation>({
     }
   },
   SupportProvidedInfo: {
+    // I don't know if we need this property because we use another field FeaturesWithDiscretionary.HasOnSiteManager on WEB
     HasOnSiteManager: {
       type: Number,
       required: false,
