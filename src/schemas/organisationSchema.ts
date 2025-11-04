@@ -70,13 +70,13 @@ export const AddressSchema = z.object({
   Location: z.preprocess(preprocessJSON, LocationCoordinatesSchema.optional()),
   OpeningTimes: z.preprocess(preprocessJSON, z.array(OpeningTimeSchema).default([])),
 }).refine((data) => {
-  // If not open 24/7 and not appointment only, must have at least one opening time
-  if (!data.IsOpen247 && !data.IsAppointmentOnly) {
+  // If not open 24/7, must have at least one opening time
+  if (!data.IsOpen247) {
     return data.OpeningTimes.length > 0;
   }
   return true;
 }, {
-  message: 'At least one opening time is required when location is not open 24/7 and not appointment only',
+  message: 'At least one opening time is required when location is not open 24/7',
   path: ['OpeningTimes']
 });
 
