@@ -43,9 +43,11 @@ export interface IAccommodation {
     // We have this field i nthe DB but we use another field SupportProvidedInfo.SupportOffered on WEB
     // SupportOffered: string[];
     ServiceProviderId: string;
+    ServiceProviderName?: string;
     IsOpenAccess: boolean;
     IsPubliclyVisible?: boolean;
     IsPublished?: boolean;
+    IsVerified?: boolean;
   };
   PricingAndRequirementsInfo: {
     ReferralIsRequired: boolean;

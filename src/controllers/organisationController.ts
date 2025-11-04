@@ -227,6 +227,10 @@ export const updateOrganisation = asyncHandler(async (req: Request, res: Respons
   const verificationChanged = updateData.IsVerified !== undefined && 
                               updateData.IsVerified !== existingProvider.IsVerified;
   
+  // Check if Name is being changed
+  const nameChanged = updateData.Name !== undefined && 
+                      updateData.Name !== existingProvider.Name;
+  
   const provider = await Organisation.findByIdAndUpdate(
     req.params.id, 
     updateData,
@@ -237,14 +241,28 @@ export const updateOrganisation = asyncHandler(async (req: Request, res: Respons
     return sendNotFound(res, 'Organisation not found');
   }
   
-  // Cascade IsVerified status to related services if it changed
+  // Cascade changes to related services
   let message = 'Organisation updated successfully';
-  if (verificationChanged && provider.Key) {
-    const totalUpdated = await updateRelatedServices(
-      provider.Key, 
-      { IsVerified: provider.IsVerified }
-    );
-    message = `Organisation updated successfully. ${totalUpdated} related services also updated.`;
+  let totalUpdated = 0;
+  
+  if (provider.Key) {
+    const updates: { IsVerified?: boolean; ServiceProviderName?: string } = {};
+    
+    // Add IsVerified if it changed
+    if (verificationChanged) {
+      updates.IsVerified = provider.IsVerified;
+    }
+    
+    // Add ServiceProviderName if Name changed
+    if (nameChanged) {
+      updates.ServiceProviderName = provider.Name;
+    }
+    
+    // Update related services if there are any changes
+    if (Object.keys(updates).length > 0) {
+      totalUpdated = await updateRelatedServices(provider.Key, updates);
+      message = `Organisation updated successfully. ${totalUpdated} related services also updated.`;
+    }
   }
   
   return sendSuccess(res, provider, message);
@@ -560,15 +578,15 @@ export const updateAdministrator = asyncHandler(async (req: Request, res: Respon
 });
 
 /**
- * Helper function to update related services when organisation status changes
+ * Helper function to update related services when organisation status or name changes
  * @param organisationKey - The organisation's Key field
- * @param updates - Object containing IsVerified and/or IsPublished values to update
+ * @param updates - Object containing IsVerified, IsPublished, and/or ServiceProviderName values to update
  * @param session - Optional MongoDB session for transactions
  * @returns Total count of updated documents
  */
 export const updateRelatedServices = async (
   organisationKey: string,
-  updates: { IsVerified?: boolean; IsPublished?: boolean },
+  updates: { IsVerified?: boolean; IsPublished?: boolean; ServiceProviderName?: string },
   session?: mongoose.ClientSession
 ): Promise<number> => {
   const options = session ? { session } : {};
@@ -581,6 +599,9 @@ export const updateRelatedServices = async (
   if (updates.IsPublished !== undefined) {
     updateFields.IsPublished = updates.IsPublished;
   }
+  if (updates.ServiceProviderName !== undefined) {
+    updateFields.ProviderName = updates.ServiceProviderName; // For GroupedService
+  }
   
   // Update all grouped services
   const groupedServicesResult = await GroupedService.updateMany(
@@ -589,27 +610,42 @@ export const updateRelatedServices = async (
     options
   );
   
+  // For individual services and accommodations, ServiceProviderName is a direct field
+  const serviceUpdateFields: any = { DocumentModifiedDate: new Date() };
+  if (updates.IsVerified !== undefined) {
+    serviceUpdateFields.IsVerified = updates.IsVerified;
+  }
+  if (updates.IsPublished !== undefined) {
+    serviceUpdateFields.IsPublished = updates.IsPublished;
+  }
+  if (updates.ServiceProviderName !== undefined) {
+    serviceUpdateFields.ServiceProviderName = updates.ServiceProviderName;
+  }
+  
   // Update all individual services using ServiceProviderKey
   const servicesResult = await Service.updateMany(
     { ServiceProviderKey: organisationKey },
-    { $set: updateFields },
+    { $set: serviceUpdateFields },
     options
   );
-  
-  // Update accommodations (only if IsPublished is being updated, not IsVerified)
-  let accommodationsResult = { modifiedCount: 0 };
-  if (updates.IsPublished !== undefined) {
-    const accommodationUpdateFields: any = {
-      'GeneralInfo.IsPublished': updates.IsPublished,
-      DocumentModifiedDate: new Date()
-    };
-    
-    accommodationsResult = await Accommodation.updateMany(
-      { 'GeneralInfo.ServiceProviderId': organisationKey },
-      { $set: accommodationUpdateFields },
-      options
-    );
+
+  // Update all accommodations using ServiceProviderId
+  const accommodationUpdateFields: any = { DocumentModifiedDate: new Date() };
+  if (updates.IsVerified !== undefined) {
+    accommodationUpdateFields['GeneralInfo.IsVerified'] = updates.IsVerified;
   }
+  if (updates.IsPublished !== undefined) {
+    accommodationUpdateFields['GeneralInfo.IsPublished'] = updates.IsPublished;
+  }
+  if (updates.ServiceProviderName !== undefined) {
+    accommodationUpdateFields['GeneralInfo.ServiceProviderName'] = updates.ServiceProviderName;
+  }
+  
+  const accommodationsResult = await Accommodation.updateMany(
+    { 'GeneralInfo.ServiceProviderId': organisationKey },
+    { $set: accommodationUpdateFields },
+    options
+  );
   
   return groupedServicesResult.modifiedCount + 
          servicesResult.modifiedCount + 
