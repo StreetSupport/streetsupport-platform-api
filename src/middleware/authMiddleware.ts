@@ -47,6 +47,15 @@ const handleSuperAdminAccess = (
 ): boolean => userAuthClaims.includes(ROLES.SUPER_ADMIN);
 
 /**
+ * Helper: handles global privileged access rules for VolunteerAdmin.
+ * - VolunteerAdmin: full access
+ * Returns true if the request has been fully handled (next() called or response sent), otherwise false.
+ */
+const handleVolunteerAdminAccess = (
+  userAuthClaims: string[]
+): boolean => userAuthClaims.includes(ROLES.VOLUNTEER_ADMIN);
+
+/**
  * Helper: validates that user roles are properly configured
  * - AuthClaims must not be empty
  * - CityAdmin must have at least one CityAdminFor:* claim
@@ -251,8 +260,8 @@ export const requireOrganisationByKeyAccess = asyncHandler(async (req: Request, 
 
   const userAuthClaims = req.user?.AuthClaims || [];
 
-  // SuperAdmin global rule
-  if (handleSuperAdminAccess(userAuthClaims)) { return next(); }
+  // SuperAdmin or VolunteerAdmin global rule
+  if (handleSuperAdminAccess(userAuthClaims) || handleVolunteerAdminAccess(userAuthClaims)) { return next(); }
 
   // For operations on specific organisations, check access based on role
   const organisationId = req.params.id;
@@ -307,8 +316,8 @@ export const requireVerifyOrganisationAccess = asyncHandler(async (req: Request,
 
   const userAuthClaims = req.user?.AuthClaims || [];
 
-  // SuperAdmin global rule
-  if (handleSuperAdminAccess(userAuthClaims)) { return next(); }
+  // SuperAdmin or VolunteerAdmin global rule
+  if (handleSuperAdminAccess(userAuthClaims) || handleVolunteerAdminAccess(userAuthClaims)) { return next(); }
 
   // For operations on specific organisations, check access based on role
   const organisationId = req.params.id;
@@ -347,8 +356,8 @@ export const requireOrganisationAccess = asyncHandler(async (req: Request, res: 
 
   const userAuthClaims = req.user?.AuthClaims || [];
 
-  // SuperAdmin global rule
-  if (handleSuperAdminAccess(userAuthClaims)) { return next(); }
+  // SuperAdmin or VolunteerAdmin global rule
+  if (handleSuperAdminAccess(userAuthClaims) || handleVolunteerAdminAccess(userAuthClaims)) { return next(); }
 
   // For operations on specific organisations, check access based on role
   const organisationId = req.params.id;
@@ -406,8 +415,8 @@ export const requireOrganisationLocationAccess = (req: Request, res: Response, n
 
   const userAuthClaims = req.user?.AuthClaims || [];
   
-  // SuperAdmin global rule
-  if (handleSuperAdminAccess(userAuthClaims)) { return next(); }
+  // SuperAdmin or VolunteerAdmin global rule
+  if (handleSuperAdminAccess(userAuthClaims) || handleVolunteerAdminAccess(userAuthClaims)) { return next(); }
 
   // Check if user is a CityAdmin
   if (!userAuthClaims.includes(ROLES.CITY_ADMIN)) {
@@ -440,8 +449,8 @@ export const requireServiceAccess = asyncHandler(async (req: Request, res: Respo
 
   const userAuthClaims = req.user?.AuthClaims || [];
   
-  // SuperAdmin global rule
-  if (handleSuperAdminAccess(userAuthClaims)) { return next(); }
+  // SuperAdmin or VolunteerAdmin global rule
+  if (handleSuperAdminAccess(userAuthClaims) || handleVolunteerAdminAccess(userAuthClaims)) { return next(); }
 
   // For operations on specific services, check access based on role
   const serviceId = req.params.id;
@@ -516,8 +525,8 @@ export const requireServicesByProviderAccess = asyncHandler(async (req: Request,
 
   const userAuthClaims = req.user?.AuthClaims || [];
 
-  // SuperAdmin global rule
-  if (handleSuperAdminAccess(userAuthClaims)) { return next(); }
+  // SuperAdmin or VolunteerAdmin global rule
+  if (handleSuperAdminAccess(userAuthClaims) || handleVolunteerAdminAccess(userAuthClaims)) { return next(); }
 
   const providerId = req.params.providerId;
 
@@ -558,8 +567,8 @@ export const requireAccommodationsAccess = asyncHandler(async (req: Request, res
 
   const userAuthClaims = req.user?.AuthClaims || [];
   
-  // SuperAdmin global rule
-  if (handleSuperAdminAccess(userAuthClaims)) { return next(); }
+  // SuperAdmin or VolunteerAdmin global rule
+  if (handleSuperAdminAccess(userAuthClaims) || handleVolunteerAdminAccess(userAuthClaims)) { return next(); }
 
   // For operations on specific accommodations, check access based on role
   const accommodationId = req.params.id;
@@ -636,8 +645,8 @@ export const requireAccommodationsByProviderAccess = asyncHandler(async (req: Re
 
   const userAuthClaims = req.user?.AuthClaims || [];
 
-  // SuperAdmin global rule
-  if (handleSuperAdminAccess(userAuthClaims)) { return next(); }
+  // SuperAdmin or VolunteerAdmin global rule
+  if (handleSuperAdminAccess(userAuthClaims) || handleVolunteerAdminAccess(userAuthClaims)) { return next(); }
 
   const providerId = req.params.providerId;
 
