@@ -22,7 +22,6 @@ export function startVerificationJob() {
 
       // Find all organisations with selected administrators
       const organisations = await Organisation.find({ 
-        'Administrators.IsSelected': true,
         // TODO: remove this after testing
         DocumentCreationDate: { $gte: new Date('2025-11-01') }
       });
@@ -39,23 +38,24 @@ export function startVerificationJob() {
 
           // Find selected administrator
           const selectedAdmin = org.Administrators.find(admin => admin.IsSelected);
+          const email = selectedAdmin?.Email || org.Email;
           
-          if (!selectedAdmin || !selectedAdmin.Email) {
+          if (!email) {
             continue;
           }
 
           // Check if exactly 90 days (send reminder)
           if (daysSinceUpdate === 90) {
-            console.log(`Reminder sent for: ${org.Name} (${selectedAdmin.Email})`);
+            console.log(`Reminder sent for: ${org.Name} (${email})`);
             const emailSent = await sendVerificationReminderEmail(
-              selectedAdmin.Email,
+              email,
               org.Name,
               daysSinceUpdate
             );
             
             if (emailSent) {
               remindersCount++;
-              console.log(`Reminder sent for: ${org.Name} (${selectedAdmin.Email})`);
+              console.log(`Reminder sent for: ${org.Name} (${email})`);
             } else {
               errors.push(`Failed to send reminder for ${org.Name}`);
             }
@@ -73,13 +73,13 @@ export function startVerificationJob() {
 
             // Send notification email
             const emailSent = await sendVerificationExpiredEmail(
-              selectedAdmin.Email,
+              email,
               org.Name
             );
             
             if (emailSent) {
               unverifiedCount++;
-              console.log(`Organisation unverified: ${org.Name} (${selectedAdmin.Email})`);
+              console.log(`Organisation unverified: ${org.Name} (${email})`);
               console.log(`  - Related services updated: ${totalUpdated}`);
             } else {
               errors.push(`Failed to send expiration email for ${org.Name}`);

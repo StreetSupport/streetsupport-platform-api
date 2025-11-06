@@ -118,7 +118,6 @@ const ResidentCriteriaInfoSchema = z.object({
 });
 
 const SupportProvidedInfoSchema = z.object({
-  HasOnSiteManager: z.preprocess(preprocessNumber, DiscretionaryValueSchema.optional()),
   SupportOffered: z.preprocess(preprocessJSON, z.array(z.nativeEnum(SupportOfferedType)).optional()),
   SupportInfo: z.preprocess(preprocessNullableString, z.string().optional()),
 });
