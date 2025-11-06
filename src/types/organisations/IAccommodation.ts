@@ -97,7 +97,6 @@ export interface IAccommodation {
     AcceptsBenefitsClaimants?: boolean;
   };
   SupportProvidedInfo: {
-    HasOnSiteManager?: number;
     SupportOffered?: string[];
     SupportInfo?: string;
   };

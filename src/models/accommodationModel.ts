@@ -244,12 +244,6 @@ const AccommodationSchema = new Schema<IAccommodation>({
     }
   },
   SupportProvidedInfo: {
-    // I don't know if we need this property because we use another field FeaturesWithDiscretionary.HasOnSiteManager on WEB
-    HasOnSiteManager: {
-      type: Number,
-      required: false,
-      enum: [DiscretionaryValue.No, DiscretionaryValue.Yes, DiscretionaryValue.DontKnowAsk]
-    },
     SupportOffered: {
       type: [String],
       required: false
