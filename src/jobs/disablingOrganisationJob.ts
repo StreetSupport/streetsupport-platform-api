@@ -10,8 +10,8 @@ import { updateRelatedServices } from '../controllers/organisationController.js'
  * - Updates all associated services to unpublished state using transactions
  */
 export function startDisablingJob() {
-  // Run daily at midnight (00:00)
-  cron.schedule('0 0 * * *', async () => {
+  // Run daily at midnight (00:05)
+  cron.schedule('5 0 * * *', async () => {
     try {
       console.log('Running organisation disabling check job...');
       

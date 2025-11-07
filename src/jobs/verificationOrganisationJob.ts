@@ -21,7 +21,8 @@ export function startVerificationJob() {
       const errors: string[] = [];
 
       // Find all organisations with selected administrators
-      const organisations = await Organisation.find({ 
+      const organisations = await Organisation.find({
+        'Administrators.IsSelected': true,
         // TODO: remove this after testing
         DocumentCreationDate: { $gte: new Date('2025-11-01') }
       });

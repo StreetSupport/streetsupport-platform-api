@@ -1,18 +1,6 @@
 import { z } from 'zod';
 import { ROLE_VALIDATION_PATTERN } from '../constants/roles.js';
-import { ValidationResult, createValidationResult } from './validationHelpers.js';
-
-// Preprocessing helper for JSON strings
-const preprocessJSON = (val: unknown) => {
-  if (typeof val === 'string') {
-    try {
-      return JSON.parse(val);
-    } catch {
-      return val;
-    }
-  }
-  return val;
-};
+import { ValidationResult, createValidationResult, preprocessJSON } from './validationHelpers.js';
 
 // User schema for API backend (for creation)
 export const UserSchema = z.object({

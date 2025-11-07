@@ -1,19 +1,19 @@
 import { Router } from 'express';
 import { 
   getSwepBanners,
-  getSwepBannerById,
-  createSwepBanner,
+  getSwepBannerByLocation,
   updateSwepBanner,
-  deleteSwepBanner
+  toggleSwepBannerActive
 } from '../controllers/swepBannerController.js';
-import { swepBannersAuth, swepBannersByLocationAuth } from '../middleware/authMiddleware.js';
+import { swepBannersAuth, swepBannersGetAuth } from '../middleware/authMiddleware.js';
+import { uploadSwepImage } from '../middleware/uploadMiddleware.js';
 
 const router = Router();
 
-router.get('/', swepBannersByLocationAuth, getSwepBanners);
-router.get('/:id', swepBannersAuth, getSwepBannerById);
-router.post('/', swepBannersAuth, createSwepBanner);
-router.put('/:id', swepBannersAuth, updateSwepBanner);
-router.delete('/:id', swepBannersAuth, deleteSwepBanner);
+router.get('/', swepBannersGetAuth, getSwepBanners);
+router.get('/:location', swepBannersAuth, getSwepBannerByLocation);
+// Use SWEP-specific upload middleware - handles single file to swep-banners container
+router.put('/:location', swepBannersAuth, uploadSwepImage, updateSwepBanner);
+router.patch('/:location/toggle-active', swepBannersAuth, toggleSwepBannerActive);
 
 export default router;

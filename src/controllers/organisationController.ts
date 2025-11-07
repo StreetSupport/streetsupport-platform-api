@@ -110,7 +110,7 @@ export const getOrganisations = asyncHandler(async (req: Request, res: Response)
 // @route   GET /api/organisations/:key
 // @access  Private
 export const getOrganisationByKey = asyncHandler(async (req: Request, res: Response) => {
-  const provider = await Organisation.findOne({ Key: req.params.id });
+  const provider = await Organisation.findOne({ Key: req.params.key });
   if (!provider) {
     return sendNotFound(res, 'Organisation not found');
   }

@@ -1,20 +1,6 @@
 import { z } from 'zod';
 import { isValidPostcodeFormat } from '../utils/postcodeValidation.js';
-
-// Helper function for preprocessing numbers
-const preprocessNumber = (val: any) => {
-  if (typeof val === 'string') {
-    const parsed = parseInt(val);
-    return isNaN(parsed) ? val : parsed;
-  }
-  return val;
-};
-
-// Preprocessing helper to convert null/undefined to empty string
-const preprocessNullableString = (val: unknown) => {
-  if (val === null || val === undefined) return '';
-  return val;
-};
+import { preprocessNumber, preprocessNullableString } from './validationHelpers.js';
 
 // Location Schema for services with conditional validation based on IsOutreachLocation
 export const ServiceLocationSchema = z.object({

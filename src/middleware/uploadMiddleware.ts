@@ -13,7 +13,8 @@ dotenv.config();
 
 // Azure Blob Storage configuration
 const AZURE_STORAGE_CONNECTION_STRING = process.env.AZURE_STORAGE_CONNECTION_STRING;
-const CONTAINER_NAME = process.env.AZURE_CONTAINER_NAME || 'banners';
+const BANNERS_CONTAINER_NAME = process.env.AZURE_BANNERS_CONTAINER_NAME || 'banners';
+const SWEPS_CONTAINER_NAME = process.env.AZURE_SWEPS_CONTAINER_NAME || 'sweps';
 
 let blobServiceClient: BlobServiceClient | null = null;
 if (AZURE_STORAGE_CONNECTION_STRING) {
@@ -52,12 +53,12 @@ const upload = multer({
 });
 
 // Upload to Azure Blob Storage
-async function uploadToAzure(file: Express.Multer.File): Promise<string> {
+async function uploadToAzure(file: Express.Multer.File, containerName: string): Promise<string> {
   if (!blobServiceClient) {
     throw new Error('Azure Blob Storage not configured');
   }
 
-  const containerClient = blobServiceClient.getContainerClient(CONTAINER_NAME);
+  const containerClient = blobServiceClient.getContainerClient(containerName);
   
   // Ensure container exists
   await containerClient.createIfNotExists({
@@ -86,8 +87,8 @@ async function uploadToAzure(file: Express.Multer.File): Promise<string> {
 }
 
 // Fallback: Save to local uploads directory
-function saveToLocal(file: Express.Multer.File): string {
-  const uploadsDir = path.join(process.cwd(), 'public', 'uploads', 'banners');
+function saveToLocal(file: Express.Multer.File, containerName: string): string {
+  const uploadsDir = path.join(process.cwd(), 'public', 'uploads', containerName);
   const fileExtension = path.extname(file.originalname);
   const fileName = `${uuidv4()}${fileExtension}`;
   const filePath = path.join(uploadsDir, fileName);
@@ -101,7 +102,7 @@ function saveToLocal(file: Express.Multer.File): string {
   fs.writeFileSync(filePath, file.buffer);
 
   // Return relative URL
-  return `/public/uploads/banners/${fileName}`;
+  return `/public/uploads/${containerName}/${fileName}`;
 }
 
 // Process uploaded files and add URLs to request body
@@ -134,9 +135,9 @@ async function processUploads(req: Request, res: Response, next: NextFunction) {
             let fileUrl: string;
             
             if (blobServiceClient) {
-              fileUrl = await uploadToAzure(file);
+              fileUrl = await uploadToAzure(file, BANNERS_CONTAINER_NAME);
             } else {
-              fileUrl = saveToLocal(file);
+              fileUrl = saveToLocal(file, BANNERS_CONTAINER_NAME);
             }
 
             // Create asset object
@@ -200,7 +201,7 @@ async function processUploads(req: Request, res: Response, next: NextFunction) {
   }
 }
 
-// Combined middleware for validation and upload
+// Combined middleware for validation and upload (Banners only)
 const handleMultipartData = upload.fields([
   { name: 'newfile_Logo', maxCount: 1 },
   { name: 'newfile_BackgroundImage', maxCount: 1 },
@@ -209,9 +210,11 @@ const handleMultipartData = upload.fields([
   // { name: 'newfile_AccentGraphic', maxCount: 1 },
   { name: 'newfile_PartnerLogos', maxCount: 5 },
   { name: 'newfile_ResourceFile', maxCount: 1 }
+  // SWEP banner image uses uploadSwepImage middleware
 ]);
 
-export const uploadMiddleware = (req: Request, res: Response, next: NextFunction) => {
+// Middleware for Banners
+export const bannersUploadMiddleware = (req: Request, res: Response, next: NextFunction) => {
   handleMultipartData(req, res, (err) => {
     if (err) {
       // Handle Multer errors (e.g., file size limit)
@@ -234,6 +237,48 @@ export const uploadMiddleware = (req: Request, res: Response, next: NextFunction
   });
 };
 
+// SWEP-specific upload middleware - handles single file upload to swep-banners container
+export const uploadSwepImage = async (req: Request, res: Response, next: NextFunction) => {
+  const uploadSingle = upload.single('newfile_image');
+  
+  uploadSingle(req, res, async (err) => {
+    if (err) {
+      return sendBadRequest(res, `File upload error: ${err.message}`);
+    }
+
+    try {
+      const file = req.file as Express.Multer.File;
+      
+      if (!file) {
+        // No file uploaded, just continue
+        return next();
+      }
+
+      // Upload file to SWEP container
+      let fileUrl: string;
+      if (blobServiceClient) {
+        fileUrl = await uploadToAzure(file, SWEPS_CONTAINER_NAME);
+      } else {
+        fileUrl = saveToLocal(file, SWEPS_CONTAINER_NAME);
+      }
+
+      // Attach uploaded file info to request body
+      req.body.newfile_image = {
+        Url: fileUrl,
+        Alt: file.originalname,
+        Filename: file.originalname,
+        Size: file.size,
+        MimeType: file.mimetype
+      };
+
+      next();
+    } catch (error) {
+      console.error('SWEP upload error:', error);
+      sendInternalError(res, 'File upload failed');
+    }
+  });
+};
+
 // Single file upload middleware
 export const uploadSingle = (fieldName: string) => [
   upload.single(fieldName),
@@ -244,25 +289,28 @@ export const uploadSingle = (fieldName: string) => [
 export async function deleteFile(fileUrl: string): Promise<void> {
   try {
     if (blobServiceClient && fileUrl.includes('blob.core.windows.net')) {
-      // Robustly extract blob name relative to the container
-      const containerClient = blobServiceClient.getContainerClient(CONTAINER_NAME);
-
-      // Use URL API to avoid issues with query strings
+      // Extract container name and blob name from URL
       const url = new URL(fileUrl);
       // pathname is like: /<container>/<blobName>
-      let pathname = url.pathname; // e.g. /banners/uuid.ext
+      let pathname = url.pathname; // e.g. /banners/uuid.ext or /sweps/uuid.ext
       if (pathname.startsWith('/')) pathname = pathname.slice(1);
 
-      // Remove the container segment from the start, leaving only the blob name
-      let blobName = pathname;
-      if (blobName.toLowerCase().startsWith(`${CONTAINER_NAME.toLowerCase()}/`)) {
-        blobName = blobName.slice(CONTAINER_NAME.length + 1);
+      // Split pathname to get container and blob name
+      const pathParts = pathname.split('/');
+      if (pathParts.length < 2) {
+        console.warn(`deleteFile: Invalid URL format, expected /container/blobname: ${fileUrl}`);
+        return;
       }
 
+      const containerName = pathParts[0];
+      const blobName = pathParts.slice(1).join('/'); // Handle nested paths
+
+      const containerClient = blobServiceClient.getContainerClient(containerName);
       const blockBlobClient = containerClient.getBlockBlobClient(blobName);
       const result = await blockBlobClient.deleteIfExists();
+      
       if (!result.succeeded) {
-        console.warn(`deleteFile: Blob not found or already deleted: container=${CONTAINER_NAME}, blobName=${blobName}`);
+        console.warn(`deleteFile: Blob not found or already deleted: container=${containerName}, blobName=${blobName}`);
       }
     } else if (fileUrl.startsWith('/public/uploads/')) {
       // Local file deletion
@@ -280,6 +328,3 @@ export async function deleteFile(fileUrl: string): Promise<void> {
     // Don't throw error - file deletion failure shouldn't break the application
   }
 }
-
-
-export default uploadMiddleware;

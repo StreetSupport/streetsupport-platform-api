@@ -1,34 +1,12 @@
 import { z } from 'zod';
-import { ValidationResult, createValidationResult } from './validationHelpers.js';
+import { 
+  ValidationResult, 
+  createValidationResult,
+  preprocessJSON,
+  preprocessBoolean,
+  preprocessNumber
+} from './validationHelpers.js';
 import { isValidPostcodeFormat } from '../utils/postcodeValidation.js';
-
-// Preprocessing helpers
-const preprocessJSON = (val: unknown) => {
-  if (typeof val === 'string') {
-    try {
-      return JSON.parse(val);
-    } catch {
-      return val;
-    }
-  }
-  return val;
-};
-
-const preprocessBoolean = (val: unknown) => {
-  if (typeof val === 'string') {
-    if (val === 'true') return true;
-    if (val === 'false') return false;
-  }
-  return val;
-};
-
-const preprocessNumber = (val: unknown) => {
-  if (typeof val === 'string') {
-    const parsed = Number(val);
-    if (!isNaN(parsed)) return parsed;
-  }
-  return val;
-};
 
 // Nested schemas for service provider components
 export const LocationCoordinatesSchema = z.object({
