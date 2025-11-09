@@ -56,6 +56,7 @@ export function startSwepActivationJob() {
           if (swep.SwepActiveUntil) {
             const activeUntilDate = new Date(swep.SwepActiveUntil);
             activeUntilDate.setUTCHours(0, 0, 0, 0); // Use UTC for consistent comparison
+            activeUntilDate.setDate(activeUntilDate.getDate() + 1); // Add 1 day to active until date
 
             // If today equals or is after the activeUntil date and banner is active
             if (activeUntilDate.getTime() === today.getTime() && swep.IsActive) {
