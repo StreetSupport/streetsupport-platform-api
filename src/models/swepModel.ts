@@ -1,6 +1,6 @@
 import { Schema, model } from 'mongoose';
 import { ISwepBanner } from '../types/swep-banners/ISwepBanner.js';
-import { EmergencyContactSchema } from 'types/swep-banners/IEmergencyContact.js';
+import { EmergencyContactSchema } from '../types/swep-banners/IEmergencyContact.js';
 
 // SWEP Banner Schema
 export const SwepBannerSchema = new Schema<ISwepBanner>({
