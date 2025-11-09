@@ -213,7 +213,8 @@ export const deleteBanner = asyncHandler(async (req: Request, res: Response) => 
   }
 
   // Extract all file URLs from the banner before deletion
-  const fileUrls = extractFileUrls(banner.toObject());
+  // banner is already a plain object from .lean(), no need for .toObject()
+  const fileUrls = extractFileUrls(banner);
   
   // Delete the banner from database first
   await Banner.findByIdAndDelete(id);

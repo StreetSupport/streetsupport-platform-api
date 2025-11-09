@@ -19,50 +19,50 @@ export const SwepBannerSchema = new Schema<ISwepBanner>({
   },
 
   // Core fields
-  locationSlug: {
+  LocationSlug: {
     type: String,
     required: true,
     index: true,
     unique: true
   },
-  locationName: {
+  LocationName: {
     type: String,
     required: true
   },
-  title: {
+  Title: {
     type: String,
     required: true
   },
-  body: {
+  Body: {
     type: String,
     required: true
   },
-  image: {
+  Image: {
     type: String,
-    required: true
+    required: false
   },
-  shortMessage: {
+  ShortMessage: {
     type: String,
     required: true
   },
 
   // Date fields
-  swepActiveFrom: {
+  SwepActiveFrom: {
     type: Date,
     required: false
   },
-  swepActiveUntil: {
+  SwepActiveUntil: {
     type: Date,
     required: false
   },
-  isActive: {
+  IsActive: {
     type: Boolean,
     default: false,
     required: true
   },
 
   // Emergency contact
-  emergencyContact: {
+  EmergencyContact: {
     type: EmergencyContactSchema,
     required: false
   }
@@ -72,9 +72,9 @@ export const SwepBannerSchema = new Schema<ISwepBanner>({
 });
 
 // Indexes for performance
-SwepBannerSchema.index({ locationSlug: 1, isActive: 1 });
-SwepBannerSchema.index({ isActive: 1 });
-SwepBannerSchema.index({ swepActiveFrom: 1, swepActiveUntil: 1 });
+SwepBannerSchema.index({ LocationSlug: 1, IsActive: 1 });
+SwepBannerSchema.index({ IsActive: 1 });
+SwepBannerSchema.index({ SwepActiveFrom: 1, SwepActiveUntil: 1 });
 
 // Create and export the model
 export const SwepBanner = model<ISwepBanner>('SwepBanner', SwepBannerSchema);

@@ -2,7 +2,6 @@ import { z } from 'zod';
 import { 
   ValidationResult, 
   createValidationResult,
-  preprocessJSON, 
   preprocessBoolean, 
   preprocessDate, 
   preprocessNullableString, 
@@ -11,38 +10,38 @@ import {
 
 // Emergency Contact schema
 const EmergencyContactSchema = z.object({
-  phone: z.preprocess(preprocessNullableString, z.string().optional()),
-  email: z.preprocess(preprocessNullableString, z.string().email('Invalid emergency email address').optional()),
-  hours: z.preprocess(preprocessNullableString, z.string().optional())
+  Phone: z.preprocess(preprocessNullableString, z.string().optional()),
+  Email: z.preprocess(preprocessNullableString, z.string().email('Invalid emergency email address').optional()),
+  Hours: z.preprocess(preprocessNullableString, z.string().optional())
 });
 
 // SWEP Banner validation schema
 export const SwepBannerSchema = z.object({
-  locationSlug: z.string().min(1, 'Location is required'),
-  title: z.string().min(1, 'Title is required'),
-  body: z.string().min(1, 'Body content is required'),
-  shortMessage: z.string().min(1, 'Short message is required'),
+  LocationSlug: z.string().min(1, 'Location is required'),
+  Title: z.string().min(1, 'Title is required'),
+  Body: z.string().min(1, 'Body content is required'),
+  ShortMessage: z.string().min(1, 'Short message is required'),
   
   // Image field - required for SWEP banners
-  image: z.string().min(1, 'Image is required'),
+  Image: z.string().optional().nullable(),
   
-  // Date fields with preprocessing
-  swepActiveFrom: z.preprocess(preprocessDate, z.date().optional()),
-  swepActiveUntil: z.preprocess(preprocessDate, z.date().optional()),
-  isActive: z.preprocess(preprocessBoolean, z.boolean()).default(false),
+  // Date fields with preprocessing - allow null values
+  SwepActiveFrom: z.preprocess(preprocessDate, z.date().optional().nullable()),
+  SwepActiveUntil: z.preprocess(preprocessDate, z.date().optional().nullable()),
+  IsActive: z.preprocess(preprocessBoolean, z.boolean()).default(false),
   
   // Emergency contact
-  emergencyContact: z.preprocess(preprocessNullableObject, EmergencyContactSchema.optional())
+  EmergencyContact: z.preprocess(preprocessNullableObject, EmergencyContactSchema.optional())
 }).refine((data) => {
-  // If date range is set, swepActiveFrom must be before swepActiveUntil
-  if (data.swepActiveFrom && data.swepActiveUntil) {
-    return data.swepActiveFrom < data.swepActiveUntil;
+  // If date range is set, SwepActiveFrom must be before SwepActiveUntil
+  if (data.SwepActiveFrom && data.SwepActiveUntil) {
+    return data.SwepActiveFrom < data.SwepActiveUntil;
   }
   
   return true;
 }, {
   message: 'SWEP active from date must be before active until date',
-  path: ['swepActiveUntil']
+  path: ['SwepActiveUntil']
 });
 
 // Validation function

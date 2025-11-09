@@ -1,21 +1,21 @@
 import mongoose from "mongoose";
 
 export interface IEmergencyContact {
-  phone: string;
-  email: string;
-  hours: string;
+  Phone: string;
+  Email: string;
+  Hours: string;
 }
 
 export const EmergencyContactSchema = new mongoose.Schema<IEmergencyContact>({
-  phone: {
+  Phone: {
     type: String,
     required: false,
   },
-  email: {
+  Email: {
     type: String,
     required: false,
   },
-  hours: {
+  Hours: {
     type: String,
     required: false,
   }

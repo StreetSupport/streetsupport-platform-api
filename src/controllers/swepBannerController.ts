@@ -27,9 +27,9 @@ export const getSwepBanners = asyncHandler(async (req: Request, res: Response) =
   if (search && typeof search === 'string') {
     conditions.push({
       $or: [
-        { title: { $regex: search.trim(), $options: 'i' } },
-        { shortMessage: { $regex: search.trim(), $options: 'i' } },
-        { body: { $regex: search.trim(), $options: 'i' } }
+        { Title: { $regex: search.trim(), $options: 'i' } },
+        { ShortMessage: { $regex: search.trim(), $options: 'i' } },
+        { Body: { $regex: search.trim(), $options: 'i' } }
       ]
     });
   }
@@ -38,15 +38,15 @@ export const getSwepBanners = asyncHandler(async (req: Request, res: Response) =
   if (locations && typeof locations === 'string') {
     const locationArray = locations.split(',').map(loc => loc.trim()).filter(Boolean);
     if (locationArray.length > 0) {
-      conditions.push({ locationSlug: { $in: locationArray } });
+      conditions.push({ LocationSlug: { $in: locationArray } });
     }
   } else if (location && typeof location === 'string') {
-    conditions.push({ locationSlug: location });
+    conditions.push({ LocationSlug: location });
   }
 
   // Apply isActive filter
   if (isActive !== undefined && isActive !== 'undefined') {
-    conditions.push({ isActive: isActive === 'true' });
+    conditions.push({ IsActive: isActive === 'true' });
   }
 
   // Combine all conditions with AND logic
@@ -82,7 +82,7 @@ export const getSwepBanners = asyncHandler(async (req: Request, res: Response) =
 // @route   GET /api/swep-banners/:location
 // @access  Private
 export const getSwepBannerByLocation = asyncHandler(async (req: Request, res: Response) => {
-  const swepBanner = await SwepBanner.findOne({ locationSlug: req.params.location });
+  const swepBanner = await SwepBanner.findOne({ LocationSlug: req.params.location });
   
   if (!swepBanner) {
     return sendNotFound(res, 'SWEP banner not found for this location');
@@ -98,7 +98,7 @@ export const updateSwepBanner = asyncHandler(async (req: Request, res: Response)
   const { location } = req.params;
   
   // Get existing SWEP banner
-  const existingSwep = await SwepBanner.findOne({ locationSlug: location }).lean();
+  const existingSwep = await SwepBanner.findOne({ LocationSlug: location }).lean();
   if (!existingSwep) {
     return sendNotFound(res, 'SWEP banner not found for this location');
   }
@@ -106,10 +106,10 @@ export const updateSwepBanner = asyncHandler(async (req: Request, res: Response)
   // Process media fields (existing assets + new uploads) using Banner approach
   const processedData = processSwepMediaFields(req);
   
-  // Preserve existing date fields and isActive (not editable in edit form)
-  processedData.swepActiveFrom = existingSwep.swepActiveFrom;
-  processedData.swepActiveUntil = existingSwep.swepActiveUntil;
-  processedData.isActive = existingSwep.isActive;
+  // Preserve existing date fields and IsActive (not editable in edit form)
+  processedData.SwepActiveFrom = existingSwep.SwepActiveFrom;
+  processedData.SwepActiveUntil = existingSwep.SwepActiveUntil;
+  processedData.IsActive = existingSwep.IsActive;
 
   // Validate the processed data
   const validation = validateSwepBanner(processedData);
@@ -122,21 +122,26 @@ export const updateSwepBanner = asyncHandler(async (req: Request, res: Response)
   }
 
   // Store old banner data for file cleanup
-  const oldImage = existingSwep.image;
+  const oldImage = existingSwep.Image;
 
   // Update SWEP banner
   const updatedSwep = await SwepBanner.findOneAndUpdate(
-    { locationSlug: location },
+    { LocationSlug: location },
     {
       ...validation.data,
+      Image: validation.data?.Image || null,
       DocumentModifiedDate: new Date()
     },
     { new: true, runValidators: true }
   );
 
-  // Clean up old image if it was replaced
-  if (updatedSwep && oldImage && oldImage !== updatedSwep.image) {
-    await cleanupSwepUnusedFiles(oldImage);
+  // Clean up old image if it was replaced or removed (empty Image property indicates removal)
+  if (oldImage) {
+    if (!updatedSwep?.Image || updatedSwep.Image === null || oldImage !== updatedSwep.Image) {
+      // Image was removed (empty) or replaced with a new one - delete old image
+      await cleanupSwepUnusedFiles(oldImage);
+      console.log(`Cleaned up old SWEP image: ${oldImage}`);
+    }
   }
 
   return sendSuccess(res, updatedSwep);
@@ -147,23 +152,23 @@ export const updateSwepBanner = asyncHandler(async (req: Request, res: Response)
 // @access  Private
 export const toggleSwepBannerActive = asyncHandler(async (req: Request, res: Response) => {
   const { location } = req.params;
-  const { isActive, swepActiveFrom, swepActiveUntil } = req.body;
+  const { IsActive, SwepActiveFrom, SwepActiveUntil } = req.body;
 
   // Get existing SWEP banner
-  const existingSwep = await SwepBanner.findOne({ locationSlug: location });
+  const existingSwep = await SwepBanner.findOne({ LocationSlug: location });
   if (!existingSwep) {
     return sendNotFound(res, 'SWEP banner not found for this location');
   }
   
   // Prepare update data
-  let shouldActivateNow = isActive !== undefined ? isActive : !existingSwep.isActive;
+  let shouldActivateNow = IsActive !== undefined ? IsActive : !existingSwep.IsActive;
   
   // Check if scheduled start date equals today - if so, activate immediately
-  if (swepActiveFrom !== undefined && swepActiveFrom !== null) {
+  if (SwepActiveFrom !== undefined && SwepActiveFrom !== null) {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
-    const activeFromDate = new Date(swepActiveFrom);
+    const activeFromDate = new Date(SwepActiveFrom);
     activeFromDate.setHours(0, 0, 0, 0);
     
     // If start date is today, activate immediately
@@ -173,28 +178,28 @@ export const toggleSwepBannerActive = asyncHandler(async (req: Request, res: Res
   }
   
   const updateData: any = {
-    isActive: shouldActivateNow,
+    IsActive: shouldActivateNow,
     DocumentModifiedDate: new Date()
   };
 
   // Handle date range for scheduled activation
-  if (swepActiveFrom !== undefined && swepActiveFrom !== null) {
-    updateData.swepActiveFrom = new Date(swepActiveFrom);
-  } else if (updateData.isActive && !existingSwep.swepActiveFrom) {
-    // If activating immediately without dates, set swepActiveFrom to now
-    updateData.swepActiveFrom = new Date();
+  if (SwepActiveFrom !== undefined && SwepActiveFrom !== null) {
+    updateData.SwepActiveFrom = new Date(SwepActiveFrom);
+  } else if (updateData.IsActive && !existingSwep.SwepActiveFrom) {
+    // If activating immediately without dates, set SwepActiveFrom to now
+    updateData.SwepActiveFrom = new Date();
   }
 
-  if (swepActiveUntil !== undefined && swepActiveUntil !== null) {
-    updateData.swepActiveUntil = new Date(swepActiveUntil);
-  } else if (!updateData.isActive && !swepActiveUntil) {
-    // If deactivating without explicit date, set swepActiveUntil to now
-    updateData.swepActiveUntil = new Date();
+  if (SwepActiveUntil !== undefined && SwepActiveUntil !== null) {
+    updateData.SwepActiveUntil = new Date(SwepActiveUntil);
+  } else if (!updateData.IsActive && !SwepActiveUntil) {
+    // If deactivating without explicit date, set SwepActiveUntil to now
+    updateData.SwepActiveUntil = new Date();
   }
 
   // Update SWEP banner
   const updatedSwep = await SwepBanner.findOneAndUpdate(
-    { locationSlug: location },
+    { LocationSlug: location },
     updateData,
     { new: true, runValidators: true }
   );
@@ -215,16 +220,20 @@ function processSwepMediaFields(req: Request): any {
   const existingData = processedData.existing_image 
     ? JSON.parse(processedData.existing_image) 
     : null;
+  const explicitImageValue = processedData.Image; // Check for explicit Image field
 
   if (newFileData) {
     // New file uploaded - uploadMiddleware attaches asset with Url property
-    processedData.image = newFileData.Url || newFileData.url;
+    processedData.Image = newFileData.Url || newFileData.url;
   } else if (existingData) {
     // No new file, preserve existing image URL
-    processedData.image = existingData.url || existingData.Url;
+    processedData.Image = existingData.url || existingData.Url;
+  } else if (explicitImageValue === '') {
+    // User explicitly removed the image by sending empty string
+    processedData.Image = '';
   } else {
-    // Image removed by user
-    processedData.image = undefined;
+    // Image removed by user (no explicit value, no new file, no existing data)
+    processedData.Image = '';
   }
 
   // Clean up temporary form data keys
@@ -236,12 +245,12 @@ function processSwepMediaFields(req: Request): any {
 
 // Helper function to clean up uploaded files when validation fails
 async function cleanupSwepUploadedFiles(processedData: any): Promise<void> {
-  if (processedData.image) {
+  if (processedData.Image && processedData.Image !== '') {
     try {
-      await deleteFile(processedData.image);
-      console.log(`Cleaned up uploaded SWEP image after validation failure: ${processedData.image}`);
+      await deleteFile(processedData.Image);
+      console.log(`Cleaned up uploaded SWEP image after validation failure: ${processedData.Image}`);
     } catch (error) {
-      console.error(`Failed to delete uploaded SWEP image ${processedData.image}:`, error);
+      console.error(`Failed to delete uploaded SWEP image ${processedData.Image}:`, error);
       // Don't throw - file cleanup failure shouldn't break the response
     }
   }

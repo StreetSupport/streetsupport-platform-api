@@ -38,32 +38,32 @@ export function startSwepActivationJob() {
           let needsUpdate = false;
 
           // Check if banner should be activated today
-          if (swep.swepActiveFrom) {
-            const activeFromDate = new Date(swep.swepActiveFrom);
+          if (swep.SwepActiveFrom) {
+            const activeFromDate = new Date(swep.SwepActiveFrom);
             activeFromDate.setUTCHours(0, 0, 0, 0); // Use UTC for consistent comparison
 
             // If today equals or is after the activeFrom date and banner is not active
-            if (activeFromDate.getTime() === today.getTime() && !swep.isActive) {
-              updateData.isActive = true;
+            if (activeFromDate.getTime() === today.getTime() && !swep.IsActive) {
+              updateData.IsActive = true;
               needsUpdate = true;
               activatedCount++;
-              console.log(`SWEP banner activated: ${swep.locationName} (${swep.locationSlug})`);
-              console.log(`  - Active from: ${swep.swepActiveFrom.toISOString()}`);
+              console.log(`SWEP banner activated: ${swep.LocationName} (${swep.LocationSlug})`);
+              console.log(`  - Active from: ${swep.SwepActiveFrom.toISOString()}`);
             }
           }
 
           // Check if banner should be deactivated today
-          if (swep.swepActiveUntil) {
-            const activeUntilDate = new Date(swep.swepActiveUntil);
+          if (swep.SwepActiveUntil) {
+            const activeUntilDate = new Date(swep.SwepActiveUntil);
             activeUntilDate.setUTCHours(0, 0, 0, 0); // Use UTC for consistent comparison
 
             // If today equals or is after the activeUntil date and banner is active
-            if (activeUntilDate.getTime() === today.getTime() && swep.isActive) {
-              updateData.isActive = false;
+            if (activeUntilDate.getTime() === today.getTime() && swep.IsActive) {
+              updateData.IsActive = false;
               needsUpdate = true;
               deactivatedCount++;
-              console.log(`SWEP banner deactivated: ${swep.locationName} (${swep.locationSlug})`);
-              console.log(`  - Active until: ${swep.swepActiveUntil.toISOString()}`);
+              console.log(`SWEP banner deactivated: ${swep.LocationName} (${swep.LocationSlug})`);
+              console.log(`  - Active until: ${swep.SwepActiveUntil.toISOString()}`);
             }
           }
 
@@ -76,7 +76,7 @@ export function startSwepActivationJob() {
             );
           }
         } catch (error) {
-          const errorMsg = `Error updating ${swep.locationName}: ${error instanceof Error ? error.message : 'Unknown error'}`;
+          const errorMsg = `Error updating ${swep.LocationName}: ${error instanceof Error ? error.message : 'Unknown error'}`;
           console.error(errorMsg);
           errors.push(errorMsg);
         }
@@ -130,12 +130,12 @@ export async function runSwepActivationCheckNow() {
 
     for (const swep of swepBanners) {
       // Check activation date
-      if (swep.swepActiveFrom) {
-        const activeFromDate = new Date(swep.swepActiveFrom);
+      if (swep.SwepActiveFrom) {
+        const activeFromDate = new Date(swep.SwepActiveFrom);
         activeFromDate.setUTCHours(0, 0, 0, 0);
         
         if (activeFromDate.getTime() === today.getTime()) {
-          if (!swep.isActive) {
+          if (!swep.IsActive) {
             stats.needsActivation++;
           } else {
             stats.alreadyActive++;
@@ -144,12 +144,12 @@ export async function runSwepActivationCheckNow() {
       }
 
       // Check deactivation date
-      if (swep.swepActiveUntil) {
-        const activeUntilDate = new Date(swep.swepActiveUntil);
+      if (swep.SwepActiveUntil) {
+        const activeUntilDate = new Date(swep.SwepActiveUntil);
         activeUntilDate.setUTCHours(0, 0, 0, 0);
         
         if (activeUntilDate.getTime() === today.getTime()) {
-          if (swep.isActive) {
+          if (swep.IsActive) {
             stats.needsDeactivation++;
           } else {
             stats.alreadyInactive++;

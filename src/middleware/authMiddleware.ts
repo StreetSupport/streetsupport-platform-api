@@ -1488,10 +1488,10 @@ export const requireSwepBannerAccess = asyncHandler(async (req: Request, res: Re
     
     if (swepBannerLocation) {
       try{
-        const banner = await SwepBanner.findOne({ locationSlug: swepBannerLocation }).lean();
+        const banner = await SwepBanner.findOne({ LocationSlug: swepBannerLocation }).lean();
 
         // For location-based access, check the LocationSlug
-        const locations = (banner?.locationSlug || '').split(',').map(l => l.trim()).filter(Boolean);
+        const locations = (banner?.LocationSlug || '').split(',').map(l => l.trim()).filter(Boolean);
           
         if (validateSwepAndCityAdminLocationsAccess(userAuthClaims, locations, res)) {
           return; // Access denied, response already sent

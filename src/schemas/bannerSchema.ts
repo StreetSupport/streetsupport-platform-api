@@ -21,7 +21,6 @@ import {
   preprocessBoolean,
   preprocessDate,
   preprocessJSON,
-  preprocessNullableString,
   preprocessNullableObject
 } from './validationHelpers.js';
 import { BannerTemplateType, UrgencyLevel, CharterType, LayoutStyle, TextColour, BackgroundType } from '../types/index.js';

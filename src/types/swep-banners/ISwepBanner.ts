@@ -9,18 +9,18 @@ export interface ISwepBanner extends Document {
   CreatedBy: string;
 
   // Core fields
-  locationSlug: string;
-  locationName: string;
-  title: string;
-  body: string; // HTML content
-  image: string; // Blob storage URL - required in database
-  shortMessage: string;
+  LocationSlug: string;
+  LocationName: string;
+  Title: string;
+  Body: string; // HTML content
+  Image?: string; // Blob storage URL - required in database
+  ShortMessage: string;
   
   // Date fields
-  swepActiveFrom?: Date;
-  swepActiveUntil?: Date;
-  isActive: boolean;
+  SwepActiveFrom?: Date;
+  SwepActiveUntil?: Date;
+  IsActive: boolean;
   
   // Emergency contact
-  emergencyContact: IEmergencyContact;
+  EmergencyContact: IEmergencyContact;
 }
