@@ -1,48 +1,16 @@
 import { z } from 'zod';
-import { ValidationResult, createValidationResult } from './validationHelpers.js';
+import { 
+  ValidationResult, 
+  createValidationResult,
+  preprocessJSON,
+  preprocessBoolean,
+  preprocessNumber,
+  preprocessNullableString,
+  preprocessNullableObject
+} from './validationHelpers.js';
 import { LocationCoordinatesSchema } from './organisationSchema.js';
 import { AccommodationType, DiscretionaryValue, SupportOfferedType } from '../types/index.js';
 import { isValidPostcodeFormat } from '../utils/postcodeValidation.js';
-
-// Preprocessing helpers
-const preprocessJSON = (val: unknown) => {
-  if (typeof val === 'string') {
-    try {
-      return JSON.parse(val);
-    } catch {
-      return val;
-    }
-  }
-  return val;
-};
-
-const preprocessBoolean = (val: unknown) => {
-  if (typeof val === 'string') {
-    if (val === 'true') return true;
-    if (val === 'false') return false;
-  }
-  return val;
-};
-
-const preprocessNumber = (val: unknown) => {
-  if (typeof val === 'string') {
-    const parsed = Number(val);
-    if (!isNaN(parsed)) return parsed;
-  }
-  return val;
-};
-
-// Preprocessing helper to convert null/undefined to empty string
-const preprocessNullableString = (val: unknown) => {
-  if (val === null || val === undefined) return '';
-  return val;
-};
-
-// Preprocessing helper to convert null/undefined to empty string
-const preprocessNullableObject = (val: unknown) => {
-  if (val === null || val === undefined) return {};
-  return preprocessJSON(val);
-};
 
 // Enum for discretionary values: 0 = No, 1 = Yes, 2 = Don't Know/Ask
 const DiscretionaryValueSchema = z.nativeEnum(DiscretionaryValue);

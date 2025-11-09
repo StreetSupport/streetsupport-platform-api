@@ -9,7 +9,7 @@ import {
   incrementDownloadCount
 } from '../controllers/bannerController.js';
 import { bannersAuth, bannersByLocationAuth } from '../middleware/authMiddleware.js';
-import { uploadMiddleware } from '../middleware/uploadMiddleware.js';
+import { bannersUploadMiddleware } from '../middleware/uploadMiddleware.js';
 
 const router = Router();
 
@@ -19,8 +19,8 @@ router.post('/:id/download', incrementDownloadCount);
 // Protected routes
 router.get('/', bannersByLocationAuth, getBanners);
 router.get('/:id', bannersAuth, getBannerById);
-router.post('/', bannersAuth, uploadMiddleware, createBanner);
-router.put('/:id', bannersAuth, uploadMiddleware, updateBanner);
+router.post('/', bannersAuth, bannersUploadMiddleware, createBanner);
+router.put('/:id', bannersAuth, bannersUploadMiddleware, updateBanner);
 router.patch('/:id/toggle', bannersAuth, toggleBannerStatus);
 router.delete('/:id', bannersAuth, deleteBanner);
 

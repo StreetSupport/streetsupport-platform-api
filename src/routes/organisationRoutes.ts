@@ -15,7 +15,7 @@ import { organisationsAuth, organisationsByKeyAuth, organisationsByLocationAuth,
 const router = Router();
 
 router.get('/', organisationsByLocationAuth, getOrganisations);
-router.get('/:id', organisationsByKeyAuth, getOrganisationByKey);
+router.get('/:key', organisationsByKeyAuth, getOrganisationByKey);
 router.post('/', organisationsAuth, createOrganisation);
 router.put('/:id', organisationsAuth, updateOrganisation);
 router.patch('/:id/toggle-verified', verifyOrganisationsAuth, toggleVerified);

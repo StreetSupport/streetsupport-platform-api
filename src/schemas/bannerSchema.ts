@@ -16,56 +16,14 @@ import {
   sharedBannerRefinements,
   type ValidationResult
 } from './bannerSchemaCore.js';
+import {
+  preprocessNumber,
+  preprocessBoolean,
+  preprocessDate,
+  preprocessJSON,
+  preprocessNullableObject
+} from './validationHelpers.js';
 import { BannerTemplateType, UrgencyLevel, CharterType, LayoutStyle, TextColour, BackgroundType } from '../types/index.js';
-
-// Helper function to preprocess FormData strings to proper types
-// const preprocessString = (val: unknown) => {
-//   if (typeof val === 'string') {
-//     // Handle quoted JSON strings from FormData
-//     if (val.startsWith('"') && val.endsWith('"')) {
-//       return val.slice(1, -1);
-//     }
-//     return val;
-//   }
-//   return val;
-// };
-
-const preprocessNumber = (val: unknown) => {
-  if (typeof val === 'string') {
-    const num = parseFloat(val);
-    return isNaN(num) ? val : num;
-  }
-  return val;
-};
-
-const preprocessBoolean = (val: unknown) => {
-  if (typeof val === 'string') {
-    if (val === 'true') return true;
-    if (val === 'false') return false;
-  }
-  return val;
-};
-
-const preprocessDate = (val: unknown) => {
-  if (typeof val === 'string') {
-    // Handle quoted date strings from FormData
-    const dateStr = val.startsWith('"') && val.endsWith('"') ? val.slice(1, -1) : val;
-    const date = new Date(dateStr);
-    return isNaN(date.getTime()) ? val : date;
-  }
-  return val;
-};
-
-const preprocessJSON = (val: unknown) => {
-  if (typeof val === 'string') {
-    try {
-      return JSON.parse(val);
-    } catch {
-      return val;
-    }
-  }
-  return val;
-};
 
 // API-specific schemas with preprocessing for FormData
 export const MediaAssetSchema = MediaAssetSchemaCore;
@@ -114,13 +72,13 @@ const BannerApiBaseSchema = BannerSchemaCore.omit({
   StartDate: z.preprocess(preprocessDate, z.date()).optional(),
   EndDate: z.preprocess(preprocessDate, z.date()).optional(),
   CtaButtons: z.preprocess(
-    preprocessJSON,
+    preprocessNullableObject,
     z.array(CTAButtonSchema).max(3, 'Maximum 3 CTA buttons allowed').optional()
   ).optional(),
   Background: z.preprocess(preprocessJSON, BannerBackgroundSchema),
-  GivingCampaign: z.preprocess(preprocessJSON, GivingCampaignApiSchema).optional(),
-  PartnershipCharter: z.preprocess(preprocessJSON, PartnershipCharterSchemaCore).optional(),
-  ResourceProject: z.preprocess(preprocessJSON, ResourceProjectApiSchema).optional(),
+  GivingCampaign: z.preprocess(preprocessNullableObject, GivingCampaignApiSchema).optional(),
+  PartnershipCharter: z.preprocess(preprocessNullableObject, PartnershipCharterSchemaCore).optional(),
+  ResourceProject: z.preprocess(preprocessNullableObject, ResourceProjectApiSchema).optional(),
 
   // Audit fields (may come from form data during edits)
   CreatedBy: z.string().optional(),

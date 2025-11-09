@@ -19,6 +19,7 @@ import {
 import { asyncHandler } from '../utils/asyncHandler.js';
 import Accommodation from '../models/accommodationModel.js';
 import GroupedService from '../models/groupedServiceModel.js';
+import SwepBanner from 'models/swepModel.js';
 
 type PreValidatedBannerData = z.output<typeof BannerPreUploadApiSchema>;
 // Extend Request interface to include user
@@ -155,7 +156,36 @@ const validateCityAdminLocationsAccess = (
     const cityAdminClaim = `${ROLE_PREFIXES.CITY_ADMIN_FOR}${locationId}`;
     return !userAuthClaims.includes(cityAdminClaim);
   });
+
+  if (deniedLocations.length > 0) {
+    return true; // Access denied - response sent
+  }
   
+  return false; // Access granted to all locations
+};
+
+/**
+ * Helper: validates SwepAdmin and CityAdmin access for multiple locations.
+ * Sends forbidden response and returns true if access is denied to any location.
+ * Returns false if access is granted to all locations (no response sent).
+ */
+const validateSwepAndCityAdminLocationsAccess = (
+  userAuthClaims: string[],
+  locationIds: string[],
+  res: Response
+): boolean => {
+  if (!locationIds.length) {
+    sendForbidden(res, `Access denied. Location should be provided`);
+    return true; // Access denied - response sent
+  }
+
+  // Check if user has access to ALL locations in the list
+  const deniedLocations = locationIds.filter(locationId => {
+    const swepAdminClaim = `${ROLE_PREFIXES.SWEP_ADMIN_FOR}${locationId}`;
+    const cityAdminClaim = `${ROLE_PREFIXES.CITY_ADMIN_FOR}${locationId}`;
+    return !userAuthClaims.includes(swepAdminClaim) && !userAuthClaims.includes(cityAdminClaim);
+  });
+
   if (deniedLocations.length > 0) {
     sendForbidden(res, `Access denied for location(s): ${deniedLocations.join(', ')}`);
     return true; // Access denied - response sent
@@ -253,10 +283,14 @@ export const citiesAuth = [
 ];
 
 /**
- * Middleware for organisation access control based on location and organization
+ * Middleware for organisation access by key
  */
 export const requireOrganisationByKeyAccess = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {  
   if (ensureAuthenticated(req, res)) { return; }
+
+  if (req.method !== HTTP_METHODS.GET) {
+    return sendForbidden(res, 'Invalid HTTP method for this endpoint');
+  }
 
   const userAuthClaims = req.user?.AuthClaims || [];
 
@@ -264,10 +298,10 @@ export const requireOrganisationByKeyAccess = asyncHandler(async (req: Request, 
   if (handleSuperAdminAccess(userAuthClaims) || handleVolunteerAdminAccess(userAuthClaims)) { return next(); }
 
   // For operations on specific organisations, check access based on role
-  const organisationId = req.params.id;
-  if (organisationId && (req.method === HTTP_METHODS.GET || req.method === HTTP_METHODS.PUT || req.method === HTTP_METHODS.PATCH || req.method === HTTP_METHODS.DELETE)) {
+  const organisationKey = req.params.key;
+  if (organisationKey) {
     // find by key instead of id
-    const organisation = await Organisation.findOne({ Key: organisationId }).lean();
+    const organisation = await Organisation.findOne({ Key: organisationKey }).lean();
     
     if (!organisation) {
       return sendNotFound(res, 'Organisation');
@@ -287,21 +321,11 @@ export const requireOrganisationByKeyAccess = asyncHandler(async (req: Request, 
     return sendForbidden(res);
   }
 
-  if (req.body && req.method === HTTP_METHODS.POST) {
-    // Check CityAdmin access
-    if (userAuthClaims.includes(ROLES.CITY_ADMIN)) {
-      const associatedLocationIds = req.body?.AssociatedLocationIds || [];
-      if (hasCityAdminLocationAccess(userAuthClaims, associatedLocationIds)) {
-        return next();
-      }
-    }
-  }
-
   return sendForbidden(res);
 });
 
 /**
- * Combined middleware for service providers endpoint
+ * Combined middleware for getting service providers by key endpoint
  */
 export const organisationsByKeyAuth = [
   authenticate,
@@ -434,7 +458,7 @@ export const requireOrganisationLocationAccess = (req: Request, res: Response, n
 };
 
 /**
- * Combined middleware for service providers endpoint
+ * Combined middleware for getting service providers by location endpoint
  */
 export const organisationsByLocationAuth = [
   authenticate,
@@ -1442,58 +1466,48 @@ export const bannersByLocationAuth = [
   requireBannerLocationAccess
 ];
 
-
 /**
  * Middleware for SWEP banner access control with location validation
  */
 export const requireSwepBannerAccess = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
   if (ensureAuthenticated(req, res)) return;
 
-  const userAuthClaims = req.user?.AuthClaims || [];
+  if (req.method === HTTP_METHODS.GET || req.method === HTTP_METHODS.PUT || req.method === HTTP_METHODS.PATCH) {
+    const userAuthClaims = req.user?.AuthClaims || [];
   
-  // SuperAdmin global rule
-  if (handleSuperAdminAccess(userAuthClaims)) { return next(); }
+    // SuperAdmin global rule
+    if (handleSuperAdminAccess(userAuthClaims) || handleVolunteerAdminAccess(userAuthClaims)) { return next(); }
 
-  // Check if user has SwepAdmin role
-  if (!userAuthClaims.includes(ROLES.SWEP_ADMIN) && !userAuthClaims.includes(ROLES.CITY_ADMIN)) {
+    // Check if user has SwepAdmin role
+    if (!userAuthClaims.includes(ROLES.SWEP_ADMIN) && !userAuthClaims.includes(ROLES.CITY_ADMIN)) {
+      return sendForbidden(res);
+    }
+
+    // For operations on specific SWEP banners, check LocationId access
+    const swepBannerLocation = req.params.location;
+    
+    if (swepBannerLocation) {
+      try{
+        const banner = await SwepBanner.findOne({ LocationSlug: swepBannerLocation }).lean();
+
+        // For location-based access, check the LocationSlug
+        const locations = (banner?.LocationSlug || '').split(',').map(l => l.trim()).filter(Boolean);
+          
+        if (validateSwepAndCityAdminLocationsAccess(userAuthClaims, locations, res)) {
+          return; // Access denied, response already sent
+        }
+
+        next();
+      }
+      catch (error) {
+        console.error('Error validating SWEP banner access:', error);
+        return sendInternalError(res);
+      }
+    }
+  }
+  else {
     return sendForbidden(res);
   }
-
-  // For operations on specific SWEP banners, check LocationId access
-  const swepBannerId = req.params.id;
-  if (swepBannerId && (req.method === HTTP_METHODS.GET || req.method === HTTP_METHODS.PUT || req.method === HTTP_METHODS.PATCH || req.method === HTTP_METHODS.DELETE)) {
-    try{
-      // TODO: When SwepBanner model is created with LocationId field, validate against user's CityAdminFor claims
-      // For now, allow any SwepAdmin+CityAdmin to access
-      // const banner = await SwepBanner.findById(swepBannerId).lean();
-
-      // // For location-based access, check the LocationSlug
-      // const locations = (banner?.LocationSlug || '').split(',').map(l => l.trim()).filter(Boolean);
-        
-      // if (validateCityAdminLocationsAccess(userAuthClaims, locations, res)) {
-      //   return; // Access denied, response already sent
-      // }
-
-      // next();
-    }
-    catch (error) {
-      console.error('Error validating SWEP banner access:', error);
-      return sendInternalError(res);
-    }
-  }
-
-  if (req.method === HTTP_METHODS.POST) {
-    // For location-based access, check the LocationSlug
-    const locations = (req.body?.LocationId || '').split(',').map(l => l.trim()).filter(Boolean);
-      
-    if (validateCityAdminLocationsAccess(userAuthClaims, locations, res)) {
-      return; // Access denied, response already sent
-    }
-
-    return next();
-  }
-
-  return sendForbidden(res);
 });
 
 /**
@@ -1507,13 +1521,17 @@ export const swepBannersAuth = [
 /**
  * Middleware for SWEP banners location-based access
  */
-export const requireSwepBannerLocationAccess = (req: Request, res: Response, next: NextFunction) => {
+export const requireSwepBannerByFiltersAccess = (req: Request, res: Response, next: NextFunction) => {
   if (ensureAuthenticated(req, res)) return;
+
+  if (req.method !== HTTP_METHODS.GET) {
+    return sendForbidden(res, 'Invalid HTTP method for this endpoint');
+  }
 
   const userAuthClaims = req.user?.AuthClaims || [];
   
   // SuperAdmin global rule
-  if (handleSuperAdminAccess(userAuthClaims)) { return next(); }
+  if (handleSuperAdminAccess(userAuthClaims) || handleVolunteerAdminAccess(userAuthClaims)) { return next(); }
 
   // Check if user has SwepAdmin role
   if (!userAuthClaims.includes(ROLES.SWEP_ADMIN) && !userAuthClaims.includes(ROLES.CITY_ADMIN)) {
@@ -1523,7 +1541,7 @@ export const requireSwepBannerLocationAccess = (req: Request, res: Response, nex
   // For location-based access, check the location and locations param
   const locations = extractLocationsFromQuery(req);
 
-  if (validateCityAdminLocationsAccess(userAuthClaims, locations, res)) {
+  if (validateSwepAndCityAdminLocationsAccess(userAuthClaims, locations, res)) {
     return; // Access denied, response already sent
   }
 
@@ -1533,9 +1551,9 @@ export const requireSwepBannerLocationAccess = (req: Request, res: Response, nex
 /**
  * Combined middleware for SWEP banners endpoint
  */
-export const swepBannersByLocationAuth = [
+export const swepBannersGetAuth = [
   authenticate,
-  requireSwepBannerLocationAccess
+  requireSwepBannerByFiltersAccess
 ];
 
 /**
