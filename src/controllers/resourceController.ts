@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { asyncHandler } from '../utils/asyncHandler.js';
-import { sendSuccess, sendError, sendBadRequest, sendNotFound, sendCreated } from '../utils/apiResponses.js';
+import { sendSuccess, sendBadRequest, sendNotFound } from '../utils/apiResponses.js';
 import Resource from '../models/resourceModel.js';
 import { validateResource } from '../schemas/resourceSchema.js';
 import { deleteFile } from '../middleware/uploadMiddleware.js';
