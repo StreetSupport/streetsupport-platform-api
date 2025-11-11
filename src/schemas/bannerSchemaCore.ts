@@ -64,10 +64,13 @@ export const BannerBackgroundSchemaCore = z.object({
 // Core CTA Button Schema - shared validation rules
 export const CTAButtonSchemaCore = z.object({
   Label: z.string().min(1, 'Button label is required').max(20, 'Button label must be 20 characters or less'),
-  Url: z.string().min(1, 'Button URL is required').refine(
-    (url) => url.startsWith('/') || /^https?:\/\//.test(url),
-    'URL must be a valid URL or relative path'
-  ),
+  Url: z
+    .string()
+    .min(1, 'Button URL is required')
+    .refine(
+      (value) => value.startsWith('/') || z.string().url().safeParse(value).success,
+      'URL must be a valid URL or relative path'
+    ),
   Variant: z.nativeEnum(CTAVariant).default(CTAVariant.PRIMARY),
   External: z.boolean().optional().default(false),
   AutomaticallyPopulatedUrl: z.boolean().optional(),

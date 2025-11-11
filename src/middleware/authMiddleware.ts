@@ -1557,7 +1557,7 @@ export const swepBannersGetAuth = [
 ];
 
 /**
- * Middleware for resource access control with location validation
+ * Middleware for resource access control
  */
 export const requireResourceAccess = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
   if (ensureAuthenticated(req, res)) return;
@@ -1565,46 +1565,7 @@ export const requireResourceAccess = asyncHandler(async (req: Request, res: Resp
   const userAuthClaims = req.user?.AuthClaims || [];
   
   // SuperAdmin global rule
-  if (handleSuperAdminAccess(userAuthClaims)) { return next(); }
-
-  // Check if user is a CityAdmin
-  if (!userAuthClaims.includes(ROLES.CITY_ADMIN)) {
-    return sendForbidden(res);
-  }
-
-  // For operations on specific resources, check LocationId access
-  const resourceId = req.params.id;
-  if (resourceId && (req.method === HTTP_METHODS.GET || req.method === HTTP_METHODS.PUT || req.method === HTTP_METHODS.DELETE)) {
-    try{
-      // TODO: When Resource model is created with LocationId field, validate against user's CityAdminFor claims
-      // For now, allow any CityAdmin to access
-      // const resource = await Resource.findById(resourceId).lean();
-
-      // // For location-based access, check the LocationSlug
-      // const locations = (banner?.LocationSlug || '').split(',').map(l => l.trim()).filter(Boolean);
-        
-      // if (validateCityAdminLocationsAccess(userAuthClaims, locations, res)) {
-      //   return; // Access denied, response already sent
-      // }
-
-      // next();
-    }
-    catch (error) {
-      console.error('Error validating resource access:', error);
-      return sendInternalError(res);
-    }   
-  }
-
-  if (req.body && req.method === HTTP_METHODS.POST) {
-    // For location-based access, check the LocationSlug
-    const locations = (req.body?.LocationId || '').split(',').map(l => l.trim()).filter(Boolean);
-      
-    if (validateCityAdminLocationsAccess(userAuthClaims, locations, res)) {
-      return; // Access denied, response already sent
-    }
-
-    return next();
-  }
+  if (handleSuperAdminAccess(userAuthClaims) || handleVolunteerAdminAccess(userAuthClaims)) { return next(); }
 
   return sendForbidden(res);
 });
@@ -1615,38 +1576,4 @@ export const requireResourceAccess = asyncHandler(async (req: Request, res: Resp
 export const resourcesAuth = [
   authenticate,
   requireResourceAccess
-];
-
-/**
- * Middleware for resource location-based access (GET /resources/location/:locationId)
- */
-export const requireResourceLocationAccess = (req: Request, res: Response, next: NextFunction) => {
-  if (ensureAuthenticated(req, res)) return;
-
-  const userAuthClaims = req.user?.AuthClaims || [];
-  
-  // SuperAdmin global rule
-  if (handleSuperAdminAccess(userAuthClaims)) { return next(); }
-
-  // Check if user is a CityAdmin
-  if (!userAuthClaims.includes(ROLES.CITY_ADMIN)) {
-    return sendForbidden(res);
-  }
-
-  // For location-based access, check the location and locations param
-  const locations = extractLocationsFromQuery(req);
-  
-  if (validateCityAdminLocationsAccess(userAuthClaims, locations, res)) {
-    return; // Access denied, response already sent
-  }
-
-  next();
-};
-
-/**
- * Combined middleware for resources endpoint by location
- */
-export const resourcesByLocationAuth = [
-  authenticate,
-  requireResourceLocationAccess
 ];

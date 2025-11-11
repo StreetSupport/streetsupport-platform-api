@@ -108,7 +108,7 @@ export function startVerificationJob() {
     }
   });
 
-  console.log('Verification job scheduled to run daily at 9:00 AM');
+  console.log('Organisation verification job scheduled to run daily at 9:00 AM');
 }
 
 /**

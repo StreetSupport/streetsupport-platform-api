@@ -1,19 +1,16 @@
 import { Router } from 'express';
 import { 
   getResources,
-  getResourceById,
-  createResource,
-  updateResource,
-  deleteResource
+  getResourceByKey,
+  updateResource
 } from '../controllers/resourceController.js';
-import { resourcesAuth, resourcesByLocationAuth } from '../middleware/authMiddleware.js';
+import { resourcesAuth } from '../middleware/authMiddleware.js';
+import { uploadResourceFiles } from '../middleware/uploadMiddleware.js';
 
 const router = Router();
 
-router.get('/', resourcesByLocationAuth, getResources);
-router.get('/:id', resourcesAuth, getResourceById);
-router.post('/', resourcesAuth, createResource);
-router.put('/:id', resourcesAuth, updateResource);
-router.delete('/:id', resourcesAuth, deleteResource);
+router.get('/', resourcesAuth, getResources);
+router.get('/:key', resourcesAuth, getResourceByKey);
+router.put('/:key', resourcesAuth, uploadResourceFiles, updateResource);
 
 export default router;

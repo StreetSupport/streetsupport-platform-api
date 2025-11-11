@@ -15,6 +15,7 @@ dotenv.config();
 const AZURE_STORAGE_CONNECTION_STRING = process.env.AZURE_STORAGE_CONNECTION_STRING;
 const BANNERS_CONTAINER_NAME = process.env.AZURE_BANNERS_CONTAINER_NAME || 'banners';
 const SWEPS_CONTAINER_NAME = process.env.AZURE_SWEPS_CONTAINER_NAME || 'sweps';
+const RESOURCES_CONTAINER_NAME = process.env.AZURE_RESOURCES_CONTAINER_NAME || 'resources';
 
 let blobServiceClient: BlobServiceClient | null = null;
 if (AZURE_STORAGE_CONNECTION_STRING) {
@@ -274,6 +275,47 @@ export const uploadSwepImage = async (req: Request, res: Response, next: NextFun
       next();
     } catch (error) {
       console.error('SWEP upload error:', error);
+      sendInternalError(res, 'File upload failed');
+    }
+  });
+};
+
+// Resources-specific upload middleware - handles multiple file uploads to resources container
+export const uploadResourceFiles = async (req: Request, res: Response, next: NextFunction) => {
+  // This will handle files with names like: newfile_LinkList_0_List_0, newfile_LinkList_0_List_1, etc.
+  const uploadAny = upload.any();
+  
+  uploadAny(req, res, async (err) => {
+    if (err) {
+      return sendBadRequest(res, `File upload error: ${err.message}`);
+    }
+
+    try {
+      const files = req.files as Express.Multer.File[];
+      
+      if (!files || files.length === 0) {
+        // No files uploaded, just continue
+        return next();
+      }
+
+      // Process each uploaded file and attach to request body
+      for (const file of files) {
+        // Upload file to resources container
+        let fileUrl: string;
+        if (blobServiceClient) {
+          fileUrl = await uploadToAzure(file, RESOURCES_CONTAINER_NAME);
+        } else {
+          fileUrl = saveToLocal(file, RESOURCES_CONTAINER_NAME);
+        }
+
+        // Attach uploaded file URL to request body using the field name
+        // Field names are like: newfile_LinkList_0_List_0
+        req.body[file.fieldname] = fileUrl;
+      }
+
+      next();
+    } catch (error) {
+      console.error('Resources upload error:', error);
       sendInternalError(res, 'File upload failed');
     }
   });

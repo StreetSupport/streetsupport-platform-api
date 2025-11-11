@@ -103,7 +103,7 @@ export function startDisablingJob() {
     }
   });
 
-  console.log('Organisation disabling job scheduled to run daily at midnight (00:00)');
+  console.log('Organisation disabling job scheduled to run daily at midnight (00:05)');
 }
 
 /**
