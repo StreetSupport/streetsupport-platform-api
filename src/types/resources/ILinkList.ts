@@ -9,8 +9,7 @@ export enum LinkListType {
 }
 
 export interface ILinkList {
-  Name: string;
-  Description: string;
+  Name?: string;
   Type: LinkListType;
   Priority: number;
   Links: ILink[];
@@ -18,10 +17,6 @@ export interface ILinkList {
 
 export const LinkListSchema = new mongoose.Schema<ILinkList>({
   Name: {
-    type: String,
-    required: true,
-  },
-  Description: {
     type: String,
     required: false,
   },
