@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import { IKeyValue, KeyValueSchema } from "./IKeyValue.js";
+import { ILink, LinkSchema } from "./ILink.js";
 
 // Accommodation Type Enum
 export enum LinkListType {
@@ -13,7 +13,7 @@ export interface ILinkList {
   Description: string;
   Type: LinkListType;
   Priority: number;
-  Links: IKeyValue[];
+  Links: ILink[];
 }
 
 export const LinkListSchema = new mongoose.Schema<ILinkList>({
@@ -34,7 +34,7 @@ export const LinkListSchema = new mongoose.Schema<ILinkList>({
     required: true,
   },
   Links: {
-    type: [KeyValueSchema],
+    type: [LinkSchema],
     required: true
   }
 }, { _id: false });

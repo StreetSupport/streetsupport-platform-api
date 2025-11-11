@@ -23,8 +23,8 @@ export const getResources = asyncHandler(async (req: Request, res: Response) => 
       { Body: { $regex: searchTerm, $options: 'i' } },
       { 'LinkList.Name': { $regex: searchTerm, $options: 'i' } },
       { 'LinkList.Description': { $regex: searchTerm, $options: 'i' } },
-      { 'LinkList.Links.Key': { $regex: searchTerm, $options: 'i' } },
-      { 'LinkList.Links.Value': { $regex: searchTerm, $options: 'i' } }
+      { 'LinkList.Links.Title': { $regex: searchTerm, $options: 'i' } },
+      { 'LinkList.Links.Link': { $regex: searchTerm, $options: 'i' } }
     ];
   }
   
@@ -67,8 +67,8 @@ export const updateResource = asyncHandler(async (req: Request, res: Response) =
     existingResource.LinkList.forEach((linkList) => {
       if (linkList.Links && Array.isArray(linkList.Links)) {
         linkList.Links.forEach((item) => {
-          if (item.Value && item.Value.startsWith('http')) {
-            oldFileUrls.push(item.Value);
+          if (item.Link && item.Link.startsWith('http')) {
+            oldFileUrls.push(item.Link);
           }
         });
       }
@@ -112,8 +112,8 @@ export const updateResource = asyncHandler(async (req: Request, res: Response) =
     updatedResource.LinkList.forEach((linkList) => {
       if (linkList.Links && Array.isArray(linkList.Links)) {
         linkList.Links.forEach((item) => {
-          if (item.Value && item.Value.startsWith('http')) {
-            newFileUrls.add(item.Value);
+          if (item.Link && item.Link.startsWith('http')) {
+            newFileUrls.add(item.Link);
           }
         });
       }
@@ -156,7 +156,7 @@ function processResourceFormData(body: any): any {
           if (uploadedFileUrl) {
             return {
               ...item,
-              Value: uploadedFileUrl
+              Link: uploadedFileUrl
             };
           }
           

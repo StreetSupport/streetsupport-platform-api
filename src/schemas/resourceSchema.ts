@@ -2,10 +2,10 @@ import { z } from 'zod';
 import { LinkListType } from '../types/resources/ILinkList.js';
 import { preprocessJSON, preprocessNumber } from './validationHelpers.js';
 
-// KeyValue Schema for link list items
-export const KeyValueSchema = z.object({
-  Key: z.string().min(1, 'Link name is required'),
-  Value: z.string().min(1, 'Link URL is required')
+// Link Schema for link list items
+export const LinkSchema = z.object({
+  Title: z.string().min(1, 'Link name is required'),
+  Link: z.string().min(1, 'Link URL is required').url('Please enter a valid URL')
 });
 
 // LinkList Schema
@@ -19,7 +19,7 @@ export const LinkListSchema = z.object({
     preprocessNumber,
     z.number().min(1, 'Priority must be at least 1').max(10, 'Priority must be at most 10')
   ),
-  Links: z.array(KeyValueSchema).min(1, 'At least one link is required')
+  Links: z.array(LinkSchema).min(1, 'At least one link is required')
 });
 
 // Main Resource Schema for API validation
