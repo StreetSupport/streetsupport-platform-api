@@ -1,11 +1,11 @@
 import mongoose from "mongoose";
 import { ILink, LinkSchema } from "./ILink.js";
 
-// Accommodation Type Enum
+// Link List Type Enum
 export enum LinkListType {
   LINK = 'link',
   CARD_LINK = 'card-link',
-  PDF_LINK = 'pdf-link'
+  FILE_LINK = 'file-link'
 }
 
 export interface ILinkList {

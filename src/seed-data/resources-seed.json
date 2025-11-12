@@ -375,7 +375,7 @@
     "LinkList": [
       {
         "Name": "",
-        "Type": "pdf-link",
+        "Type": "file-link",
         "Priority": 1,
         "Links": [
           {
