@@ -5,14 +5,14 @@ import { preprocessJSON, preprocessNumber } from './validationHelpers.js';
 // Link Schema for link list items
 export const LinkSchema = z.object({
   Title: z.string().min(1, 'Link name is required'),
-  Link: z.string().min(1, 'Link URL is required').url('Please enter a valid URL'),
-  Description: z.string().optional(), // For pdf-link type
-  Header: z.string().optional() // For pdf-link type
+  Link: z.string(),
+  Description: z.string().optional(), // For file-link type
+  Header: z.string().optional() // For file-link type
 });
 
 // LinkList Schema
 export const LinkListSchema = z.object({
-  Name: z.string().min(1, 'Link list name is required').optional(),
+  Name: z.string().optional(),
   Type: z.nativeEnum(LinkListType, {
     message: 'Invalid link list type'
   }),

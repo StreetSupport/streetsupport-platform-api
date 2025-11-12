@@ -23,8 +23,8 @@ export function startSwepActivationJob() {
       // Find all SWEP banners that have activation dates
       const swepBanners = await SwepBanner.find({
         $or: [
-          { swepActiveFrom: { $exists: true, $ne: null } },
-          { swepActiveUntil: { $exists: true, $ne: null } }
+          { SwepActiveFrom: { $exists: true, $ne: null } },
+          { SwepActiveUntil: { $exists: true, $ne: null } }
         ]
       });
 
