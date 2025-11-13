@@ -24,7 +24,7 @@ export function startVerificationJob() {
       const organisations = await Organisation.find({
         'Administrators.IsSelected': true,
         // TODO: remove this after testing
-        DocumentCreationDate: { $gte: new Date('2025-11-01') }
+        DocumentCreationDate: { $gte: new Date('2025-01-01') }
       });
 
       for (const org of organisations) {
