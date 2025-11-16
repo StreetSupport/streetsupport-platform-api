@@ -19,7 +19,7 @@ const getUsers = asyncHandler(async (req: Request, res: Response) => {
     location,
     locations, // New: comma-separated list of locations for CityAdmin filtering
     page = 1, 
-    limit = 10,
+    limit = 9,
     sortBy = 'DocumentModifiedDate',
     sortOrder = 'desc'
   } = req.query;
