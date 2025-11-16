@@ -20,6 +20,7 @@ import { asyncHandler } from '../utils/asyncHandler.js';
 import Accommodation from '../models/accommodationModel.js';
 import GroupedService from '../models/groupedServiceModel.js';
 import SwepBanner from '../models/swepModel.js';
+import LocationLogo from '../models/locationLogosModel.js';
 
 type PreValidatedBannerData = z.output<typeof BannerPreUploadApiSchema>;
 // Extend Request interface to include user
@@ -712,7 +713,7 @@ export const requireFaqAccess = asyncHandler(async (req: Request, res: Response,
   const userAuthClaims = req.user?.AuthClaims || [];
   
   // SuperAdmin global rule
-  if (handleSuperAdminAccess(userAuthClaims)) { return next(); }
+  if (handleSuperAdminAccess(userAuthClaims) || handleVolunteerAdminAccess(userAuthClaims)) { return next(); }
 
   // Check if user is a CityAdmin
   if (!userAuthClaims.includes(ROLES.CITY_ADMIN)) {
@@ -730,9 +731,9 @@ export const requireFaqAccess = asyncHandler(async (req: Request, res: Response,
 
     const locationKey = faq.LocationKey;
     
-    // If LocationKey is 'general', any CityAdmin can access
+    // If LocationKey is 'general', only SuperAdmin and VolunteerAdmin can access
     if (locationKey === 'general') {
-      return next();
+      return sendForbidden(res, 'Access to general advice is restricted to SuperAdmin and VolunteerAdmin');
     }
 
     // For location-based access, check the locationKey
@@ -746,9 +747,16 @@ export const requireFaqAccess = asyncHandler(async (req: Request, res: Response,
   }
 
   if (req.body && req.method === HTTP_METHODS.POST) {
+    const locationKey = req.body.LocationKey;
+    
+    // If LocationKey is 'general', only SuperAdmin and VolunteerAdmin can create
+    if (locationKey === 'general') {
+      return sendForbidden(res, 'Creating general advice is restricted to SuperAdmin and VolunteerAdmin');
+    }
+    
     if (userAuthClaims.includes(ROLES.CITY_ADMIN)) {
       // Check if user has access to the specific location
-      const cityAdminClaim = `${ROLE_PREFIXES.CITY_ADMIN_FOR}${req.body.LocationKey}`;
+      const cityAdminClaim = `${ROLE_PREFIXES.CITY_ADMIN_FOR}${locationKey}`;
       if (userAuthClaims.includes(cityAdminClaim)) {
         return next();
       }
@@ -779,7 +787,7 @@ export const requireFaqLocationAccess = (req: Request, res: Response, next: Next
   const userAuthClaims = req.user?.AuthClaims || [];
   
   // SuperAdmin global rule
-  if (handleSuperAdminAccess(userAuthClaims)) { return next(); }
+  if (handleSuperAdminAccess(userAuthClaims) || handleVolunteerAdminAccess(userAuthClaims)) { return next(); }
 
   // Check if user is a CityAdmin
   if (!userAuthClaims.includes(ROLES.CITY_ADMIN)) {
@@ -789,13 +797,16 @@ export const requireFaqLocationAccess = (req: Request, res: Response, next: Next
   // For location-based access, check the location param
   const locationId = req.params.location;
 
-  // If LocationKey is 'general', any CityAdmin can access
-  if (locationId === 'general') {
-    return next();
-  }
-
   // For location-based access, check the locationId param
   const locations = extractLocationsFromQuery(req);
+
+  // If LocationKey is 'general', only SuperAdmin and VolunteerAdmin can access
+  if (locationId === 'general' || locations.includes('general')) {
+    if (userAuthClaims.includes(ROLES.SUPER_ADMIN) || userAuthClaims.includes(ROLES.VOLUNTEER_ADMIN)) {
+      return next();
+    }
+    return sendForbidden(res, 'Access to general advice is restricted to SuperAdmin and VolunteerAdmin');
+  }
 
   if (validateCityAdminLocationsAccess(userAuthClaims, locations, res)) {
     return; // Access denied, response already sent
@@ -1576,4 +1587,105 @@ export const requireResourceAccess = asyncHandler(async (req: Request, res: Resp
 export const resourcesAuth = [
   authenticate,
   requireResourceAccess
+];
+
+/**
+ * Middleware for location logo access control with location validation
+ */
+export const requireLocationLogoAccess = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
+  if (ensureAuthenticated(req, res)) return;
+
+  if (req.method === HTTP_METHODS.GET || req.method === HTTP_METHODS.PUT || req.method === HTTP_METHODS.POST || req.method === HTTP_METHODS.DELETE) {
+    const userAuthClaims = req.user?.AuthClaims || [];
+  
+    // SuperAdmin and VolunteerAdmin global rule
+    if (handleSuperAdminAccess(userAuthClaims) || handleVolunteerAdminAccess(userAuthClaims)) { return next(); }
+
+    // Check if user has CityAdmin role
+    if (!userAuthClaims.includes(ROLES.CITY_ADMIN)) {
+      return sendForbidden(res);
+    }
+
+    // For operations on specific location logos, check LocationSlug access
+    const locationLogoIdOrSlug = req.params.id || req.body.LocationSlug;
+    
+    if (locationLogoIdOrSlug) {
+      try {
+        // If it's an ID, get the logo first
+        let locationSlug = '';
+        if (req.params.id) {
+          const logo = await LocationLogo.findById(req.params.id).lean();
+          if (logo) {
+            locationSlug = logo.LocationSlug;
+          }
+        } else {
+          locationSlug = req.body.LocationSlug;
+        }
+
+        if (locationSlug) {
+          // Check if CityAdmin has access to this location
+          const locations = [locationSlug];
+          if (validateSwepAndCityAdminLocationsAccess(userAuthClaims, locations, res)) {
+            return; // Access denied, response already sent
+          }
+        }
+
+        next();
+      } catch (error) {
+        console.error('Error validating location logo access:', error);
+        return sendInternalError(res);
+      }
+    } else {
+      // No specific location, allow access for listing
+      next();
+    }
+  } else {
+    return sendForbidden(res, 'Invalid HTTP method for this endpoint');
+  }
+});
+
+/**
+ * Combined middleware for location logos endpoint
+ */
+export const locationLogosAuth = [
+  authenticate,
+  requireLocationLogoAccess
+];
+
+/**
+ * Middleware for location logos location-based access (GET list)
+ */
+export const requireLocationLogoByFiltersAccess = (req: Request, res: Response, next: NextFunction) => {
+  if (ensureAuthenticated(req, res)) return;
+
+  if (req.method !== HTTP_METHODS.GET) {
+    return sendForbidden(res, 'Invalid HTTP method for this endpoint');
+  }
+
+  const userAuthClaims = req.user?.AuthClaims || [];
+  
+  // SuperAdmin and VolunteerAdmin global rule
+  if (handleSuperAdminAccess(userAuthClaims) || handleVolunteerAdminAccess(userAuthClaims)) { return next(); }
+
+  // Check if user has CityAdmin role
+  if (!userAuthClaims.includes(ROLES.CITY_ADMIN)) {
+    return sendForbidden(res);
+  }
+
+  // For location-based access, check the location and locations param
+  const locations = extractLocationsFromQuery(req);
+
+  if (validateSwepAndCityAdminLocationsAccess(userAuthClaims, locations, res)) {
+    return; // Access denied, response already sent
+  }
+
+  next();
+};
+
+/**
+ * Combined middleware for location logos GET list endpoint
+ */
+export const locationLogosGetAuth = [
+  authenticate,
+  requireLocationLogoByFiltersAccess
 ];

@@ -16,6 +16,7 @@ const AZURE_STORAGE_CONNECTION_STRING = process.env.AZURE_STORAGE_CONNECTION_STR
 const BANNERS_CONTAINER_NAME = process.env.AZURE_BANNERS_CONTAINER_NAME || 'banners';
 const SWEPS_CONTAINER_NAME = process.env.AZURE_SWEPS_CONTAINER_NAME || 'sweps';
 const RESOURCES_CONTAINER_NAME = process.env.AZURE_RESOURCES_CONTAINER_NAME || 'resources';
+const LOCATION_LOGOS_CONTAINER_NAME = process.env.AZURE_LOCATION_LOGOS_CONTAINER_NAME || 'location-logos';
 
 let blobServiceClient: BlobServiceClient | null = null;
 if (AZURE_STORAGE_CONNECTION_STRING) {
@@ -316,6 +317,42 @@ export const uploadResourceFiles = async (req: Request, res: Response, next: Nex
       next();
     } catch (error) {
       console.error('Resources upload error:', error);
+      sendInternalError(res, 'File upload failed');
+    }
+  });
+};
+
+// Location Logos-specific upload middleware - handles single file upload to location-logos container
+export const uploadLocationLogo = async (req: Request, res: Response, next: NextFunction) => {
+  const uploadSingle = upload.single('newfile_logo');
+  
+  uploadSingle(req, res, async (err) => {
+    if (err) {
+      return sendBadRequest(res, `File upload error: ${err.message}`);
+    }
+
+    try {
+      const file = req.file as Express.Multer.File;
+      
+      if (!file) {
+        // No file uploaded, just continue
+        return next();
+      }
+
+      // Upload file to location logos container
+      let fileUrl: string;
+      if (blobServiceClient) {
+        fileUrl = await uploadToAzure(file, LOCATION_LOGOS_CONTAINER_NAME);
+      } else {
+        fileUrl = saveToLocal(file, LOCATION_LOGOS_CONTAINER_NAME);
+      }
+
+      // Attach uploaded file path to request body
+      req.body.LogoPath = fileUrl;
+
+      next();
+    } catch (error) {
+      console.error('Location logo upload error:', error);
       sendInternalError(res, 'File upload failed');
     }
   });

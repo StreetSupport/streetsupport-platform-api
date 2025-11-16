@@ -9,5 +9,4 @@ export interface IFaq extends Document {
   Title: string;
   Body: string;
   SortPosition: number;
-  Tags?: string[];
 }

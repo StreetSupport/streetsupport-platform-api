@@ -16,7 +16,7 @@ export const getBanners = asyncHandler(async (req: Request, res: Response) => {
     isActive, 
     search,
     page = 1, 
-    limit = 10,
+    limit = 9,
     sortBy = 'Priority',
     sortOrder = 'desc'
   } = req.query;
