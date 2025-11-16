@@ -5,7 +5,7 @@ import {
   updateLocationLogo,
   deleteLocationLogo,
   getLocationLogoById
-} from '../controllers/locationLogoController.jsx';
+} from '../controllers/locationLogoController.js';
 import { locationLogosAuth, locationLogosGetAuth } from '../middleware/authMiddleware.js';
 import { uploadLocationLogo } from '../middleware/uploadMiddleware.js';
 
