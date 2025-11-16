@@ -712,7 +712,7 @@ export const requireFaqAccess = asyncHandler(async (req: Request, res: Response,
   const userAuthClaims = req.user?.AuthClaims || [];
   
   // SuperAdmin global rule
-  if (handleSuperAdminAccess(userAuthClaims)) { return next(); }
+  if (handleSuperAdminAccess(userAuthClaims) || handleVolunteerAdminAccess(userAuthClaims)) { return next(); }
 
   // Check if user is a CityAdmin
   if (!userAuthClaims.includes(ROLES.CITY_ADMIN)) {
@@ -730,9 +730,9 @@ export const requireFaqAccess = asyncHandler(async (req: Request, res: Response,
 
     const locationKey = faq.LocationKey;
     
-    // If LocationKey is 'general', any CityAdmin can access
+    // If LocationKey is 'general', only SuperAdmin and VolunteerAdmin can access
     if (locationKey === 'general') {
-      return next();
+      return sendForbidden(res, 'Access to general advice is restricted to SuperAdmin and VolunteerAdmin');
     }
 
     // For location-based access, check the locationKey
@@ -746,9 +746,16 @@ export const requireFaqAccess = asyncHandler(async (req: Request, res: Response,
   }
 
   if (req.body && req.method === HTTP_METHODS.POST) {
+    const locationKey = req.body.LocationKey;
+    
+    // If LocationKey is 'general', only SuperAdmin and VolunteerAdmin can create
+    if (locationKey === 'general') {
+      return sendForbidden(res, 'Creating general advice is restricted to SuperAdmin and VolunteerAdmin');
+    }
+    
     if (userAuthClaims.includes(ROLES.CITY_ADMIN)) {
       // Check if user has access to the specific location
-      const cityAdminClaim = `${ROLE_PREFIXES.CITY_ADMIN_FOR}${req.body.LocationKey}`;
+      const cityAdminClaim = `${ROLE_PREFIXES.CITY_ADMIN_FOR}${locationKey}`;
       if (userAuthClaims.includes(cityAdminClaim)) {
         return next();
       }
@@ -779,7 +786,7 @@ export const requireFaqLocationAccess = (req: Request, res: Response, next: Next
   const userAuthClaims = req.user?.AuthClaims || [];
   
   // SuperAdmin global rule
-  if (handleSuperAdminAccess(userAuthClaims)) { return next(); }
+  if (handleSuperAdminAccess(userAuthClaims) || handleVolunteerAdminAccess(userAuthClaims)) { return next(); }
 
   // Check if user is a CityAdmin
   if (!userAuthClaims.includes(ROLES.CITY_ADMIN)) {
@@ -789,13 +796,16 @@ export const requireFaqLocationAccess = (req: Request, res: Response, next: Next
   // For location-based access, check the location param
   const locationId = req.params.location;
 
-  // If LocationKey is 'general', any CityAdmin can access
-  if (locationId === 'general') {
-    return next();
-  }
-
   // For location-based access, check the locationId param
   const locations = extractLocationsFromQuery(req);
+
+  // If LocationKey is 'general', only SuperAdmin and VolunteerAdmin can access
+  if (locationId === 'general' || locations.includes('general')) {
+    if (userAuthClaims.includes(ROLES.SUPER_ADMIN) || userAuthClaims.includes(ROLES.VOLUNTEER_ADMIN)) {
+      return next();
+    }
+    return sendForbidden(res, 'Access to general advice is restricted to SuperAdmin and VolunteerAdmin');
+  }
 
   if (validateCityAdminLocationsAccess(userAuthClaims, locations, res)) {
     return; // Access denied, response already sent
