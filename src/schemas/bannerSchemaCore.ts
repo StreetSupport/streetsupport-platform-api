@@ -178,24 +178,25 @@ export const sharedBannerRefinements: RefinementEntry<BannerCore>[] = [
   {
     refinement: (data: BannerCore) => {
       if (data.StartDate && data.EndDate) {
-        return data.EndDate > data.StartDate;
+        return data.StartDate <= data.EndDate;
       }
       return true;
     },
     message: 'End date must be after start date',
     path: ['EndDate']
   },
+  // TODO: Uncomment if need to validate it. But keep in mind that during edit banner we can get validation error because CampaignEndDate can be less than today.
   // Campaign end date must be in the future for giving campaigns
-  {
-    refinement: (data: BannerCore) => {
-      if (data.TemplateType === BannerTemplateType.GIVING_CAMPAIGN && data.GivingCampaign?.CampaignEndDate) {
-        return data.GivingCampaign.CampaignEndDate > new Date();
-      }
-      return true;
-    },
-    message: 'Campaign end date must be in the future',
-    path: ['GivingCampaign', 'CampaignEndDate']
-  },
+  // {
+  //   refinement: (data: BannerCore) => {
+  //     if (data.TemplateType === BannerTemplateType.GIVING_CAMPAIGN && data.GivingCampaign?.CampaignEndDate) {
+  //       return data.GivingCampaign.CampaignEndDate > new Date();
+  //     }
+  //     return true;
+  //   },
+  //   message: 'Campaign end date must be in the future',
+  //   path: ['GivingCampaign', 'CampaignEndDate']
+  // },
   // Donation target must be positive ONLY for giving campaigns
   {
     refinement: (data: BannerCore) => {

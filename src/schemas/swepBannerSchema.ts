@@ -35,7 +35,7 @@ export const SwepBannerSchema = z.object({
 }).refine((data) => {
   // If date range is set, SwepActiveFrom must be before SwepActiveUntil
   if (data.SwepActiveFrom && data.SwepActiveUntil) {
-    return data.SwepActiveFrom < data.SwepActiveUntil;
+    return data.SwepActiveFrom <= data.SwepActiveUntil;
   }
   
   return true;

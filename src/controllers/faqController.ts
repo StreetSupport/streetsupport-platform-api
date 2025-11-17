@@ -14,8 +14,8 @@ export const getFaqs = asyncHandler(async (req: Request, res: Response) => {
     search,
     page = 1,
     limit = 9,
-    sortBy = 'DocumentModifiedDate',
-    sortOrder = 'desc'
+    sortBy = 'SortPosition',
+    sortOrder = 'asc'
   } = req.query;
 
   const query: any = {};

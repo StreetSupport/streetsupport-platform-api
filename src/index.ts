@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import { startVerificationJob } from './jobs/verificationOrganisationJob.js';
 import { startDisablingJob } from './jobs/disablingOrganisationJob.js';
 import { startSwepActivationJob } from './jobs/swepActivationJob.js';
+import { startBannerActivationJob } from './jobs/bannerActivationJob.js';
 
 dotenv.config();
 connectDB();
@@ -13,6 +14,7 @@ connectDB();
 startVerificationJob();
 startDisablingJob();
 startSwepActivationJob();
+startBannerActivationJob();
 
 const PORT:any = process.env.PORT;
 
