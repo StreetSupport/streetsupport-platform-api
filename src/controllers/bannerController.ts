@@ -18,7 +18,7 @@ export const getBanners = asyncHandler(async (req: Request, res: Response) => {
     page = 1, 
     limit = 9,
     sortBy = 'Priority',
-    sortOrder = 'desc'
+    sortOrder = 'asc'
   } = req.query;
 
   const query: any = {};
@@ -159,7 +159,7 @@ export const createBanner = asyncHandler(async (req: Request, res: Response) => 
 export const updateBanner = asyncHandler(async (req: Request, res: Response) => {
   const { id } = req.params;
   
-  const banner = await Banner.findById(id).lean();
+  const banner = await Banner.findById(id);
   
   if (!banner) {
     return sendNotFound(res, 'Banner not found');
@@ -183,6 +183,12 @@ export const updateBanner = asyncHandler(async (req: Request, res: Response) => 
 
   // Handle resource project specific logic
   const finalBannerData = _handleResourceProjectBannerLogic({ ...validation.data });
+
+  // Preserve existing activation date fields and IsActive (not editable in edit form)
+  finalBannerData.StartDate = banner.StartDate;
+  finalBannerData.EndDate = banner.EndDate;
+  finalBannerData.ShowDates = banner.ShowDates;
+  finalBannerData.IsActive = banner.IsActive;
 
   // Update banner
   const updatedBanner = await Banner.findByIdAndUpdate(
@@ -233,20 +239,68 @@ export const deleteBanner = asyncHandler(async (req: Request, res: Response) => 
   return sendSuccess(res, {}, 'Banner and associated files deleted successfully');
 });
 
-// Toggle banner active status
+// @desc    Update banner activation status with optional date range
+// @route   PATCH /api/banners/:id/toggle
+// @access  Private
 export const toggleBannerStatus = asyncHandler(async (req: Request, res: Response) => {
   const { id } = req.params;
-  
-  const banner = await Banner.findById(id);
-  
-  if (!banner) {
+  const { IsActive, StartDate, EndDate } = req.body;
+
+  // Get existing banner
+  const existingBanner = await Banner.findById(id);
+  if (!existingBanner) {
     return sendNotFound(res, 'Banner not found');
   }
+  
+  // Prepare update data
+  let shouldActivateNow = IsActive !== undefined ? IsActive : !existingBanner.IsActive;
+  
+  // Check if scheduled start date equals today - if so, activate immediately
+  if (StartDate !== undefined && StartDate !== null) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const activeFromDate = new Date(StartDate);
+    activeFromDate.setHours(0, 0, 0, 0);
+    
+    // If start date is today, activate immediately
+    if (activeFromDate.getTime() === today.getTime()) {
+      shouldActivateNow = true;
+    }
+  }
+  
+  const updateData: any = {
+    IsActive: shouldActivateNow,
+    DocumentModifiedDate: new Date()
+  };
 
-  banner.IsActive = !banner.IsActive;
-  await banner.save();
+  // Handle date range for scheduled activation
+  if (StartDate !== undefined && StartDate !== null) {
+    updateData.StartDate = new Date(StartDate);
+    updateData.ShowDates = true;
+  } else if (updateData.IsActive && !existingBanner.StartDate) {
+    // If activating immediately without dates, set StartDate to now
+    updateData.StartDate = new Date();
+    updateData.ShowDates = true;
+  }
 
-  return sendSuccess(res, banner, `Banner ${banner.IsActive ? 'activated' : 'deactivated'} successfully`);
+  if (EndDate !== undefined && EndDate !== null) {
+    updateData.EndDate = new Date(EndDate);
+    updateData.ShowDates = true;
+  } else if (!updateData.IsActive && !EndDate) {
+    // If deactivating without explicit date, set EndDate to now
+    updateData.EndDate = new Date();
+    updateData.ShowDates = true;
+  }
+
+  // Update banner
+  const updatedBanner = await Banner.findByIdAndUpdate(
+    id,
+    updateData,
+    { new: true, runValidators: true }
+  );
+
+  return sendSuccess(res, updatedBanner, `Banner ${updatedBanner?.IsActive ? 'activated' : 'deactivated'} successfully`);
 });
 
 // Increment download count for resource banners
