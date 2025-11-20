@@ -1,7 +1,5 @@
-// We should keep the same version of this file for APi and Admin to avoid conflicts
 import { z } from 'zod';
 import { ValidationResult, createValidationResult } from './validationHelpers.js';
-// TODO: Uncomment if AccentGraphic is needed. In the other case, remove.
 import { 
   BannerTemplateType, 
   TextColour, 
@@ -10,9 +8,7 @@ import {
   CharterType, 
   ResourceType,
   BackgroundType,
-  CTAVariant,
-  // ACCENT_POSITIONS,
-  // AccentPosition
+  CTAVariant
 } from '../types/index.js';
 
 // Core Media Asset Schema - shared structure
@@ -26,40 +22,15 @@ export const MediaAssetSchemaCore = z.object({
   MimeType: z.string().optional()
 }).nullable().optional();
 
-// TODO: Uncomment if AccentGraphic is needed. In the other case, remove.
-// Core Accent Graphic Schema - extends MediaAsset with position and opacity
-// export const AccentGraphicSchemaCore = z.object({
-//   Url: z.string().optional(),
-//   Alt: z.string().optional(),
-//   Width: z.number().positive().optional(),
-//   Height: z.number().positive().optional(),
-//   Filename: z.string().optional(),
-//   Size: z.number().positive().optional(),
-//   MimeType: z.string().optional(),
-//   Position: z.enum(ACCENT_POSITIONS).optional().default('top-left' as AccentPosition),
-//   Opacity: z.number().min(0).max(1).optional().default(0.6)
-// }).nullable().optional();
-
 // Core Banner Background Schema - shared validation rules
 export const BannerBackgroundSchemaCore = z.object({
   Type: z.nativeEnum(BackgroundType),
-  Value: z.string().optional(), // Made optional, requirement handled by refinement
+  Value: z.string().min(1, 'Background value is required'),
   Overlay: z.object({
     Colour: z.string().optional(),
     Opacity: z.number().min(0).max(1).optional()
   }).optional()
-}).refine(
-  (data) => {
-    if (data.Type === BackgroundType.SOLID || data.Type === BackgroundType.GRADIENT) {
-      return typeof data.Value === 'string' && data.Value.length > 0;
-    }
-    return true;
-  },
-  {
-    message: 'Background value is required for solid or gradient types',
-    path: ['Value'],
-  }
-);
+});
 
 // Core CTA Button Schema - shared validation rules
 export const CTAButtonSchemaCore = z.object({
@@ -72,30 +43,34 @@ export const CTAButtonSchemaCore = z.object({
       'URL must be a valid URL or relative path'
     ),
   Variant: z.nativeEnum(CTAVariant).default(CTAVariant.PRIMARY),
-  External: z.boolean().optional().default(false),
-  AutomaticallyPopulatedUrl: z.boolean().optional(),
+  External: z.boolean().optional().default(false)
 }).optional();
 
 // Core Donation Goal Schema - shared validation rules
 export const DonationGoalSchemaCore = z.object({
   // Base numeric types; conditional strictness is applied via cross-field refinements below
-  Target: z.number(),
-  Current: z.number().min(0, 'Current amount must be non-negative'),
-  Currency: z.string().length(3, 'Currency must be a 3-letter code').default('GBP')
+  Target: z.number().min(1, 'Target amount must be non-negative'),
+  Current: z.number().min(0, 'Current amount must be non-negative').optional(),
+  Currency: z.string().length(3, 'Currency must be a 3-letter code').default('GBP').optional()
 }).refine(
-  (data) => data.Current <= data.Target,
+  (data) => {
+    if (data.Current && data.Target) {
+      return data.Current <= data.Target;
+    }
+    return true;
+  },
   { message: 'Current donation amount cannot exceed target', path: ['Current'] }
 ).optional();
 
 // Core Resource File Schema - shared validation rules
 export const ResourceFileSchemaCore = z.object({
-  FileUrl: z.string().optional(),
-  FileName: z.string().optional(),
-  ResourceType: z.nativeEnum(ResourceType).optional(),
+  FileUrl: z.string().min(1, 'File URL is required'),
+  FileName: z.string().min(1, 'File name is required'),
+  ResourceType: z.nativeEnum(ResourceType).default(ResourceType.GUIDE),
   DownloadCount: z.number().min(0).optional().default(0),
-  LastUpdated: z.date().optional().default(() => new Date()),
-  FileSize: z.string().max(20, 'File size must be 20 characters or less').optional(),
-  FileType: z.string().max(10, 'File type must be 10 characters or less').optional()
+  LastUpdated: z.date().default(() => new Date()),
+  FileSize: z.string().min(1, 'File size is required').max(20, 'File size must be 20 characters or less'),
+  FileType: z.string().min(1, 'File type is required').max(10, 'File type must be 10 characters or less')
 });
 
 // Template-specific schemas
@@ -159,10 +134,22 @@ export const BannerSchemaCore = z.object({
 
   // CMS metadata
   IsActive: z.boolean().default(true),
-  LocationSlug: z.string(),
+  LocationSlug: z.string().min(1, 'Location slug is required'),
+  LocationName: z.string().optional(),
   Priority: z.number().min(1).max(10, 'Priority must be between 1 and 10').default(1),
   TrackingContext: z.string().optional(),
-});
+}).refine(
+  (data) => {
+    if (data.StartDate && data.EndDate) {
+      return data.StartDate <= data.EndDate;
+    }
+    return true;
+  },
+  {
+    message: 'End date must be after start date',
+    path: ['EndDate']
+  }
+);
 
 // Strong types for shared refinements and validation utilities
 type BannerCore = z.infer<typeof BannerSchemaCore>;
@@ -174,74 +161,6 @@ interface RefinementEntry<T> {
 
 // Shared cross-field validation refinements
 export const sharedBannerRefinements: RefinementEntry<BannerCore>[] = [
-  // Date validation: EndDate must be after StartDate
-  {
-    refinement: (data: BannerCore) => {
-      if (data.StartDate && data.EndDate) {
-        return data.StartDate <= data.EndDate;
-      }
-      return true;
-    },
-    message: 'End date must be after start date',
-    path: ['EndDate']
-  },
-  // TODO: Uncomment if need to validate it. But keep in mind that during edit banner we can get validation error because CampaignEndDate can be less than today.
-  // Campaign end date must be in the future for giving campaigns
-  // {
-  //   refinement: (data: BannerCore) => {
-  //     if (data.TemplateType === BannerTemplateType.GIVING_CAMPAIGN && data.GivingCampaign?.CampaignEndDate) {
-  //       return data.GivingCampaign.CampaignEndDate > new Date();
-  //     }
-  //     return true;
-  //   },
-  //   message: 'Campaign end date must be in the future',
-  //   path: ['GivingCampaign', 'CampaignEndDate']
-  // },
-  // Donation target must be positive ONLY for giving campaigns
-  {
-    refinement: (data: BannerCore) => {
-      if (data.TemplateType === BannerTemplateType.GIVING_CAMPAIGN) {
-        const target = data.GivingCampaign?.DonationGoal?.Target;
-        return typeof target === 'number' && target > 0;
-      }
-      return true;
-    },
-    message: 'Donation target must be a positive number',
-    path: ['GivingCampaign', 'DonationGoal', 'Target']
-  },
-  // GivingCampaign object and its DonationGoal are required for giving campaigns
-  {
-    refinement: (data: BannerCore) => {
-      if (data.TemplateType === BannerTemplateType.GIVING_CAMPAIGN) {
-        return !!(data.GivingCampaign && data.GivingCampaign.DonationGoal);
-      }
-      return true;
-    },
-    message: 'Giving Campaign details (including a Donation Goal) are required for this banner type',
-    path: ['GivingCampaign']
-  },
-  // PartnershipCharter object and its CharterType are required for partnership charter banners
-  {
-    refinement: (data: BannerCore) => {
-      if (data.TemplateType === BannerTemplateType.PARTNERSHIP_CHARTER) {
-        return !!(data.PartnershipCharter && data.PartnershipCharter.CharterType !== undefined);
-      }
-      return true;
-    },
-    message: 'Partnership Charter details (including a Charter Type) are required for this banner type',
-    path: ['PartnershipCharter']
-  },
-  // ResourceProject object and its ResourceFile are required for resource project banners
-  {
-    refinement: (data: BannerCore) => {
-      if (data.TemplateType === BannerTemplateType.RESOURCE_PROJECT) {
-        return !!(data.ResourceProject && data.ResourceProject.ResourceFile);
-      }
-      return true;
-    },
-    message: 'Resource Project details (including a Resource File) are required for this banner type',
-    path: ['ResourceProject']
-  }
 ];
 
 // Helper function to apply shared refinements to a schema

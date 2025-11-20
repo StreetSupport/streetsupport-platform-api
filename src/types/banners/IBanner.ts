@@ -9,7 +9,7 @@ import { IResourceFile } from "./IResourceFile.js";
 
 // Template-specific interfaces
 export interface IGivingCampaign {
-  UrgencyLevel?: UrgencyLevel;
+  UrgencyLevel: UrgencyLevel;
   CampaignEndDate?: Date;
   DonationGoal?: IDonationGoal;
 }
@@ -65,7 +65,8 @@ export interface IBanner extends Document {
   
   // CMS metadata
   IsActive: boolean;
-  LocationSlug?: string;
+  LocationSlug: string;
+  LocationName?: string;
   Priority: number;
   TrackingContext?: string;
   
