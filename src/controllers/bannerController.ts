@@ -408,8 +408,6 @@ function extractFileUrls(banner: any): string[] {
   if (banner.Logo?.Url) urls.push(banner.Logo.Url);
   if (banner.BackgroundImage?.Url) urls.push(banner.BackgroundImage.Url);
   if (banner.MainImage?.Url) urls.push(banner.MainImage.Url);
-  // TODO: Uncomment if AccentGraphic is needed. In the other case, remove.
-  // if (banner.AccentGraphic?.Url) urls.push(banner.AccentGraphic.Url);
   
   // Partner logos for partnership charter banners (nested structure)
   if (banner.PartnershipCharter?.PartnerLogos && Array.isArray(banner.PartnershipCharter.PartnerLogos)) {
@@ -432,8 +430,6 @@ function processMediaFields(req: Request): any {
   // Note: I still not sure if it makes sense to use this merging instead of req.body
   const processedData = { ...req.body, ...req.preValidatedData };
   
-  // TODO: Uncomment if AccentGraphic is needed. In the other case, remove.
-  // Process single media assets: Logo, BackgroundImage, MainImage, AccentGraphic
   ['Logo', 'BackgroundImage', 'MainImage' /*, 'AccentGraphic'*/].forEach(field => {
     const newFileData = processedData[`newfile_${field}`];
     const newMetadata = processedData[`newmetadata_${field}`] 

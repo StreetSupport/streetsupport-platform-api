@@ -1,8 +1,6 @@
 import { z } from 'zod';
 import {
   MediaAssetSchemaCore,
-  // TODO: Uncomment if AccentGraphic is needed. In the other case, remove.
-  // AccentGraphicSchemaCore,
   BannerBackgroundSchemaCore,
   CTAButtonSchemaCore,
   DonationGoalSchemaCore,
@@ -27,8 +25,6 @@ import { BannerTemplateType, UrgencyLevel, CharterType, LayoutStyle, TextColour,
 
 // API-specific schemas with preprocessing for FormData
 export const MediaAssetSchema = MediaAssetSchemaCore;
-// TODO: Uncomment if AccentGraphic is needed. In the other case, remove.
-// export const AccentGraphicSchema = AccentGraphicSchemaCore;
 export const BannerBackgroundSchema = BannerBackgroundSchemaCore;
 export const CTAButtonSchema = CTAButtonSchemaCore;
 

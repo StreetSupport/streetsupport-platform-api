@@ -113,8 +113,6 @@ export const BannerSchemaCore = z.object({
   Logo: MediaAssetSchemaCore,
   BackgroundImage: MediaAssetSchemaCore,
   MainImage: MediaAssetSchemaCore,
-  // TODO: Uncomment if AccentGraphic is needed. In the other case, remove.
-  // AccentGraphic: AccentGraphicSchemaCore,
 
   // Styling
   Background: BannerBackgroundSchemaCore,
