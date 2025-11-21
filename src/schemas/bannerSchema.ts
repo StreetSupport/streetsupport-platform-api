@@ -1,8 +1,6 @@
 import { z } from 'zod';
 import {
   MediaAssetSchemaCore,
-  // TODO: Uncomment if AccentGraphic is needed. In the other case, remove.
-  // AccentGraphicSchemaCore,
   BannerBackgroundSchemaCore,
   CTAButtonSchemaCore,
   DonationGoalSchemaCore,
@@ -27,8 +25,6 @@ import { BannerTemplateType, UrgencyLevel, CharterType, LayoutStyle, TextColour,
 
 // API-specific schemas with preprocessing for FormData
 export const MediaAssetSchema = MediaAssetSchemaCore;
-// TODO: Uncomment if AccentGraphic is needed. In the other case, remove.
-// export const AccentGraphicSchema = AccentGraphicSchemaCore;
 export const BannerBackgroundSchema = BannerBackgroundSchemaCore;
 export const CTAButtonSchema = CTAButtonSchemaCore;
 
@@ -43,7 +39,7 @@ export const ResourceFileSchema = z.preprocess(preprocessJSON, ResourceFileSchem
 
 // API-specific schema for ResourceFile to handle nested date preprocessing
 export const ResourceFileApiSchema = ResourceFileSchemaCore.extend({
-  LastUpdated: z.preprocess(preprocessDate, z.date()).optional(),
+  LastUpdated: z.preprocess(preprocessDate, z.date()),
 }).optional();
 
 // API-specific schema for ResourceProject to use ResourceFileApiSchema
@@ -117,7 +113,7 @@ export const BannerPreUploadApiSchema = z.object({
   // Styling (excluding file-based background)
   Background: z.preprocess(preprocessJSON, z.object({
     Type: z.nativeEnum(BackgroundType),
-    Value: z.string().optional(),
+    Value: z.string().min(1, 'Background value is required'),
     Overlay: z.object({
       Colour: z.string().optional(),
       Opacity: z.preprocess(preprocessNumber, z.number().min(0).max(1)).optional()

@@ -21,8 +21,6 @@ export * from './organisations/IServiceAddress.js';
 
 // Banner related types
 export * from './banners/IBanner.js';
-// TODO: Uncomment if AccentGraphic is needed. In the other case, remove.
-// export * from './IAccentGraphic.js';
 export * from './banners/IBannerBackground.js';
 export * from './banners/ICTAButton.js';
 export * from './banners/IDonationGoal.js';

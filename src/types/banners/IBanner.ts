@@ -1,7 +1,5 @@
 import { Document, Types } from "mongoose";
 import { IMediaAsset } from "./IMediaAsset.js";
-// TODO: Uncomment if AccentGraphic is needed. In the other case, remove.
-// import { IAccentGraphic } from "./IAccentGraphic.js";
 import { IBannerBackground } from "./IBannerBackground.js";
 import { ICTAButton } from "./ICTAButton.js";
 import { IDonationGoal } from "./IDonationGoal.js";
@@ -9,7 +7,7 @@ import { IResourceFile } from "./IResourceFile.js";
 
 // Template-specific interfaces
 export interface IGivingCampaign {
-  UrgencyLevel?: UrgencyLevel;
+  UrgencyLevel: UrgencyLevel;
   CampaignEndDate?: Date;
   DonationGoal?: IDonationGoal;
 }
@@ -41,8 +39,6 @@ export interface IBanner extends Document {
   Logo?: IMediaAsset;
   BackgroundImage?: IMediaAsset;
   MainImage?: IMediaAsset;
-  // TODO: Uncomment if AccentGraphic is needed. In the other case, remove.
-  // AccentGraphic?: IAccentGraphic;
   
   // Actions
   CtaButtons?: ICTAButton[];
@@ -65,7 +61,8 @@ export interface IBanner extends Document {
   
   // CMS metadata
   IsActive: boolean;
-  LocationSlug?: string;
+  LocationSlug: string;
+  LocationName?: string;
   Priority: number;
   TrackingContext?: string;
   

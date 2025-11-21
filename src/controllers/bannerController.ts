@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { asyncHandler } from '../utils/asyncHandler.js';
-import { BannerTemplateType } from '../types/index.js';
+import { BackgroundType, BannerTemplateType } from '../types/index.js';
 import { validateBanner } from '../schemas/bannerSchema.js';
 import Banner from '../models/bannerModel.js';
 import { deleteFile } from '../middleware/uploadMiddleware.js';
@@ -139,7 +139,10 @@ export const createBanner = asyncHandler(async (req: Request, res: Response) => 
   }
 
   // Handle resource project specific logic
-  const finalBannerData = _handleResourceProjectBannerLogic({ ...validation.data });
+  let finalBannerData = _handleResourceProjectBannerLogic({ ...validation.data });
+  
+  // Handle background image specific logic
+  finalBannerData = handleBackgroundImageLogic(finalBannerData);
 
   // Add creator information and system fields
   const bannerData = {
@@ -181,8 +184,17 @@ export const updateBanner = asyncHandler(async (req: Request, res: Response) => 
   // Store old banner data for file cleanup
   const oldBannerData = banner.toObject();
 
+  // Handle template type change from RESOURCE_PROJECT to another type
+  if (oldBannerData.TemplateType === BannerTemplateType.RESOURCE_PROJECT && 
+      validation?.data?.TemplateType !== BannerTemplateType.RESOURCE_PROJECT) {
+    await handleResourceProjectTemplateChange(oldBannerData, validation.data);
+  }
+
   // Handle resource project specific logic
-  const finalBannerData = _handleResourceProjectBannerLogic({ ...validation.data });
+  let finalBannerData = _handleResourceProjectBannerLogic({ ...validation.data });
+  
+  // Handle background image specific logic
+  finalBannerData = handleBackgroundImageLogic(finalBannerData);
 
   // Preserve existing activation date fields and IsActive (not editable in edit form)
   finalBannerData.StartDate = banner.StartDate;
@@ -331,17 +343,60 @@ function _handleResourceProjectBannerLogic(bannerData: any): any {
     if (resourceFile.Url && !resourceFile.FileUrl) {
       bannerData.ResourceProject.ResourceFile.FileUrl = resourceFile.Url;
     }
-    // Add foreach to populate Url depending on AutomaticallyPopulatedUrl
+
     // Update the 'Download' CTA button URL to use the file URL
     const fileUrl = bannerData.ResourceProject.ResourceFile.FileUrl;
     if (bannerData.CtaButtons && bannerData.CtaButtons.length > 0 && fileUrl) {
       const downloadButtonIndex = 0;
       const button = bannerData.CtaButtons[downloadButtonIndex];
-      if (button && button.AutomaticallyPopulatedUrl) {
+      if (button) {
         button.Url = fileUrl;
       }
     }
   }
+  return bannerData;
+}
+
+// Private helper to handle template type change from RESOURCE_PROJECT
+// Cleans up resource file and CTA button with blob URL when template type changes
+async function handleResourceProjectTemplateChange(oldBannerData: any, newBannerData: any): Promise<void> {
+  // Check if old banner had a resource file with a blob URL
+  if (oldBannerData.ResourceProject?.ResourceFile?.FileUrl) {
+    const fileUrl = oldBannerData.ResourceProject.ResourceFile.FileUrl;
+    
+    // Delete the resource file from blob storage if it's a blob URL
+    if (fileUrl.includes('blob.core.windows.net')) {
+      try {
+        await deleteFile(fileUrl);
+        console.log(`Cleaned up resource file during template type change: ${fileUrl}`);
+      } catch (error) {
+        console.error(`Failed to delete resource file ${fileUrl} during template type change:`, error);
+        // Don't throw error - file cleanup failure shouldn't break the update
+      }
+    }
+  }
+}
+
+// Private helper to handle background image logic
+// Automatically populates Background.Value with BackgroundImage URL when Background.Type is 'image'
+function handleBackgroundImageLogic(bannerData: any): any {
+  // Ensure Background object exists
+  if (!bannerData.Background) {
+    return bannerData;
+  }
+
+  // If Background.Type is 'image', handle the BackgroundImage URL
+  if (bannerData.Background.Type === BackgroundType.IMAGE) {
+    // Case 1: BackgroundImage exists - populate Background.Value with its URL
+    if (bannerData.BackgroundImage && bannerData.BackgroundImage.Url) {
+      bannerData.Background.Value = bannerData.BackgroundImage.Url;
+    } 
+    // Case 2: BackgroundImage was removed - clear Background.Value
+    else {
+      bannerData.Background.Value = '';
+    }
+  }
+
   return bannerData;
 }
 
@@ -353,8 +408,6 @@ function extractFileUrls(banner: any): string[] {
   if (banner.Logo?.Url) urls.push(banner.Logo.Url);
   if (banner.BackgroundImage?.Url) urls.push(banner.BackgroundImage.Url);
   if (banner.MainImage?.Url) urls.push(banner.MainImage.Url);
-  // TODO: Uncomment if AccentGraphic is needed. In the other case, remove.
-  // if (banner.AccentGraphic?.Url) urls.push(banner.AccentGraphic.Url);
   
   // Partner logos for partnership charter banners (nested structure)
   if (banner.PartnershipCharter?.PartnerLogos && Array.isArray(banner.PartnershipCharter.PartnerLogos)) {
@@ -377,8 +430,6 @@ function processMediaFields(req: Request): any {
   // Note: I still not sure if it makes sense to use this merging instead of req.body
   const processedData = { ...req.body, ...req.preValidatedData };
   
-  // TODO: Uncomment if AccentGraphic is needed. In the other case, remove.
-  // Process single media assets: Logo, BackgroundImage, MainImage, AccentGraphic
   ['Logo', 'BackgroundImage', 'MainImage' /*, 'AccentGraphic'*/].forEach(field => {
     const newFileData = processedData[`newfile_${field}`];
     const newMetadata = processedData[`newmetadata_${field}`] 

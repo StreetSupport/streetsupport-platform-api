@@ -5,7 +5,6 @@ export interface ICTAButton {
   Url: string;
   Variant?: CTAVariant;
   External?: boolean;
-  AutomaticallyPopulatedUrl?: boolean;
 }
 
 export enum CTAVariant {

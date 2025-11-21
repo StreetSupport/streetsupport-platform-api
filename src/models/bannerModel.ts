@@ -1,4 +1,3 @@
-// TODO: Uncomment if AccentGraphic is needed. In the other case, remove.
 import { 
   BannerTemplateType, 
   CharterType, 
@@ -6,7 +5,6 @@ import {
   LayoutStyle, 
   TextColour, 
   UrgencyLevel,
-  // AccentGraphicSchema,
   BannerBackgroundSchema,
   CTAButtonSchema,
   DonationGoalSchema,
@@ -17,7 +15,7 @@ import mongoose, { Schema } from 'mongoose';
 
 // Template-specific nested schemas
 const GivingCampaignSchema = new Schema({
-  UrgencyLevel: { type: String, enum: Object.values(UrgencyLevel) },
+  UrgencyLevel: { type: String, enum: Object.values(UrgencyLevel), required: true },
   CampaignEndDate: { type: Date },
   DonationGoal: DonationGoalSchema
 }, { _id: false });
@@ -34,11 +32,6 @@ const ResourceProjectSchema = new Schema({
 
 // Main Banner Schema
 export const BannerSchema = new Schema({
-  // We should check if we need it
-  // _id: {
-  //   type: mongoose.Schema.Types.ObjectId,
-  //   required: true,
-  // },
   DocumentCreationDate: {
     type: Date,
     default: Date.now,
@@ -53,9 +46,9 @@ export const BannerSchema = new Schema({
   },
 
   // Core content
-  Title: { type: String, required: true, maxlength: 200 },
-  Description: { type: String, maxlength: 1000 },
-  Subtitle: { type: String, maxlength: 300 },
+  Title: { type: String, required: true, maxlength: 50 },
+  Description: { type: String, maxlength: 200 },
+  Subtitle: { type: String, maxlength: 50 },
   
   // Template type
   TemplateType: { 
@@ -68,8 +61,6 @@ export const BannerSchema = new Schema({
   Logo: MediaAssetSchema,
   BackgroundImage: MediaAssetSchema,
   MainImage: MediaAssetSchema, // Separate image for split layout (not background)
-  // TODO: Uncomment if AccentGraphic is needed. In the other case, remove.
-  // AccentGraphic: AccentGraphicSchema,
 
   // Actions
   CtaButtons: {
@@ -102,6 +93,7 @@ export const BannerSchema = new Schema({
   // CMS metadata
   IsActive: { type: Boolean, default: true },
   LocationSlug: { type: String, required: true },
+  LocationName: { type: String, required: true },
   Priority: { type: Number, min: 1, max: 10, default: 5 },
   
   // Analytics
