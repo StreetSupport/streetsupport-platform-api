@@ -187,7 +187,7 @@ export const updateBanner = asyncHandler(async (req: Request, res: Response) => 
   // Handle template type change from RESOURCE_PROJECT to another type
   if (oldBannerData.TemplateType === BannerTemplateType.RESOURCE_PROJECT && 
       validation?.data?.TemplateType !== BannerTemplateType.RESOURCE_PROJECT) {
-    await handleResourceProjectTemplateChange(oldBannerData, validation.data);
+    await handleResourceProjectTemplateChange(oldBannerData);
   }
 
   // Handle resource project specific logic
@@ -359,7 +359,7 @@ function _handleResourceProjectBannerLogic(bannerData: any): any {
 
 // Private helper to handle template type change from RESOURCE_PROJECT
 // Cleans up resource file and CTA button with blob URL when template type changes
-async function handleResourceProjectTemplateChange(oldBannerData: any, newBannerData: any): Promise<void> {
+async function handleResourceProjectTemplateChange(oldBannerData: any): Promise<void> {
   // Check if old banner had a resource file with a blob URL
   if (oldBannerData.ResourceProject?.ResourceFile?.FileUrl) {
     const fileUrl = oldBannerData.ResourceProject.ResourceFile.FileUrl;

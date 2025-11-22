@@ -130,6 +130,7 @@ export const updateLocationLogo = asyncHandler(async (req: Request, res: Respons
 
   // Extract uploaded file URL from req
   let logoPath = existingLogo.LogoPath;
+  
   if (req.body.LogoPath && req.body.LogoPath !== existingLogo.LogoPath) {
     logoPath = req.body.LogoPath;
   }
