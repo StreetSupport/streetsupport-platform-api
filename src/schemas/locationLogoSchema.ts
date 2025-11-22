@@ -13,7 +13,7 @@ export const LocationLogoSchemaCore = z.object({
   DisplayName: z.string().min(1, 'Display name is required'),
   LocationSlug: z.string().min(1, 'Location slug is required'),
   LocationName: z.string().min(1, 'Location name is required'),
-  LogoPath: z.string().min(1, 'Logo path is required'),
+  LogoPath: z.string().min(1, 'Logo is required'),
   Url: z.string().url('Must be a valid URL').min(1, 'URL is required'),
 });
 

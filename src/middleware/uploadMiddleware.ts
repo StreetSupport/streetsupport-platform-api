@@ -37,14 +37,18 @@ const storage = multer.memoryStorage();
 const upload = multer({
   storage,
   limits: {
-    fileSize: 5 * 1024 * 1024, // 10MB limit
+    fileSize: 10 * 1024 * 1024, // 10MB limit
     files: 10 // Maximum 10 files
   },
   fileFilter: (req, file, cb) => {
-    // Combine banner image types with resource file types
-    const bannerImageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/svg+xml'];
+    const imageTypes = [
+      'image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/svg+xml',
+      'image/x-xbitmap', 'image/tiff', 'image/jpeg', 'image/vnd.mozilla-apng', 
+      'image/svg+xml-compressed', 'image/x-icon', 'image/heif', 'image/heic', 
+      'image/avif', 'image/bmp', 'image/pjpeg'
+    ];
     const resourceFileTypes = Object.keys(SUPPORTED_RESOURCE_FILE_TYPES);
-    const allowedMimeTypes = [...new Set([...bannerImageTypes, ...resourceFileTypes])];
+    const allowedMimeTypes = [...new Set([...imageTypes, ...resourceFileTypes])];
 
     if (allowedMimeTypes.includes(file.mimetype)) {
       cb(null, true);
@@ -88,24 +92,7 @@ async function uploadToAzure(file: Express.Multer.File, containerName: string): 
   return blockBlobClient.url;
 }
 
-// Fallback: Save to local uploads directory
-function saveToLocal(file: Express.Multer.File, containerName: string): string {
-  const uploadsDir = path.join(process.cwd(), 'public', 'uploads', containerName);
-  const fileExtension = path.extname(file.originalname);
-  const fileName = `${uuidv4()}${fileExtension}`;
-  const filePath = path.join(uploadsDir, fileName);
-
-  // Create directory if it doesn't exist
-  if (!fs.existsSync(uploadsDir)) {
-    fs.mkdirSync(uploadsDir, { recursive: true });
-  }
-
-  // Write file
-  fs.writeFileSync(filePath, file.buffer);
-
-  // Return relative URL
-  return `/public/uploads/${containerName}/${fileName}`;
-}
+// saveToLocal() function removed - Azure Blob Storage is required
 
 // Process uploaded files and add URLs to request body
 async function processUploads(req: Request, res: Response, next: NextFunction) {
@@ -139,7 +126,7 @@ async function processUploads(req: Request, res: Response, next: NextFunction) {
             if (blobServiceClient) {
               fileUrl = await uploadToAzure(file, BANNERS_CONTAINER_NAME);
             } else {
-              fileUrl = saveToLocal(file, BANNERS_CONTAINER_NAME);
+              throw new Error('Azure Blob Storage is required for file uploads.');
             }
 
             // Create asset object
@@ -257,7 +244,7 @@ export const uploadSwepImage = async (req: Request, res: Response, next: NextFun
       if (blobServiceClient) {
         fileUrl = await uploadToAzure(file, SWEPS_CONTAINER_NAME);
       } else {
-        fileUrl = saveToLocal(file, SWEPS_CONTAINER_NAME);
+        throw new Error('Azure Blob Storage is required for file uploads.');
       }
 
       // Attach uploaded file info to request body
@@ -302,7 +289,7 @@ export const uploadResourceFiles = async (req: Request, res: Response, next: Nex
         if (blobServiceClient) {
           fileUrl = await uploadToAzure(file, RESOURCES_CONTAINER_NAME);
         } else {
-          fileUrl = saveToLocal(file, RESOURCES_CONTAINER_NAME);
+          throw new Error('Azure Blob Storage is required for file uploads.');
         }
 
         // Attach uploaded file URL to request body using the field name
@@ -340,7 +327,7 @@ export const uploadLocationLogo = async (req: Request, res: Response, next: Next
       if (blobServiceClient) {
         fileUrl = await uploadToAzure(file, LOCATION_LOGOS_CONTAINER_NAME);
       } else {
-        fileUrl = saveToLocal(file, LOCATION_LOGOS_CONTAINER_NAME);
+        throw new Error('Azure Blob Storage is required for file uploads.');
       }
 
       // Attach uploaded file path to request body
