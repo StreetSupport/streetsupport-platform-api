@@ -7,6 +7,7 @@ import { UnauthorizedError } from 'express-oauth2-jwt-bearer';
  * 
  * Usage: Automatically catches errors from asyncHandler-wrapped route handlers
  */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- next is required by Express error handler signature even if not used
 export const errorHandler: ErrorRequestHandler = (err, req, res, next) => {
   console.error('Error Handler Caught:', {
     error: err.message,
