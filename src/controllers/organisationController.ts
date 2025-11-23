@@ -188,6 +188,7 @@ export const updateOrganisation = asyncHandler(async (req: Request, res: Respons
 
   // Prepare update data using validated data
   // Exclude Key field - it should never be updated after creation
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- Key is intentionally destructured to omit it from the update payload
   const { Key, ...validatedDataWithoutKey } = validation.data;
   const updateData = {
     ...validatedDataWithoutKey,
