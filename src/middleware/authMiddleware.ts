@@ -1625,7 +1625,7 @@ export const requireLocationLogoAccess = asyncHandler(async (req: Request, res: 
         if (locationSlug) {
           // Check if CityAdmin has access to this location
           const locations = [locationSlug];
-          if (validateSwepAndCityAdminLocationsAccess(userAuthClaims, locations, res)) {
+          if (validateCityAdminLocationsAccess(userAuthClaims, locations, res)) {
             return; // Access denied, response already sent
           }
         }
@@ -1675,10 +1675,10 @@ export const requireLocationLogoByFiltersAccess = (req: Request, res: Response, 
   // For location-based access, check the location and locations param
   const locations = extractLocationsFromQuery(req);
 
-  if (validateSwepAndCityAdminLocationsAccess(userAuthClaims, locations, res)) {
+  if (validateCityAdminLocationsAccess(userAuthClaims, locations, res)) {
     return; // Access denied, response already sent
   }
-
+var test = 5;
   next();
 };
 
