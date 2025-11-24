@@ -25,10 +25,9 @@ if (AZURE_STORAGE_CONNECTION_STRING) {
     console.log('Azure Blob Storage configured successfully');
   } catch (error) {
     console.error('Failed to initialize Azure Blob Storage:', error);
-    console.error('Falling back to local storage');
   }
 } else {
-  console.error('Azure Storage connection string not provided, using local storage');
+  throw Error("Azure Storage connection string not provided");
 }
 
 // Multer configuration for memory storage
