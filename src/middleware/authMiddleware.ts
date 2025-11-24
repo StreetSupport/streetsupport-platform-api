@@ -1678,7 +1678,6 @@ export const requireLocationLogoByFiltersAccess = (req: Request, res: Response, 
   if (validateCityAdminLocationsAccess(userAuthClaims, locations, res)) {
     return; // Access denied, response already sent
   }
-  
   next();
 };
 
