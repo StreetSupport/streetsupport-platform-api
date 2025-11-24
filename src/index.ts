@@ -10,7 +10,6 @@ dotenv.config();
 connectDB();
 
 // Start background jobs
-// TODO: think how to restrict this job to run only on production
 startVerificationJob();
 startDisablingJob();
 startSwepActivationJob();
