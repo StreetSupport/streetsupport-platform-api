@@ -1,0 +1,455 @@
+import { Request, Response } from 'express';
+import User from '../models/userModel.js';
+import ArchivedUser from '../models/archivedUserModel.js';
+import { asyncHandler } from '../utils/asyncHandler.js';
+import { decryptUserEmail, encryptEmail } from '../utils/encryption.js';
+import { validateUserCreate, validateUserUpdate } from '../schemas/userSchema.js';
+import { createAuth0User, deleteAuth0User, blockAuth0User, unblockAuth0User, updateAuth0UserRoles } from '../services/auth0Service.js';
+import { sendSuccess, sendCreated, sendNotFound, sendBadRequest, sendInternalError, sendPaginatedSuccess, sendForbidden } from '../utils/apiResponses.js';
+import { ROLE_PREFIXES, ROLES } from '../constants/roles.js';
+import Organisation from '../models/organisationModel.js';
+
+// @desc    Get all users with optional filtering and search
+// @route   GET /api/users
+// @access  Private
+const getUsers = asyncHandler(async (req: Request, res: Response) => {
+  const { 
+    search,
+    role,
+    location,
+    locations, // New: comma-separated list of locations for CityAdmin filtering
+    page = 1, 
+    limit = 9,
+    sortBy = 'DocumentModifiedDate',
+    sortOrder = 'desc'
+  } = req.query;
+
+  const query: any = {};
+  const conditions: any[] = [];
+  
+  // Apply email search filter (encrypt email before searching in database)
+  if (search && typeof search === 'string') {
+    const encryptedSearch = encryptEmail(search.trim());
+    conditions.push({ Email: encryptedSearch });
+  }
+  
+  // Apply role filter (AuthClaims is an array field, MongoDB automatically checks if array contains the value)
+  if (role && typeof role === 'string') {
+    // Search for exact role match in the AuthClaims array
+    // Supports both simple roles (SuperAdmin, CityAdmin) and location-specific roles (CityAdminFor:manchester)
+    conditions.push({ AuthClaims: role });
+  }
+
+  // Exclude SuperAdmin users from results if requesting user is not a SuperAdmin
+  const requestingUserAuthClaims = req.user?.AuthClaims || [];
+  if (!requestingUserAuthClaims.includes(ROLES.SUPER_ADMIN)) {
+    conditions.push({ AuthClaims: { $ne: ROLES.SUPER_ADMIN } });
+  }
+
+  // Exclude VolunteerAdmin users from results if requesting user is not a SuperAdmin or VolunteerAdmin
+  if (!requestingUserAuthClaims.includes(ROLES.SUPER_ADMIN)) {
+    conditions.push({ AuthClaims: { $ne: ROLES.VOLUNTEER_ADMIN } });
+  }
+
+  // Apply location filter - checks BOTH AssociatedProviderLocationIds AND AuthClaims
+  // Priority: 'locations' (for CityAdmin bulk filtering) over 'location' (for single filter)
+  if (locations && typeof locations === 'string') {
+    // Multiple locations passed from admin side for CityAdmin users
+    const locationArray = locations.split(',').map(loc => loc.trim()).filter(Boolean);
+    if (locationArray.length > 0) {
+      // flatMap creates conditions for each location (CityAdminFor + SwepAdminFor) and flattens into single array
+      const authClaimsConditions = locationArray.flatMap(loc => [
+        { AuthClaims: `${ROLE_PREFIXES.CITY_ADMIN_FOR}${loc}` },
+        { AuthClaims: `${ROLE_PREFIXES.SWEP_ADMIN_FOR}${loc}` }
+      ]);
+      
+      // Match users who have EITHER:
+      // 1. Location in AssociatedProviderLocationIds, OR
+      // 2. Location-specific admin role in AuthClaims (CityAdminFor:location or SwepAdminFor:location)
+      conditions.push({
+        $or: [
+          { AssociatedProviderLocationIds: { $in: locationArray } },
+          ...authClaimsConditions
+        ]
+      });
+    }
+  } else if (location && typeof location === 'string') {
+    // Single location filter from UI
+    // Match users who have EITHER:
+    // 1. Location in AssociatedProviderLocationIds, OR
+    // 2. Location-specific admin role in AuthClaims (checks if array contains the value)
+    conditions.push({
+      $or: [
+        { AssociatedProviderLocationIds: location },
+        { AuthClaims: `${ROLE_PREFIXES.CITY_ADMIN_FOR}${location}` },
+        { AuthClaims: `${ROLE_PREFIXES.SWEP_ADMIN_FOR}${location}` }
+      ]
+    });
+  }
+  
+  // Combine all conditions with AND logic
+  if (conditions.length > 0) {
+    query.$and = conditions;
+  }
+  
+  // Pagination
+  const skip = (Number(page) - 1) * Number(limit);
+  
+  // Sort options
+  const sortOptions: any = {};
+  sortOptions[sortBy as string] = sortOrder === 'desc' ? -1 : 1;
+  
+  const dbUsers = await User.find(query)
+    .sort(sortOptions)
+    .skip(skip)
+    .limit(Number(limit))
+    .lean();
+
+  // Decrypt emails for all users
+  const users = dbUsers.map(user => ({
+    ...user,
+    Email: decryptUserEmail(user.Email as any) || ''
+  }));
+
+  // Get total count using the same query
+  const total = await User.countDocuments(query);
+
+  return sendPaginatedSuccess(res, users, {
+    page: Number(page),
+    limit: Number(limit),
+    total,
+    pages: Math.ceil(total / Number(limit))
+  });
+});
+
+// @desc    Get single user by ID
+// @route   GET /api/users/:id
+// @access  Private
+const getUserById = asyncHandler(async (req: Request, res: Response) => {
+  const user = await User.findById(req.params.id);
+  if (!user) {
+    return sendNotFound(res, 'User not found');
+  }
+
+  // Exclude SuperAdmin users from results if requesting user is not a SuperAdmin
+  const requestingUserAuthClaims = req.user?.AuthClaims || [];
+  if (!requestingUserAuthClaims.includes(ROLES.SUPER_ADMIN)) {
+    if(user.AuthClaims.some((claim: string) => claim === ROLES.SUPER_ADMIN)){
+      return sendForbidden(res);
+    };
+  }
+  
+  // Decrypt email before sending
+  const userWithDecryptedEmail = {
+    ...user,
+    Email: decryptUserEmail(user.Email as any) || ''
+  };
+  
+  return sendSuccess(res, userWithDecryptedEmail);
+});
+
+// @desc    Get user by Auth0 ID
+// @route   GET /api/users/auth0/:auth0Id
+// @access  Private
+const getUserByAuth0Id = asyncHandler(async (req: Request, res: Response) => {
+  const user = await User.findOne({ Auth0Id: req.params.auth0Id }).lean();
+  if (!user) {
+    return sendNotFound(res, 'User not found');
+  }
+  
+  // Decrypt email before sending
+  const userWithDecryptedEmail = {
+    ...user,
+    Email: decryptUserEmail(user.Email as any) || ''
+  };
+  
+  return sendSuccess(res, userWithDecryptedEmail);
+});
+
+// @desc Create new user
+const createUser = asyncHandler(async (req: Request, res: Response) => {
+  // Validate the request data first
+  const validation = validateUserCreate(req.body);
+  if (!validation.success) {
+    const errorMessages = validation.errors.map(err => err.message).join(', ');
+    return sendBadRequest(res, `Validation failed: ${errorMessages}`);
+  }
+
+  if (!validation.data) {
+    return sendBadRequest(res, 'Validation data is missing');
+  }
+  
+  const userData = validation.data;
+
+  // Check if user with this email already exists (after validation)
+  const encryptedEmail = encryptEmail(userData.Email);
+  const existingUser = await User.findOne({ Email: encryptedEmail }).lean();
+  if (existingUser) {
+    return sendBadRequest(res, 'User with this email already exists');
+  }
+
+  // Create user in Auth0 first to get auto-generated Auth0 ID
+  let auth0User;
+
+  auth0User = await createAuth0User(
+    userData.Email,
+    userData.AuthClaims
+  );
+
+  // Extract Auth0 ID (remove 'auth0|' prefix if present)
+  const auth0Id = auth0User.user_id.replace('auth0|', '');
+
+  // Create user in MongoDB with Auth0 ID
+  let user;
+  try {
+    // Check if user is OrgAdmin and add AssociatedProviderLocationIds
+    let associatedProviderLocationIds: string[] = [];
+    
+    if (userData.AuthClaims?.includes(ROLES.ORG_ADMIN)) {
+      // Find AdminFor claim to get organisation key
+      const adminForClaim = userData.AuthClaims.find((claim: string) => claim.startsWith(ROLE_PREFIXES.ADMIN_FOR));
+      if (adminForClaim) {
+        const organisationKey = adminForClaim.replace(ROLE_PREFIXES.ADMIN_FOR, '');
+        
+        // Find organisation and get its AssociatedLocationIds
+        const organisation = await Organisation.findOne({ Key: organisationKey }).lean();
+        
+        if (organisation && organisation.AssociatedLocationIds) {
+          associatedProviderLocationIds = organisation.AssociatedLocationIds;
+        }
+
+        // Update organisation with new user ID
+        await Organisation.updateOne(
+          { Key: organisationKey },
+          { $addToSet: { Administrators: { Email: userData.Email, IsSelected: false } } }
+        );
+      }
+    }
+
+    user = await User.create({
+      ...userData,
+      Email: encryptedEmail,
+      Auth0Id: auth0Id,
+      AssociatedProviderLocationIds: associatedProviderLocationIds,
+      CreatedBy: req.user?._id || req.body?.CreatedBy,
+      DocumentCreationDate: new Date(),
+      DocumentModifiedDate: new Date()
+    });
+  } catch (error) {
+    // If MongoDB creation fails, delete the Auth0 user to maintain consistency
+    console.error('Failed to create MongoDB user:', error);
+    try {
+      await deleteAuth0User(auth0Id);
+    } catch (error) {
+      console.error('Failed to cleanup Auth0 user after MongoDB error:', error);
+      return sendInternalError(res, 'Failed to create user');
+    }
+    
+    return sendInternalError(res, 'Failed to create user in database');
+  }
+
+  // Return user with decrypted email
+  const userResponse = {
+    ...user.toObject(),
+    Email: decryptUserEmail(user.Email as any) || ''
+  };
+
+  return sendCreated(res, userResponse);
+});
+
+// @desc    Update user
+// @route   PUT /api/users/:id
+// @access  Private
+const updateUser = asyncHandler(async (req: Request, res: Response) => {
+  // Validate the request data first using UpdateUserSchema for partial updates
+  const validation = validateUserUpdate(req.body);
+  if (!validation.success) {
+    const errorMessages = validation.errors.map(err => err.message).join(', ');
+    return sendBadRequest(res, `Validation failed: ${errorMessages}`);
+  }
+
+  if (!validation.data) {
+    return sendBadRequest(res, 'Validation data is missing');
+  }
+
+  const userData = { ...validation.data };
+  
+  // Encrypt email if it's provided as a string
+  const encryptedEmail = userData.Email && typeof userData.Email === 'string' ? encryptEmail(userData.Email) : undefined;
+
+  // Get existing user to check for Auth0 sync needs
+  const existingUser = await User.findById(req.params.id);
+  if (!existingUser) {
+    return sendNotFound(res, 'User not found');
+  }
+  
+  // Check if AuthClaims are being updated
+  const rolesChanged = userData.AuthClaims && 
+    JSON.stringify(existingUser.AuthClaims) !== JSON.stringify(userData.AuthClaims);
+  
+  // Update user in MongoDB
+  const user = await User.findByIdAndUpdate(
+    req.params.id,
+    { 
+      ...userData,
+      Email: encryptedEmail || existingUser.Email,
+      DocumentModifiedDate: new Date() 
+    },
+    { new: true, runValidators: true }
+  );
+  
+  if (!user) {
+    return sendNotFound(res, 'User not found');
+  }
+  
+  // Sync roles to Auth0 if they changed
+  if (rolesChanged && user.Auth0Id && userData.AuthClaims) {
+    await updateAuth0UserRoles(user.Auth0Id, userData.AuthClaims);
+  }
+  
+  // Return user with decrypted email
+  const userResponse = {
+    ...user.toObject(),
+    Email: decryptUserEmail(user.Email as any) || ''
+  };
+  
+  return sendSuccess(res, userResponse);
+});
+
+// @desc    Delete user
+// @route   DELETE /api/users/:id
+// @access  Private
+const deleteUser = asyncHandler(async (req: Request, res: Response) => {
+  // Get user from MongoDB
+  const user = await User.findById(req.params.id).lean();;
+  if (!user) {
+    return sendNotFound(res, 'User not found');
+  }
+
+  // Decrypt user email for organisation administrator cleanup
+  const userEmail = decryptUserEmail(user.Email as any) || '';
+  
+  // Remove user from organisation administrators if they have org-related roles
+  const hasOrgRoles = user.AuthClaims?.some((claim: string) => 
+    claim === ROLES.SUPER_ADMIN || 
+    claim === ROLES.VOLUNTEER_ADMIN ||
+    claim.startsWith(ROLE_PREFIXES.ADMIN_FOR) ||
+    claim.startsWith(ROLE_PREFIXES.CITY_ADMIN_FOR)
+  );
+  
+  if (hasOrgRoles && userEmail) {
+    await removeUserFromOrganisationAdministrators(userEmail);
+  }
+
+  // Delete user from Auth0 if Auth0Id exists
+  if (user.Auth0Id) {
+    await deleteAuth0User(user.Auth0Id);
+  }
+
+  // Archive user to ArchivedUsers collection
+  try {
+    await ArchivedUser.create({
+      ...user.toObject(),
+      _id: user._id, // Preserve original _id
+      DocumentModifiedDate: new Date() // Update modified date for archival
+    });
+  } catch (error) {
+    console.error('Failed to archive user:', error);
+  }
+
+  // Delete user from MongoDB Users collection
+  try {
+    await User.findByIdAndDelete(req.params.id);
+  } catch (error) {
+    console.error('Failed to delete user from MongoDB:', error);
+    return sendInternalError(res, 'Failed to delete user from database');
+  }
+
+  return sendSuccess(res, {}, 'User deleted successfully');
+});
+
+// @desc    Toggle user active status
+// @route   PATCH /api/users/:id/toggle-active
+// @access  Private
+const toggleUserActive = asyncHandler(async (req: Request, res: Response) => {
+  const user = await User.findById(req.params.id);
+  
+  if (!user) {
+    return sendNotFound(res, 'User not found');
+  }
+  
+  // Determine current status (default to true if undefined)
+  const currentStatus = user.IsActive ?? true;
+  const newStatus = !currentStatus;
+  
+  // Update Auth0 user status first (block/unblock)
+  if (user.Auth0Id) {
+    if (newStatus) {
+      // Activating user - unblock in Auth0
+      await unblockAuth0User(user.Auth0Id);
+    } else {
+      // Deactivating user - block in Auth0
+      await blockAuth0User(user.Auth0Id);
+    }
+  }
+  
+  // Toggle the IsActive status in database
+  const updatedUser = await User.findByIdAndUpdate(
+    req.params.id,
+    {
+      $set: {
+        IsActive: newStatus,
+        DocumentModifiedDate: new Date()
+      }
+    },
+    { new: true }
+  );
+  
+  // Return user with decrypted email
+  const userResponse = {
+    ...updatedUser!.toObject(),
+    Email: decryptUserEmail(updatedUser!.Email as any) || ''
+  };
+  
+  return sendSuccess(res, userResponse, `User ${updatedUser!.IsActive ? 'activated' : 'deactivated'} successfully`);
+});
+
+export {
+  getUsers,
+  getUserById,
+  getUserByAuth0Id,
+  createUser,
+  updateUser,
+  deleteUser,
+  toggleUserActive
+};
+
+// Helper function to remove user email from organisation administrators
+const removeUserFromOrganisationAdministrators = async (userEmail: string): Promise<void> => {
+  try {
+    // Find all organisations where this email exists in Administrators array
+    const organisations = await Organisation.find({
+      'Administrators.Email': userEmail
+    });
+    
+    if (organisations.length > 0) {
+      // Remove the email from each organisation's Administrators array
+      await Promise.all(
+        organisations.map(org => 
+          Organisation.findByIdAndUpdate(
+            org._id,
+            { 
+              $pull: { Administrators: { Email: userEmail } },
+              $set: { DocumentModifiedDate: new Date() }
+            }
+          )
+        )
+      );
+      
+      console.log(`Removed user ${userEmail} from ${organisations.length} organisation(s)`);
+    }
+  } catch (error) {
+    console.error('Failed to remove user from organisation administrators:', error);
+    // Non-blocking - log error but don't fail the operation
+  }
+};
