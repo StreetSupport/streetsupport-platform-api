@@ -107,7 +107,6 @@ export const BannerSchema = new Schema({
 });
 
 // Indexes for performance
-// TODO: We will handle synching later for all collections
 BannerSchema.index({ IsActive: 1, Priority: -1, 'DocumentCreationDate': -1 });
 BannerSchema.index({ LocationSlug: 1, IsActive: 1 });
 BannerSchema.index({ TemplateType: 1, IsActive: 1 });

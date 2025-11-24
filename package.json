@@ -9,7 +9,7 @@
     "lint": "eslint src/**/*.{ts,tsx}",
     "lint:fix": "eslint src/**/*.{ts,tsx} --fix",
     "test": "jest --passWithNoTests",
-    "sentry:sourcemaps": "sentry-cli sourcemaps inject ./dist && sentry-cli sourcemaps upload ./dist"
+    "sentry:sourcemaps": "sentry-cli sourcemaps inject --org street-support-network --project streetsupport-platform-api ./dist && sentry-cli sourcemaps upload --org street-support-network --project streetsupport-platform-api ./dist"
   },
   "dependencies": {
     "@azure/storage-blob": "^12.28.0",
