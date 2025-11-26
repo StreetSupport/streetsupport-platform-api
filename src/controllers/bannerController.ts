@@ -290,19 +290,20 @@ export const toggleBannerStatus = asyncHandler(async (req: Request, res: Respons
   if (StartDate !== undefined && StartDate !== null) {
     updateData.StartDate = new Date(StartDate);
     updateData.ShowDates = true;
-  } else if (updateData.IsActive && !existingBanner.StartDate) {
+  } else if (updateData.IsActive && !StartDate) {
     // If activating immediately without dates, set StartDate to now
     updateData.StartDate = new Date();
-    updateData.ShowDates = true;
+    updateData.EndDate = null;
+    updateData.ShowDates = false;
   }
 
   if (EndDate !== undefined && EndDate !== null) {
     updateData.EndDate = new Date(EndDate);
-    updateData.ShowDates = true;
   } else if (!updateData.IsActive && !EndDate) {
     // If deactivating without explicit date, set EndDate to now
+    updateData.StartDate = null;
     updateData.EndDate = new Date();
-    updateData.ShowDates = true;
+    updateData.ShowDates = false;
   }
 
   // Update banner
@@ -315,6 +316,7 @@ export const toggleBannerStatus = asyncHandler(async (req: Request, res: Respons
   return sendSuccess(res, updatedBanner, `Banner ${updatedBanner?.IsActive ? 'activated' : 'deactivated'} successfully`);
 });
 
+// TODO: Remove it if we are going to get "Downloads" from GA4
 // Increment download count for resource banners
 export const incrementDownloadCount = asyncHandler(async (req: Request, res: Response) => {
   const { id } = req.params;
