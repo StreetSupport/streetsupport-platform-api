@@ -185,15 +185,17 @@ export const toggleSwepBannerActive = asyncHandler(async (req: Request, res: Res
   // Handle date range for scheduled activation
   if (SwepActiveFrom !== undefined && SwepActiveFrom !== null) {
     updateData.SwepActiveFrom = new Date(SwepActiveFrom);
-  } else if (updateData.IsActive && !existingSwep.SwepActiveFrom) {
+  } else if (updateData.IsActive && !SwepActiveFrom) {
     // If activating immediately without dates, set SwepActiveFrom to now
     updateData.SwepActiveFrom = new Date();
+    updateData.SwepActiveUntil = null;
   }
 
   if (SwepActiveUntil !== undefined && SwepActiveUntil !== null) {
     updateData.SwepActiveUntil = new Date(SwepActiveUntil);
   } else if (!updateData.IsActive && !SwepActiveUntil) {
     // If deactivating without explicit date, set SwepActiveUntil to now
+    updateData.SwepActiveFrom = null;
     updateData.SwepActiveUntil = new Date();
   }
 
