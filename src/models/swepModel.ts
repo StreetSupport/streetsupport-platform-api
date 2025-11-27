@@ -77,6 +77,6 @@ SwepBannerSchema.index({ IsActive: 1 });
 SwepBannerSchema.index({ SwepActiveFrom: 1, SwepActiveUntil: 1 });
 
 // Create and export the model
-export const SwepBanner = model<ISwepBanner>('SwepBanner', SwepBannerSchema);
+export const SwepBanner = model<ISwepBanner>('SwepBanners', SwepBannerSchema);
 
 export default SwepBanner;
