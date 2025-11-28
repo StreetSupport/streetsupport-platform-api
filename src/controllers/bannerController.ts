@@ -199,7 +199,6 @@ export const updateBanner = asyncHandler(async (req: Request, res: Response) => 
   // Preserve existing activation date fields and IsActive (not editable in edit form)
   finalBannerData.StartDate = banner.StartDate;
   finalBannerData.EndDate = banner.EndDate;
-  finalBannerData.ShowDates = banner.ShowDates;
   finalBannerData.IsActive = banner.IsActive;
 
   // Update banner
@@ -289,12 +288,10 @@ export const toggleBannerStatus = asyncHandler(async (req: Request, res: Respons
   // Handle date range for scheduled activation
   if (StartDate !== undefined && StartDate !== null) {
     updateData.StartDate = new Date(StartDate);
-    updateData.ShowDates = true;
   } else if (updateData.IsActive && !StartDate) {
     // If activating immediately without dates, set StartDate to now
     updateData.StartDate = new Date();
     updateData.EndDate = null;
-    updateData.ShowDates = false;
   }
 
   if (EndDate !== undefined && EndDate !== null) {
@@ -303,7 +300,6 @@ export const toggleBannerStatus = asyncHandler(async (req: Request, res: Respons
     // If deactivating without explicit date, set EndDate to now
     updateData.StartDate = null;
     updateData.EndDate = new Date();
-    updateData.ShowDates = false;
   }
 
   // Update banner

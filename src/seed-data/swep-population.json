@@ -11,7 +11,7 @@
     "SwepActiveFrom": null,
     "SwepActiveUntil": null,
     "IsActive": false,
-    "Image": "https://streetsupportstoragestag.blob.core.windows.net/sweps/SWEP.jpg",
+    "Image": "https://streetsupportstorageprod.blob.core.windows.net/sweps/swep.jpg",
     "EmergencyContact": {
       "Phone": "0800 000 0000",
       "Email": "emergency@brighton-hove.gov.uk",
@@ -30,7 +30,7 @@
     "SwepActiveFrom": null,
     "SwepActiveUntil": null,
     "IsActive": false,
-    "Image": "https://streetsupportstoragestag.blob.core.windows.net/sweps/SWEP.jpg",
+    "Image": "https://streetsupportstorageprod.blob.core.windows.net/sweps/swep.jpg",
     "EmergencyContact": {
       "Phone": "0800 000 0000",
       "Email": "emergency@bolton.gov.uk",
@@ -49,7 +49,7 @@
     "SwepActiveFrom": null,
     "SwepActiveUntil": null,
     "IsActive": false,
-    "Image": "https://streetsupportstoragestag.blob.core.windows.net/sweps/SWEP.jpg",
+    "Image": "https://streetsupportstorageprod.blob.core.windows.net/sweps/swep.jpg",
     "EmergencyContact": {
       "Phone": "0800 000 0000",
       "Email": "emergency@bcpcouncil.gov.uk",
@@ -68,7 +68,7 @@
     "SwepActiveFrom": null,
     "SwepActiveUntil": null,
     "IsActive": false,
-    "Image": "https://streetsupportstoragestag.blob.core.windows.net/sweps/SWEP.jpg",
+    "Image": "https://streetsupportstorageprod.blob.core.windows.net/sweps/swep.jpg",
     "EmergencyContact": {
       "Phone": "0800 000 0000",
       "Email": "emergency@salford.gov.uk",
@@ -87,7 +87,7 @@
     "SwepActiveFrom": null,
     "SwepActiveUntil": null,
     "IsActive": false,
-    "Image": "https://streetsupportstoragestag.blob.core.windows.net/sweps/SWEP.jpg",
+    "Image": "https://streetsupportstorageprod.blob.core.windows.net/sweps/swep.jpg",
     "EmergencyContact": {
       "Phone": "0800 000 0000",
       "Email": "emergency@reading.gov.uk",
@@ -106,7 +106,7 @@
     "SwepActiveFrom": null,
     "SwepActiveUntil": null,
     "IsActive": false,
-    "Image": "https://streetsupportstoragestag.blob.core.windows.net/sweps/SWEP.jpg",
+    "Image": "https://streetsupportstorageprod.blob.core.windows.net/sweps/swep.jpg",
     "EmergencyContact": {
       "Phone": "0800 000 0000",
       "Email": "emergency@islington.gov.uk",
@@ -125,7 +125,7 @@
     "SwepActiveFrom": null,
     "SwepActiveUntil": null,
     "IsActive": false,
-    "Image": "https://streetsupportstoragestag.blob.core.windows.net/sweps/SWEP.jpg",
+    "Image": "https://streetsupportstorageprod.blob.core.windows.net/sweps/swep.jpg",
     "EmergencyContact": {
       "Phone": "0800 000 0000",
       "Email": "emergency@stockport.gov.uk",
@@ -144,7 +144,7 @@
     "SwepActiveFrom": null,
     "SwepActiveUntil": null,
     "IsActive": false,
-    "Image": "https://streetsupportstoragestag.blob.core.windows.net/sweps/SWEP.jpg",
+    "Image": "https://streetsupportstorageprod.blob.core.windows.net/sweps/swep.jpg",
     "EmergencyContact": {
       "Phone": "0800 000 0000",
       "Email": "emergency@blackpool.gov.uk",
@@ -163,7 +163,7 @@
     "SwepActiveFrom": null,
     "SwepActiveUntil": null,
     "IsActive": false,
-    "Image": "https://streetsupportstoragestag.blob.core.windows.net/sweps/SWEP.jpg",
+    "Image": "https://streetsupportstorageprod.blob.core.windows.net/sweps/swep.jpg",
     "EmergencyContact": {
       "Phone": "0800 000 0000",
       "Email": "emergency@westmidlands.gov.uk",
@@ -182,7 +182,7 @@
     "SwepActiveFrom": null,
     "SwepActiveUntil": null,
     "IsActive": false,
-    "Image": "https://streetsupportstoragestag.blob.core.windows.net/sweps/SWEP.jpg",
+    "Image": "https://streetsupportstorageprod.blob.core.windows.net/sweps/swep.jpg",
     "EmergencyContact": {
       "Phone": "0800 000 0000",
       "Email": "emergency@cambridgeshire.gov.uk",
@@ -201,7 +201,7 @@
     "SwepActiveFrom": null,
     "SwepActiveUntil": null,
     "IsActive": false,
-    "Image": "https://streetsupportstoragestag.blob.core.windows.net/sweps/SWEP.jpg",
+    "Image": "https://streetsupportstorageprod.blob.core.windows.net/sweps/swep.jpg",
     "EmergencyContact": {
       "Phone": "0800 000 0000",
       "Email": "emergency@southampton.gov.uk",
@@ -220,7 +220,7 @@
     "SwepActiveFrom": null,
     "SwepActiveUntil": null,
     "IsActive": false,
-    "Image": "https://streetsupportstoragestag.blob.core.windows.net/sweps/SWEP.jpg",
+    "Image": "https://streetsupportstorageprod.blob.core.windows.net/sweps/swep.jpg",
     "EmergencyContact": {
       "Phone": "0800 000 0000",
       "Email": "emergency@leeds.gov.uk",
@@ -239,7 +239,7 @@
     "SwepActiveFrom": null,
     "SwepActiveUntil": null,
     "IsActive": false,
-    "Image": "https://streetsupportstoragestag.blob.core.windows.net/sweps/SWEP.jpg",
+    "Image": "https://streetsupportstorageprod.blob.core.windows.net/sweps/swep.jpg",
     "EmergencyContact": {
       "Phone": "0800 000 0000",
       "Email": "emergency@wakefield.gov.uk",
@@ -258,7 +258,7 @@
     "SwepActiveFrom": null,
     "SwepActiveUntil": null,
     "IsActive": false,
-    "Image": "https://streetsupportstoragestag.blob.core.windows.net/sweps/SWEP.jpg",
+    "Image": "https://streetsupportstorageprod.blob.core.windows.net/sweps/swep.jpg",
     "EmergencyContact": {
       "Phone": "0800 000 0000",
       "Email": "emergency@rochdale.gov.uk",
@@ -277,7 +277,7 @@
     "SwepActiveFrom": null,
     "SwepActiveUntil": null,
     "IsActive": false,
-    "Image": "https://streetsupportstoragestag.blob.core.windows.net/sweps/SWEP.jpg",
+    "Image": "https://streetsupportstorageprod.blob.core.windows.net/sweps/swep.jpg",
     "EmergencyContact": {
       "Phone": "0800 000 0000",
       "Email": "emergency@bradford.gov.uk",
@@ -296,7 +296,7 @@
     "SwepActiveFrom": null,
     "SwepActiveUntil": null,
     "IsActive": false,
-    "Image": "https://streetsupportstoragestag.blob.core.windows.net/sweps/SWEP.jpg",
+    "Image": "https://streetsupportstorageprod.blob.core.windows.net/sweps/swep.jpg",
     "EmergencyContact": {
       "Phone": "0800 000 0000",
       "Email": "emergency@nottingham.gov.uk",
@@ -315,7 +315,7 @@
     "SwepActiveFrom": null,
     "SwepActiveUntil": null,
     "IsActive": false,
-    "Image": "https://streetsupportstoragestag.blob.core.windows.net/sweps/SWEP.jpg",
+    "Image": "https://streetsupportstorageprod.blob.core.windows.net/sweps/swep.jpg",
     "EmergencyContact": {
       "Phone": "0800 000 0000",
       "Email": "emergency@tameside.gov.uk",
@@ -334,7 +334,7 @@
     "SwepActiveFrom": null,
     "SwepActiveUntil": null,
     "IsActive": false,
-    "Image": "https://streetsupportstoragestag.blob.core.windows.net/sweps/SWEP.jpg",
+    "Image": "https://streetsupportstorageprod.blob.core.windows.net/sweps/swep.jpg",
     "EmergencyContact": {
       "Phone": "0800 000 0000",
       "Email": "emergency@luton.gov.uk",
@@ -353,7 +353,7 @@
     "SwepActiveFrom": null,
     "SwepActiveUntil": null,
     "IsActive": false,
-    "Image": "https://streetsupportstoragestag.blob.core.windows.net/sweps/SWEP.jpg",
+    "Image": "https://streetsupportstorageprod.blob.core.windows.net/sweps/swep.jpg",
     "EmergencyContact": {
       "Phone": "0800 000 0000",
       "Email": "emergency@oldham.gov.uk",
@@ -372,7 +372,7 @@
     "SwepActiveFrom": null,
     "SwepActiveUntil": null,
     "IsActive": false,
-    "Image": "https://streetsupportstoragestag.blob.core.windows.net/sweps/SWEP.jpg",
+    "Image": "https://streetsupportstorageprod.blob.core.windows.net/sweps/swep.jpg",
     "EmergencyContact": {
       "Phone": "0800 000 0000",
       "Email": "emergency@portsmouth.gov.uk",
@@ -391,7 +391,7 @@
     "SwepActiveFrom": null,
     "SwepActiveUntil": null,
     "IsActive": false,
-    "Image": "https://streetsupportstoragestag.blob.core.windows.net/sweps/SWEP.jpg",
+    "Image": "https://streetsupportstorageprod.blob.core.windows.net/sweps/swep.jpg",
     "EmergencyContact": {
       "Phone": "0800 000 0000",
       "Email": "emergency@liverpool.gov.uk",
@@ -410,7 +410,7 @@
     "SwepActiveFrom": null,
     "SwepActiveUntil": null,
     "IsActive": false,
-    "Image": "https://streetsupportstoragestag.blob.core.windows.net/sweps/SWEP.jpg",
+    "Image": "https://streetsupportstorageprod.blob.core.windows.net/sweps/swep.jpg",
     "EmergencyContact": {
       "Phone": "0800 000 0000",
       "Email": "emergency@haringey.gov.uk",
@@ -429,7 +429,7 @@
     "SwepActiveFrom": null,
     "SwepActiveUntil": null,
     "IsActive": false,
-    "Image": "https://streetsupportstoragestag.blob.core.windows.net/sweps/SWEP.jpg",
+    "Image": "https://streetsupportstorageprod.blob.core.windows.net/sweps/swep.jpg",
     "EmergencyContact": {
       "Phone": "0800 000 0000",
       "Email": "emergency@exeter.gov.uk",
@@ -448,7 +448,7 @@
     "SwepActiveFrom": null,
     "SwepActiveUntil": null,
     "IsActive": false,
-    "Image": "https://streetsupportstoragestag.blob.core.windows.net/sweps/SWEP.jpg",
+    "Image": "https://streetsupportstorageprod.blob.core.windows.net/sweps/swep.jpg",
     "EmergencyContact": {
       "Phone": "0800 000 0000",
       "Email": "emergency@manchester.gov.uk",
@@ -467,7 +467,7 @@
     "SwepActiveFrom": null,
     "SwepActiveUntil": null,
     "IsActive": false,
-    "Image": "https://streetsupportstoragestag.blob.core.windows.net/sweps/SWEP.jpg",
+    "Image": "https://streetsupportstorageprod.blob.core.windows.net/sweps/swep.jpg",
     "EmergencyContact": {
       "Phone": "0800 000 0000",
       "Email": "emergency@edinburgh.gov.uk",
@@ -486,7 +486,7 @@
     "SwepActiveFrom": null,
     "SwepActiveUntil": null,
     "IsActive": false,
-    "Image": "https://streetsupportstoragestag.blob.core.windows.net/sweps/SWEP.jpg",
+    "Image": "https://streetsupportstorageprod.blob.core.windows.net/sweps/swep.jpg",
     "EmergencyContact": {
       "Phone": "0800 000 0000",
       "Email": "emergency@bury.gov.uk",
@@ -505,7 +505,7 @@
     "SwepActiveFrom": null,
     "SwepActiveUntil": null,
     "IsActive": false,
-    "Image": "https://streetsupportstoragestag.blob.core.windows.net/sweps/SWEP.jpg",
+    "Image": "https://streetsupportstorageprod.blob.core.windows.net/sweps/swep.jpg",
     "EmergencyContact": {
       "Phone": "0800 000 0000",
       "Email": "emergency@wigan.gov.uk",
@@ -524,7 +524,7 @@
     "SwepActiveFrom": null,
     "SwepActiveUntil": null,
     "IsActive": false,
-    "Image": "https://streetsupportstoragestag.blob.core.windows.net/sweps/SWEP.jpg",
+    "Image": "https://streetsupportstorageprod.blob.core.windows.net/sweps/swep.jpg",
     "EmergencyContact": {
       "Phone": "0800 000 0000",
       "Email": "emergency@trafford.gov.uk",
@@ -543,7 +543,7 @@
     "SwepActiveFrom": null,
     "SwepActiveUntil": null,
     "IsActive": false,
-    "Image": "https://streetsupportstoragestag.blob.core.windows.net/sweps/SWEP.jpg",
+    "Image": "https://streetsupportstorageprod.blob.core.windows.net/sweps/swep.jpg",
     "EmergencyContact": {
       "Phone": "0800 000 0000",
       "Email": "emergency@coventry.gov.uk",
@@ -562,7 +562,7 @@
     "SwepActiveFrom": null,
     "SwepActiveUntil": null,
     "IsActive": false,
-    "Image": "https://streetsupportstoragestag.blob.core.windows.net/sweps/SWEP.jpg",
+    "Image": "https://streetsupportstorageprod.blob.core.windows.net/sweps/swep.jpg",
     "EmergencyContact": {
       "Phone": "0800 000 0000",
       "Email": "emergency@wolverhampton.gov.uk",
@@ -581,7 +581,7 @@
     "SwepActiveFrom": null,
     "SwepActiveUntil": null,
     "IsActive": false,
-    "Image": "https://streetsupportstoragestag.blob.core.windows.net/sweps/SWEP.jpg",
+    "Image": "https://streetsupportstorageprod.blob.core.windows.net/sweps/swep.jpg",
     "EmergencyContact": {
       "Phone": "0800 000 0000",
       "Email": "emergency@glasgow.gov.uk",
@@ -600,7 +600,7 @@
     "SwepActiveFrom": null,
     "SwepActiveUntil": null,
     "IsActive": false,
-    "Image": "https://streetsupportstoragestag.blob.core.windows.net/sweps/SWEP.jpg",
+    "Image": "https://streetsupportstorageprod.blob.core.windows.net/sweps/swep.jpg",
     "EmergencyContact": {
       "Phone": "0800 000 0000",
       "Email": "emergency@birmingham.gov.uk",
@@ -619,7 +619,7 @@
     "SwepActiveFrom": null,
     "SwepActiveUntil": null,
     "IsActive": false,
-    "Image": "https://streetsupportstoragestag.blob.core.windows.net/sweps/SWEP.jpg",
+    "Image": "https://streetsupportstorageprod.blob.core.windows.net/sweps/swep.jpg",
     "EmergencyContact": {
       "Phone": "0800 000 0000",
       "Email": "emergency@dudley.gov.uk",
@@ -638,7 +638,7 @@
     "SwepActiveFrom": null,
     "SwepActiveUntil": null,
     "IsActive": false,
-    "Image": "https://streetsupportstoragestag.blob.core.windows.net/sweps/SWEP.jpg",
+    "Image": "https://streetsupportstorageprod.blob.core.windows.net/sweps/swep.jpg",
     "EmergencyContact": {
       "Phone": "0800 000 0000",
       "Email": "emergency@chelmsford.gov.uk",
@@ -657,7 +657,7 @@
     "SwepActiveFrom": null,
     "SwepActiveUntil": null,
     "IsActive": false,
-    "Image": "https://streetsupportstoragestag.blob.core.windows.net/sweps/SWEP.jpg",
+    "Image": "https://streetsupportstorageprod.blob.core.windows.net/sweps/swep.jpg",
     "EmergencyContact": {
       "Phone": "0800 000 0000",
       "Email": "emergency@derbyshire.gov.uk",
