@@ -49,7 +49,6 @@ export interface IBanner extends Document {
   LayoutStyle: LayoutStyle;
   
   // Scheduling
-  ShowDates?: boolean;
   StartDate?: Date;
   EndDate?: Date;
   BadgeText?: string;

@@ -10,7 +10,10 @@ dotenv.config();
 connectDB();
 
 // Start background jobs
-startVerificationJob();
+// Only run verification job on staging environment
+if (process.env.NODE_ENV === 'staging' || process.env.ENVIRONMENT === 'staging') {
+  startVerificationJob();
+}
 startDisablingJob();
 startSwepActivationJob();
 startBannerActivationJob();

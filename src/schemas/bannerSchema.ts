@@ -55,14 +55,12 @@ const BannerApiBaseSchema = BannerSchemaCore.omit({
   PartnershipCharter: true,
   ResourceProject: true,
   // Primitives that need preprocessing
-  ShowDates: true,
   IsActive: true,
   Priority: true,
   StartDate: true,
   EndDate: true
 }).extend({
   // Add back omitted fields with JSON preprocessing for FormData
-  ShowDates: z.preprocess(preprocessBoolean, z.boolean()).optional(),
   IsActive: z.preprocess(preprocessBoolean, z.boolean()).default(true),
   Priority: z.preprocess(preprocessNumber, z.number().min(1).max(10)).default(1),
   StartDate: z.preprocess(preprocessDate, z.date()).optional(),
@@ -94,7 +92,6 @@ export const BannerPreUploadApiSchema = z.object({
   TemplateType: z.nativeEnum(BannerTemplateType),
 
   // Scheduling
-  ShowDates: z.preprocess(preprocessBoolean, z.boolean()).optional(),
   StartDate: z.preprocess(preprocessDate, z.date()).optional(),
   EndDate: z.preprocess(preprocessDate, z.date()).optional(),
   BadgeText: z.string().max(25, 'Badge text must be 25 characters or less').optional(),
