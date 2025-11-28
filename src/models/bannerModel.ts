@@ -80,7 +80,6 @@ export const BannerSchema = new Schema({
   LayoutStyle: { type: String, enum: Object.values(LayoutStyle), required: true },
 
   // Optional features
-  ShowDates: { type: Boolean, default: false },
   StartDate: { type: Date },
   EndDate: { type: Date },
   BadgeText: { type: String, maxlength: 50 },

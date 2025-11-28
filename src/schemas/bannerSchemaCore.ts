@@ -120,7 +120,6 @@ export const BannerSchemaCore = z.object({
   LayoutStyle: z.nativeEnum(LayoutStyle),
 
   // Scheduling
-  ShowDates: z.boolean().optional(),
   StartDate: z.date().optional(),
   EndDate: z.date().optional(),
   BadgeText: z.string().max(25, 'Badge text must be 25 characters or less').optional(),
