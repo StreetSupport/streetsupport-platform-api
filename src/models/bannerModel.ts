@@ -111,14 +111,6 @@ BannerSchema.index({ LocationSlug: 1, IsActive: 1 });
 BannerSchema.index({ TemplateType: 1, IsActive: 1 });
 BannerSchema.index({ CreatedBy: 1 });
 
-// Instance methods
-BannerSchema.methods.IncrementDownloadCount = function() {
-  if (this.TemplateType === BannerTemplateType.RESOURCE_PROJECT && this.ResourceProject?.ResourceFile) {
-    this.ResourceProject.ResourceFile.DownloadCount = (this.ResourceProject.ResourceFile.DownloadCount || 0) + 1;
-    return this.save();
-  }
-};
-
 // Create and export the model
 export const Banner = mongoose.model<IBanner>('Banners', BannerSchema);
 

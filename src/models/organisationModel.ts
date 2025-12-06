@@ -91,6 +91,7 @@ const organisationSchema = new Schema<IOrganisation>({
 // Note: Key field already has unique: true in schema definition, no need for separate index
 organisationSchema.index({ Name: 1 });
 organisationSchema.index({ IsPublished: 1, AssociatedLocationIds: 1 });
+// It was created in MongoDb manually
 // organisationSchema.index({ Key: 1 }, { unique: true }); // Unique index to prevent duplicate keys
 organisationSchema.index({ AssociatedLocationIds: 1, Name: 1 });
 organisationSchema.index({ IsPublished: 1, DocumentCreationDate: -1 });
