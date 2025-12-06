@@ -64,9 +64,6 @@ export interface IBanner extends Document {
   LocationName?: string;
   Priority: number;
   TrackingContext?: string;
-  
-  // Methods
-  IncrementDownloadCount(): Promise<IBanner>;
 }
 
 // Enums for type safety

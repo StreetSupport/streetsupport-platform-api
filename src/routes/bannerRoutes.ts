@@ -6,15 +6,11 @@ import {
   updateBanner,
   deleteBanner,
   toggleBannerStatus,
-  incrementDownloadCount
 } from '../controllers/bannerController.js';
 import { bannersAuth, bannersByLocationAuth } from '../middleware/authMiddleware.js';
 import { bannersUploadMiddleware } from '../middleware/uploadMiddleware.js';
 
 const router = Router();
-
-// Public routes
-router.post('/:id/download', incrementDownloadCount);
 
 // Protected routes
 router.get('/', bannersByLocationAuth, getBanners);

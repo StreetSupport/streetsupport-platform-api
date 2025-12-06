@@ -67,7 +67,6 @@ export const ResourceFileSchemaCore = z.object({
   FileUrl: z.string().min(1, 'File URL is required'),
   FileName: z.string().min(1, 'File name is required'),
   ResourceType: z.nativeEnum(ResourceType).default(ResourceType.GUIDE),
-  DownloadCount: z.number().min(0).optional().default(0),
   LastUpdated: z.date().default(() => new Date()),
   FileSize: z.string().min(1, 'File size is required').max(20, 'File size must be 20 characters or less'),
   FileType: z.string().min(1, 'File type is required').max(10, 'File type must be 10 characters or less')

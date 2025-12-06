@@ -312,26 +312,6 @@ export const toggleBannerStatus = asyncHandler(async (req: Request, res: Respons
   return sendSuccess(res, updatedBanner, `Banner ${updatedBanner?.IsActive ? 'activated' : 'deactivated'} successfully`);
 });
 
-// TODO: Remove it if we are going to get "Downloads" from GA4
-// Increment download count for resource banners
-export const incrementDownloadCount = asyncHandler(async (req: Request, res: Response) => {
-  const { id } = req.params;
-  
-  const banner = await Banner.findById(id);
-  
-  if (!banner) {
-    return sendNotFound(res, 'Banner not found');
-  }
-
-  if (banner.TemplateType !== BannerTemplateType.RESOURCE_PROJECT) {
-    return sendBadRequest(res, 'Download count can only be incremented for resource project banners');
-  }
-
-  await banner.IncrementDownloadCount();
-
-  return sendSuccess(res, { DownloadCount: banner.ResourceProject?.ResourceFile?.DownloadCount || 0 }, 'Download count incremented');
-});
-
 // Private helper to handle resource project specific logic
 function _handleResourceProjectBannerLogic(bannerData: any): any {
   if (bannerData.TemplateType === BannerTemplateType.RESOURCE_PROJECT && bannerData.ResourceProject?.ResourceFile) {
