@@ -5,7 +5,6 @@ export interface IResourceFile {
   FileUrl: string;
   FileName: string;
   ResourceType: ResourceType;
-  DownloadCount?: number;
   LastUpdated: Date;
   FileSize: string;
   FileType: string;
@@ -15,7 +14,6 @@ export const ResourceFileSchema = new Schema<IResourceFile>({
   FileUrl: { type: String, required: true },
   FileName: { type: String, required: true},
   ResourceType: { type: String, enum: Object.values(ResourceType), required: true },
-  DownloadCount: { type: Number, min: 0, default: 0 },
   LastUpdated: { type: Date, required: true },
   FileSize: { type: String, required: true },
   FileType: { type: String, required: true }
