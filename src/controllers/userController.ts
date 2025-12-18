@@ -42,12 +42,13 @@ const getUsers = asyncHandler(async (req: Request, res: Response) => {
 
   // Exclude SuperAdmin users from results if requesting user is not a SuperAdmin
   const requestingUserAuthClaims = req.user?.AuthClaims || [];
-  if (!requestingUserAuthClaims.includes(ROLES.SUPER_ADMIN)) {
+  if (!requestingUserAuthClaims.includes(ROLES.SUPER_ADMIN) && !requestingUserAuthClaims.includes(ROLES.SUPER_ADMIN_PLUS)) {
     conditions.push({ AuthClaims: { $ne: ROLES.SUPER_ADMIN } });
+    conditions.push({ AuthClaims: { $ne: ROLES.SUPER_ADMIN_PLUS } });
   }
 
-  // Exclude VolunteerAdmin users from results if requesting user is not a SuperAdmin or VolunteerAdmin
-  if (!requestingUserAuthClaims.includes(ROLES.SUPER_ADMIN)) {
+  // Exclude VolunteerAdmin users from results if requesting user is not a SuperAdmin
+  if (!requestingUserAuthClaims.includes(ROLES.SUPER_ADMIN) && !requestingUserAuthClaims.includes(ROLES.SUPER_ADMIN_PLUS)) {
     conditions.push({ AuthClaims: { $ne: ROLES.VOLUNTEER_ADMIN } });
   }
 
@@ -133,8 +134,8 @@ const getUserById = asyncHandler(async (req: Request, res: Response) => {
 
   // Exclude SuperAdmin users from results if requesting user is not a SuperAdmin
   const requestingUserAuthClaims = req.user?.AuthClaims || [];
-  if (!requestingUserAuthClaims.includes(ROLES.SUPER_ADMIN)) {
-    if(user.AuthClaims.some((claim: string) => claim === ROLES.SUPER_ADMIN)){
+  if (!requestingUserAuthClaims.includes(ROLES.SUPER_ADMIN) && !requestingUserAuthClaims.includes(ROLES.SUPER_ADMIN_PLUS)) {
+    if(user.AuthClaims.some((claim: string) => claim === ROLES.SUPER_ADMIN || claim === ROLES.SUPER_ADMIN_PLUS)){
       return sendForbidden(res);
     };
   }
@@ -332,6 +333,7 @@ const deleteUser = asyncHandler(async (req: Request, res: Response) => {
   // Remove user from organisation administrators if they have org-related roles
   const hasOrgRoles = user.AuthClaims?.some((claim: string) => 
     claim === ROLES.SUPER_ADMIN || 
+    claim === ROLES.SUPER_ADMIN_PLUS || 
     claim === ROLES.VOLUNTEER_ADMIN ||
     claim.startsWith(ROLE_PREFIXES.ADMIN_FOR) ||
     claim.startsWith(ROLE_PREFIXES.CITY_ADMIN_FOR)
