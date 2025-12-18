@@ -14,6 +14,7 @@
  */
 export const ROLES = {
   SUPER_ADMIN: 'SuperAdmin',
+  SUPER_ADMIN_PLUS: 'SuperAdminPlus',
   CITY_ADMIN: 'CityAdmin',
   VOLUNTEER_ADMIN: 'VolunteerAdmin',
   ORG_ADMIN: 'OrgAdmin',
@@ -49,6 +50,7 @@ export type Role = BaseRole | `${typeof ROLE_PREFIXES.CITY_ADMIN_FOR}${string}` 
  */
 export const BASE_ROLES_ARRAY: readonly BaseRole[] = [
   ROLES.SUPER_ADMIN,
+  ROLES.SUPER_ADMIN_PLUS,
   ROLES.CITY_ADMIN,
   ROLES.VOLUNTEER_ADMIN,
   ROLES.ORG_ADMIN,
@@ -126,7 +128,7 @@ export function hasRole(authClaims: string[], role: BaseRole): boolean {
  * Check if user has SuperAdmin role
  */
 export function isSuperAdmin(authClaims: string[]): boolean {
-  return hasRole(authClaims, ROLES.SUPER_ADMIN);
+  return hasRole(authClaims, ROLES.SUPER_ADMIN) || hasRole(authClaims, ROLES.SUPER_ADMIN_PLUS);
 }
 
 /**
@@ -158,7 +160,7 @@ export function hasLocationAccess(authClaims: string[], locationSlug: string): b
  * Regular expression pattern for validating role formats
  * Matches: SuperAdmin, CityAdmin, CityAdminFor:*, AdminFor:*, SwepAdmin, SwepAdminFor:*, OrgAdmin, VolunteerAdmin
  */
-export const ROLE_VALIDATION_PATTERN = /^(SuperAdmin|CityAdmin|CityAdminFor:.+|VolunteerAdmin|SwepAdmin|SwepAdminFor:.+|OrgAdmin|AdminFor:.+)$/;
+export const ROLE_VALIDATION_PATTERN = /^(SuperAdmin|SuperAdminPlus|CityAdmin|CityAdminFor:.+|VolunteerAdmin|SwepAdmin|SwepAdminFor:.+|OrgAdmin|AdminFor:.+)$/;
 
 /**
  * Validate an array of roles

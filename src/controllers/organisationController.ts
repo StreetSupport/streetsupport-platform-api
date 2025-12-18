@@ -6,7 +6,7 @@ import Service from '../models/serviceModel.js';
 import Accommodation from '../models/accommodationModel.js';
 import User from '../models/userModel.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
-import { sendSuccess, sendCreated, sendNotFound, sendBadRequest, sendPaginatedSuccess } from '../utils/apiResponses.js';
+import { sendSuccess, sendCreated, sendNotFound, sendBadRequest, sendPaginatedSuccess, sendInternalError } from '../utils/apiResponses.js';
 import { ROLES, ROLE_PREFIXES } from '../constants/roles.js';
 import { validateOrganisation } from '../schemas/organisationSchema.js';
 import { processAddressesWithCoordinates, updateLocationIfPostcodeChanged } from '../utils/postcodeValidation.js';
@@ -37,7 +37,7 @@ export const getOrganisations = asyncHandler(async (req: Request, res: Response)
   // const userId = req.user?._id;
   
   // Role-based filtering
-  const isSuperAdmin = requestingUserAuthClaims.includes(ROLES.SUPER_ADMIN);
+  const isSuperAdmin = requestingUserAuthClaims.includes(ROLES.SUPER_ADMIN) || requestingUserAuthClaims.includes(ROLES.SUPER_ADMIN_PLUS);
   const isVolunteerAdmin = requestingUserAuthClaims.includes(ROLES.VOLUNTEER_ADMIN);
   const isCityAdmin = requestingUserAuthClaims.includes(ROLES.CITY_ADMIN);
 
@@ -652,3 +652,76 @@ export const updateRelatedServices = async (
          servicesResult.modifiedCount + 
          accommodationsResult.modifiedCount;
 };
+
+// @desc    Delete organisation and all related data
+// @route   DELETE /api/organisations/:id
+// @access  Private (SuperAdminPlus only)
+export const deleteOrganisation = asyncHandler(async (req: Request, res: Response) => {
+  // Start a MongoDB session for transaction
+  const session = await mongoose.startSession();
+  
+  try {
+    // Start transaction
+    await session.startTransaction();
+    
+    // Find the organisation first
+    const organisation = await Organisation.findById(req.params.id).session(session);
+    
+    if (!organisation) {
+      await session.abortTransaction();
+      return sendNotFound(res, 'Organisation not found');
+    }
+    
+    const organisationKey = organisation.Key;
+    const organisationName = organisation.Name;
+    
+    // Delete all related grouped services
+    const groupedServicesResult = await GroupedService.deleteMany(
+      { ProviderId: organisationKey },
+      { session }
+    );
+    
+    // Delete all related individual services
+    const servicesResult = await Service.deleteMany(
+      { ServiceProviderKey: organisationKey },
+      { session }
+    );
+    
+    // Delete all related accommodations
+    const accommodationsResult = await Accommodation.deleteMany(
+      { 'GeneralInfo.ServiceProviderId': organisationKey },
+      { session }
+    );
+    
+    // Delete the organisation itself
+    await Organisation.findByIdAndDelete(req.params.id, { session });
+    
+    // Commit the transaction
+    await session.commitTransaction();
+    
+    const deletionSummary = {
+      organisationName,
+      organisationKey,
+      deletedGroupedServices: groupedServicesResult.deletedCount,
+      deletedIndividualServices: servicesResult.deletedCount,
+      deletedAccommodations: accommodationsResult.deletedCount
+    };
+    
+    return sendSuccess(
+      res, 
+      deletionSummary, 
+      `Organisation "${organisationName}" and all related data deleted successfully. ` +
+      `Deleted: ${groupedServicesResult.deletedCount} grouped services, ` +
+      `${servicesResult.deletedCount} individual services, ` +
+      `${accommodationsResult.deletedCount} accommodations.`
+    );
+  } catch (error) {
+    // Abort transaction on error
+    await session.abortTransaction();
+    console.error('Error deleting organisation:', error);
+    return sendInternalError(res, 'Failed to delete organisation');
+  } finally {
+    // End session
+    session.endSession();
+  }
+});
