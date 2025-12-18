@@ -46,7 +46,7 @@ interface JwtPayload {
  */
 const handleSuperAdminAccess = (
   userAuthClaims: string[]
-): boolean => userAuthClaims.includes(ROLES.SUPER_ADMIN);
+): boolean => userAuthClaims.includes(ROLES.SUPER_ADMIN) || userAuthClaims.includes(ROLES.SUPER_ADMIN_PLUS);
 
 /**
  * Helper: handles global privileged access rules for VolunteerAdmin.
@@ -802,7 +802,7 @@ export const requireFaqLocationAccess = (req: Request, res: Response, next: Next
 
   // If LocationKey is 'general', only SuperAdmin and VolunteerAdmin can access
   if (locationId === 'general' || locations.includes('general')) {
-    if (userAuthClaims.includes(ROLES.SUPER_ADMIN) || userAuthClaims.includes(ROLES.VOLUNTEER_ADMIN)) {
+    if (userAuthClaims.includes(ROLES.SUPER_ADMIN) || userAuthClaims.includes(ROLES.SUPER_ADMIN_PLUS) || userAuthClaims.includes(ROLES.VOLUNTEER_ADMIN)) {
       return next();
     }
     return sendForbidden(res, 'Access to general advice is restricted to SuperAdmin and VolunteerAdmin');
@@ -846,7 +846,7 @@ export const requireUserCreationAccess = asyncHandler(async (req: Request, res: 
     }
   
     // SuperAdmin has access to everything.
-    if (userAuthClaims.includes(ROLES.SUPER_ADMIN)) {
+    if (userAuthClaims.includes(ROLES.SUPER_ADMIN) || userAuthClaims.includes(ROLES.SUPER_ADMIN_PLUS)) {
       return next();
     }
     
@@ -878,7 +878,7 @@ export const requireUserCreationAccess = asyncHandler(async (req: Request, res: 
         // Validate that they're not trying to assign SuperAdmin role or VolunteerAdmin roles or CityAdmin roles
         const requestBody = req.body;
         if (requestBody.AuthClaims && Array.isArray(requestBody.AuthClaims)) {
-          if (requestBody.AuthClaims.includes(ROLES.SUPER_ADMIN) || requestBody.AuthClaims.includes(ROLES.VOLUNTEER_ADMIN) || requestBody.AuthClaims.includes(ROLES.CITY_ADMIN)) {
+          if (requestBody.AuthClaims.includes(ROLES.SUPER_ADMIN) || requestBody.AuthClaims.includes(ROLES.SUPER_ADMIN_PLUS) || requestBody.AuthClaims.includes(ROLES.VOLUNTEER_ADMIN) || requestBody.AuthClaims.includes(ROLES.CITY_ADMIN)) {
             return sendForbidden(res, 'OrgAdmin cannot assign SuperAdmin, VolunteerAdmin or CityAdmin roles');
           }
         }
@@ -889,7 +889,7 @@ export const requireUserCreationAccess = asyncHandler(async (req: Request, res: 
       // CityAdmin can create CityAdmin, SwepAdmin, and OrgAdmin users
       if (userAuthClaims.includes(ROLES.CITY_ADMIN)) {
         // Validate that they're not trying to assign SuperAdmin or VolunteerAdmin role
-        if (newUserClaims.includes(ROLES.SUPER_ADMIN) || newUserClaims.includes(ROLES.VOLUNTEER_ADMIN)) {
+        if (newUserClaims.includes(ROLES.SUPER_ADMIN) || newUserClaims.includes(ROLES.SUPER_ADMIN_PLUS) || newUserClaims.includes(ROLES.VOLUNTEER_ADMIN)) {
           return sendForbidden(res, 'CityAdmin cannot assign SuperAdmin or VolunteerAdmin roles');
         }
 
@@ -978,7 +978,7 @@ export const requireDeletionUserAccess = asyncHandler(async (req: Request, res: 
   }
 
   // 1. SuperAdmin can delete everything
-  if (userAuthClaims.includes(ROLES.SUPER_ADMIN)) {
+  if (userAuthClaims.includes(ROLES.SUPER_ADMIN) || userAuthClaims.includes(ROLES.SUPER_ADMIN_PLUS)) {
     return next();
   }
 
@@ -994,7 +994,7 @@ export const requireDeletionUserAccess = asyncHandler(async (req: Request, res: 
   // 2. CityAdmin can delete specific roles within their city
   if (userAuthClaims.includes(ROLES.CITY_ADMIN)) {
     // Cannot delete SuperAdmin or VolunteerAdmin
-    if (targetUserClaims.includes(ROLES.SUPER_ADMIN) || targetUserClaims.includes(ROLES.VOLUNTEER_ADMIN)) {
+    if (targetUserClaims.includes(ROLES.SUPER_ADMIN) || targetUserClaims.includes(ROLES.SUPER_ADMIN_PLUS) || targetUserClaims.includes(ROLES.VOLUNTEER_ADMIN)) {
       return sendForbidden(res, 'CityAdmin cannot delete/deactivate/activate SuperAdmin or VolunteerAdmin users');
     }
 
@@ -1105,7 +1105,7 @@ export const requireUserAccess = asyncHandler(async (req: Request, res: Response
   const userId = req.params.id;
 
   // 1. SuperAdmin can do everything
-  if (userAuthClaims.includes(ROLES.SUPER_ADMIN)) {
+  if (userAuthClaims.includes(ROLES.SUPER_ADMIN) || userAuthClaims.includes(ROLES.SUPER_ADMIN_PLUS)) {
     // For updates, validate role structure
     if (method === HTTP_METHODS.PUT || method === HTTP_METHODS.PATCH) {
       const requestBody = req.body;
@@ -1197,14 +1197,14 @@ export const requireUserAccess = asyncHandler(async (req: Request, res: Response
 
     if (method === HTTP_METHODS.PUT || method === HTTP_METHODS.PATCH) {
       // CityAdmin cannot update SuperAdmin or VolunteerAdmin users
-      if (targetUserClaims.includes(ROLES.SUPER_ADMIN) || targetUserClaims.includes(ROLES.VOLUNTEER_ADMIN)) {
+      if (targetUserClaims.includes(ROLES.SUPER_ADMIN) || targetUserClaims.includes(ROLES.SUPER_ADMIN_PLUS) || targetUserClaims.includes(ROLES.VOLUNTEER_ADMIN)) {
         return sendForbidden(res, 'CityAdmin cannot update SuperAdmin or VolunteerAdmin users');
       }
 
       // Validate that they're not trying to assign SuperAdmin or VolunteerAdmin role
       const requestBody = req.body;
       if (requestBody.AuthClaims && Array.isArray(requestBody.AuthClaims)) {
-        if (requestBody.AuthClaims.includes(ROLES.SUPER_ADMIN) || requestBody.AuthClaims.includes(ROLES.VOLUNTEER_ADMIN)) {
+        if (requestBody.AuthClaims.includes(ROLES.SUPER_ADMIN) || requestBody.AuthClaims.includes(ROLES.SUPER_ADMIN_PLUS) || requestBody.AuthClaims.includes(ROLES.VOLUNTEER_ADMIN)) {
           return sendForbidden(res, 'CityAdmin cannot assign SuperAdmin or VolunteerAdmin roles');
         }
         
@@ -1687,4 +1687,37 @@ export const requireLocationLogoByFiltersAccess = (req: Request, res: Response, 
 export const locationLogosGetAuth = [
   authenticate,
   requireLocationLogoByFiltersAccess
+];
+
+/**
+ * Helper: handles access rules for SuperAdminPlus.
+ * - SuperAdminPlus: access for organisation removal
+ * Returns true if user has SuperAdminPlus role, otherwise false.
+ */
+const handleSuperAdminPlusAccess = (
+  userAuthClaims: string[]
+): boolean => userAuthClaims.includes(ROLES.SUPER_ADMIN_PLUS);
+
+/**
+ * Middleware to require SuperAdminPlus role for organisation deletion
+ */
+export const requireSuperAdminPlusAccess = (req: Request, res: Response, next: NextFunction) => {
+  if (ensureAuthenticated(req, res)) { return; }
+
+  const userAuthClaims = req.user?.AuthClaims || [];
+
+  // Only SuperAdminPlus can delete organisations
+  if (handleSuperAdminPlusAccess(userAuthClaims)) {
+    return next();
+  }
+
+  return sendForbidden(res, 'Only SuperAdminPlus role can perform this action');
+};
+
+/**
+ * Combined middleware for organisation deletion endpoint
+ */
+export const organisationDeleteAuth = [
+  authenticate,
+  requireSuperAdminPlusAccess
 ];
