@@ -893,39 +893,38 @@ export const requireUserCreationAccess = asyncHandler(async (req: Request, res: 
           return sendForbidden(res, 'CityAdmin cannot assign SuperAdmin or VolunteerAdmin roles');
         }
 
+        // Get the locations this CityAdmin has access to
+        const userLocationClaims = userAuthClaims.filter((claim: string) =>
+          claim.startsWith(ROLE_PREFIXES.CITY_ADMIN_FOR)
+        );
+        const userLocations = userLocationClaims.map((claim: string) =>
+          claim.replace(ROLE_PREFIXES.CITY_ADMIN_FOR, '')
+        );
+
         // Check if creating OrgAdmin with organization-specific claims
-        const adminForClaims = newUserClaims.filter((claim: string) => 
+        const adminForClaims = newUserClaims.filter((claim: string) =>
           claim.startsWith(ROLE_PREFIXES.ADMIN_FOR)
         );
-        
+
         if (adminForClaims.length > 0) {
           const orgName = adminForClaims[0].replace(ROLE_PREFIXES.ADMIN_FOR, '');
           const organisation = await Organisation.findOne({ Key: orgName }).lean();
-          
+
           if (!organisation) {
             return sendNotFound(res, `Organization ${orgName} not found`);
           }
 
           const associatedLocationIds = organisation.AssociatedLocationIds || [];
-          const hasLocationAccess = associatedLocationIds.some(locationId => 
+          const hasLocationAccess = associatedLocationIds.some(locationId =>
             userLocations.includes(locationId)
           );
-          
+
           if (!hasLocationAccess) {
             return sendForbidden(res, `Access denied - no permission for organization: ${orgName}`);
           }
 
           return next();
         }
-
-        // Check if creating CityAdmin or SwepAdmin with organization-specific claims
-        // Get the locations this CityAdmin has access to
-        const userLocationClaims = userAuthClaims.filter((claim: string) => 
-          claim.startsWith(ROLE_PREFIXES.CITY_ADMIN_FOR)
-        );
-        const userLocations = userLocationClaims.map((claim: string) => 
-          claim.replace(ROLE_PREFIXES.CITY_ADMIN_FOR, '')
-        );
 
         // Check if creating CityAdmin or SwepAdmin with location-specific claims
         const newCityAdminForClaims = newUserClaims.filter((claim: string) => 
