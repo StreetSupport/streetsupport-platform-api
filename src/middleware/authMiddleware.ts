@@ -60,6 +60,7 @@ const handleVolunteerAdminAccess = (
 /**
  * Helper: validates that user roles are properly configured
  * - AuthClaims must not be empty
+ * - Only ONE base role allowed (SuperAdmin, SuperAdminPlus, VolunteerAdmin, CityAdmin, SwepAdmin, OrgAdmin)
  * - CityAdmin must have at least one CityAdminFor:* claim
  * - SwepAdmin must have at least one SwepAdminFor:* claim
  * - OrgAdmin must have at least one AdminFor:* claim
@@ -68,6 +69,15 @@ const validateUserRoles = (authClaims: string[]): { valid: boolean; error?: stri
   // Must have at least one role
   if (!authClaims || authClaims.length === 0) {
     return { valid: false, error: 'User must have at least one role assigned' };
+  }
+
+  // Check for multiple base roles - only ONE is allowed
+  const presentBaseRoles = BASE_ROLES_ARRAY.filter(role => authClaims.includes(role));
+  if (presentBaseRoles.length > 1) {
+    return {
+      valid: false,
+      error: `Users can only have one role type. Found multiple roles: ${presentBaseRoles.join(', ')}. Please remove one role before adding another.`
+    };
   }
 
   // Check CityAdmin requires location-specific claim
@@ -90,7 +100,7 @@ const validateUserRoles = (authClaims: string[]): { valid: boolean; error?: stri
   if (authClaims.includes(ROLES.ORG_ADMIN)) {
     const hasAdminFor = authClaims.some(claim => claim.startsWith(ROLE_PREFIXES.ADMIN_FOR));
     if (!hasAdminFor) {
-      return { valid: false, error: 'OrgAdmin role requires at least one AdminFor:* organization claim' };
+      return { valid: false, error: 'OrgAdmin role requires at least one AdminFor:* organisation claim' };
     }
   }
 
@@ -893,39 +903,38 @@ export const requireUserCreationAccess = asyncHandler(async (req: Request, res: 
           return sendForbidden(res, 'CityAdmin cannot assign SuperAdmin or VolunteerAdmin roles');
         }
 
+        // Get the locations this CityAdmin has access to
+        const userLocationClaims = userAuthClaims.filter((claim: string) =>
+          claim.startsWith(ROLE_PREFIXES.CITY_ADMIN_FOR)
+        );
+        const userLocations = userLocationClaims.map((claim: string) =>
+          claim.replace(ROLE_PREFIXES.CITY_ADMIN_FOR, '')
+        );
+
         // Check if creating OrgAdmin with organization-specific claims
-        const adminForClaims = newUserClaims.filter((claim: string) => 
+        const adminForClaims = newUserClaims.filter((claim: string) =>
           claim.startsWith(ROLE_PREFIXES.ADMIN_FOR)
         );
-        
+
         if (adminForClaims.length > 0) {
           const orgName = adminForClaims[0].replace(ROLE_PREFIXES.ADMIN_FOR, '');
           const organisation = await Organisation.findOne({ Key: orgName }).lean();
-          
+
           if (!organisation) {
             return sendNotFound(res, `Organization ${orgName} not found`);
           }
 
           const associatedLocationIds = organisation.AssociatedLocationIds || [];
-          const hasLocationAccess = associatedLocationIds.some(locationId => 
+          const hasLocationAccess = associatedLocationIds.some(locationId =>
             userLocations.includes(locationId)
           );
-          
+
           if (!hasLocationAccess) {
             return sendForbidden(res, `Access denied - no permission for organization: ${orgName}`);
           }
 
           return next();
         }
-
-        // Check if creating CityAdmin or SwepAdmin with organization-specific claims
-        // Get the locations this CityAdmin has access to
-        const userLocationClaims = userAuthClaims.filter((claim: string) => 
-          claim.startsWith(ROLE_PREFIXES.CITY_ADMIN_FOR)
-        );
-        const userLocations = userLocationClaims.map((claim: string) => 
-          claim.replace(ROLE_PREFIXES.CITY_ADMIN_FOR, '')
-        );
 
         // Check if creating CityAdmin or SwepAdmin with location-specific claims
         const newCityAdminForClaims = newUserClaims.filter((claim: string) => 
