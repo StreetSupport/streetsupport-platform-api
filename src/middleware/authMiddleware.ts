@@ -60,6 +60,7 @@ const handleVolunteerAdminAccess = (
 /**
  * Helper: validates that user roles are properly configured
  * - AuthClaims must not be empty
+ * - Only ONE base role allowed (SuperAdmin, SuperAdminPlus, VolunteerAdmin, CityAdmin, SwepAdmin, OrgAdmin)
  * - CityAdmin must have at least one CityAdminFor:* claim
  * - SwepAdmin must have at least one SwepAdminFor:* claim
  * - OrgAdmin must have at least one AdminFor:* claim
@@ -68,6 +69,15 @@ const validateUserRoles = (authClaims: string[]): { valid: boolean; error?: stri
   // Must have at least one role
   if (!authClaims || authClaims.length === 0) {
     return { valid: false, error: 'User must have at least one role assigned' };
+  }
+
+  // Check for multiple base roles - only ONE is allowed
+  const presentBaseRoles = BASE_ROLES_ARRAY.filter(role => authClaims.includes(role));
+  if (presentBaseRoles.length > 1) {
+    return {
+      valid: false,
+      error: `Users can only have one role type. Found multiple roles: ${presentBaseRoles.join(', ')}. Please remove one role before adding another.`
+    };
   }
 
   // Check CityAdmin requires location-specific claim
@@ -90,7 +100,7 @@ const validateUserRoles = (authClaims: string[]): { valid: boolean; error?: stri
   if (authClaims.includes(ROLES.ORG_ADMIN)) {
     const hasAdminFor = authClaims.some(claim => claim.startsWith(ROLE_PREFIXES.ADMIN_FOR));
     if (!hasAdminFor) {
-      return { valid: false, error: 'OrgAdmin role requires at least one AdminFor:* organization claim' };
+      return { valid: false, error: 'OrgAdmin role requires at least one AdminFor:* organisation claim' };
     }
   }
 
