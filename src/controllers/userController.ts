@@ -13,16 +13,19 @@ import Organisation from '../models/organisationModel.js';
 // @route   GET /api/users
 // @access  Private
 const getUsers = asyncHandler(async (req: Request, res: Response) => {
-  const { 
+  const {
     search,
     role,
     location,
     locations, // New: comma-separated list of locations for CityAdmin filtering
-    page = 1, 
+    page = 1,
     limit = 9,
     sortBy = 'DocumentModifiedDate',
     sortOrder = 'desc'
   } = req.query;
+
+  // DEBUG: Log incoming search parameters
+  console.log('[DEBUG getUsers] Request params:', { search, role, location, locations, page, limit });
 
   const query: any = {};
   const conditions: any[] = [];
@@ -94,19 +97,25 @@ const getUsers = asyncHandler(async (req: Request, res: Response) => {
   if (conditions.length > 0) {
     query.$and = conditions;
   }
-  
+
+  // DEBUG: Log the constructed MongoDB query
+  console.log('[DEBUG getUsers] MongoDB query:', JSON.stringify(query, null, 2));
+
   // Pagination
   const skip = (Number(page) - 1) * Number(limit);
-  
+
   // Sort options
   const sortOptions: any = {};
   sortOptions[sortBy as string] = sortOrder === 'desc' ? -1 : 1;
-  
+
   const dbUsers = await User.find(query)
     .sort(sortOptions)
     .skip(skip)
     .limit(Number(limit))
     .lean();
+
+  // DEBUG: Log results count
+  console.log('[DEBUG getUsers] Results count:', dbUsers.length);
 
   // Decrypt emails for all users
   const users = dbUsers.map(user => ({
