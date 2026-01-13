@@ -26,6 +26,11 @@ const userSchema = new Schema<IUser>({
     type: Buffer,
     required: true,
   },
+  EmailSearch: {
+    type: String,
+    required: false,
+    index: true,
+  },
   Auth0Id: {
     type: String,
     required: true,
