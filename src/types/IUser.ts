@@ -11,6 +11,7 @@ export interface IUser extends Document {
     type: string;
     data: Buffer;
   };
+  EmailSearch?: string;
   Auth0Id: string;
   AssociatedProviderLocationIds: string[];
   IsActive: boolean;

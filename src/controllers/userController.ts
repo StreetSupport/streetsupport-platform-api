@@ -27,10 +27,12 @@ const getUsers = asyncHandler(async (req: Request, res: Response) => {
   const query: any = {};
   const conditions: any[] = [];
   
-  // Apply email search filter (encrypt email before searching in database)
+  // Apply email search filter using EmailSearch field for partial matching
   if (search && typeof search === 'string') {
-    const encryptedSearch = encryptEmail(search.trim());
-    conditions.push({ Email: encryptedSearch });
+    const searchTerm = search.trim().toLowerCase();
+    // Escape special regex characters to prevent regex injection
+    const escapedSearch = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    conditions.push({ EmailSearch: { $regex: escapedSearch, $options: 'i' } });
   }
   
   // Apply role filter (AuthClaims is an array field, MongoDB automatically checks if array contains the value)
@@ -230,6 +232,7 @@ const createUser = asyncHandler(async (req: Request, res: Response) => {
     user = await User.create({
       ...userData,
       Email: encryptedEmail,
+      EmailSearch: userData.Email.toLowerCase(),
       Auth0Id: auth0Id,
       AssociatedProviderLocationIds: associatedProviderLocationIds,
       CreatedBy: req.user?._id || req.body?.CreatedBy,
@@ -289,13 +292,20 @@ const updateUser = asyncHandler(async (req: Request, res: Response) => {
     JSON.stringify(existingUser.AuthClaims) !== JSON.stringify(userData.AuthClaims);
   
   // Update user in MongoDB
+  const updateData: any = {
+    ...userData,
+    Email: encryptedEmail || existingUser.Email,
+    DocumentModifiedDate: new Date()
+  };
+
+  // Update EmailSearch if email is being changed
+  if (userData.Email && typeof userData.Email === 'string') {
+    updateData.EmailSearch = userData.Email.toLowerCase();
+  }
+
   const user = await User.findByIdAndUpdate(
     req.params.id,
-    { 
-      ...userData,
-      Email: encryptedEmail || existingUser.Email,
-      DocumentModifiedDate: new Date() 
-    },
+    updateData,
     { new: true, runValidators: true }
   );
   
