@@ -85,6 +85,18 @@ const groupedServiceSchema = new Schema<IGroupedService>({
   Telephone: {
     type: String,
     required: false,
+  },
+  ClientGroupKeys: {
+    type: [String],
+    required: false,
+  },
+  ClientGroups: {
+    type: [{
+      Key: { type: String, required: true },
+      Name: { type: String, required: true },
+      SortPosition: { type: Number, required: true }
+    }],
+    required: false,
   }
 }, { collection: 'GroupedProvidedServices', versionKey: false });
 

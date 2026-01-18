@@ -10,6 +10,7 @@ import bannerRoutes from './routes/bannerRoutes.js';
 import swepBannerRoutes from './routes/swepBannerRoutes.js';
 import resourceRoutes from './routes/resourceRoutes.js';
 import locationLogoRoutes from './routes/locationLogoRoutes.js';
+import clientGroupRoutes from './routes/clientGroupRoutes.js';
 import { errorHandler, notFound } from './middleware/errorMiddleware.js';
 import checkJwt from './middleware/checkJwt.js';
 import './instrument.js';
@@ -34,6 +35,7 @@ app.use('/api/banners', bannerRoutes);
 app.use('/api/swep-banners', swepBannerRoutes);
 app.use('/api/resources', resourceRoutes);
 app.use('/api/location-logos', locationLogoRoutes);
+app.use('/api/client-groups', clientGroupRoutes);
 
 // The error handler must be registered before any other error middleware and after all controllers
 Sentry.setupExpressErrorHandler(app);
