@@ -44,8 +44,8 @@ jobs:
           npm run build --if-present
           npm run test --if-present
 
-      - name: Clean build artifacts and dependencies
-        run: rm -rf dist node_modules
+      - name: Clean node_modules before packaging
+        run: rm -rf node_modules
 
       - name: Zip artifact for deployment
         run: zip -r release.zip .
