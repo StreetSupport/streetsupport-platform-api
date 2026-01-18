@@ -4,9 +4,30 @@ import { asyncHandler } from '../utils/asyncHandler.js';
 import { sendSuccess, sendCreated, sendNotFound, sendBadRequest } from '../utils/apiResponses.js';
 import GroupedService from '../models/groupedServiceModel.js';
 import Service from '../models/serviceModel.js';
+import ClientGroup from '../models/clientGroupModel.js';
 import { processAddressesWithCoordinates, updateLocationIfPostcodeChanged } from '../utils/postcodeValidation.js';
 import { validateGroupedService } from '../schemas/groupedServiceSchema.js';
-import { IGroupedService } from '../types/index.js';
+import { IGroupedService, IClientGroupRef } from '../types/index.js';
+
+/**
+ * Helper function to denormalise client groups from keys
+ * Looks up client group documents and returns denormalised data
+ */
+async function denormaliseClientGroups(clientGroupKeys?: string[]): Promise<IClientGroupRef[]> {
+  if (!clientGroupKeys || clientGroupKeys.length === 0) {
+    return [];
+  }
+
+  const clientGroups = await ClientGroup.find({
+    Key: { $in: clientGroupKeys }
+  }).lean();
+
+  return clientGroups.map(cg => ({
+    Key: cg.Key,
+    Name: cg.Name,
+    SortPosition: cg.SortPosition
+  }));
+}
 
 // @desc    Get all services
 // @route   GET /api/services
@@ -152,8 +173,16 @@ export const createService = asyncHandler(async (req: Request, res: Response) =>
       await processAddressesWithCoordinates([serviceData.Location]);
     }
 
+    // Denormalise client groups if keys provided
+    const clientGroups = serviceData.ClientGroupKeys && serviceData.ClientGroupKeys.length > 0
+      ? await denormaliseClientGroups(serviceData.ClientGroupKeys)
+      : [];
+
     // Create the grouped service
-    const groupedService = await GroupedService.create([serviceData], { session });
+    const groupedService = await GroupedService.create([{
+      ...serviceData,
+      ClientGroups: clientGroups
+    }], { session });
     
     // Create individual ProvidedServices for each subcategory
     await createIndividualServices(groupedService[0], session);
@@ -207,12 +236,12 @@ export const updateService = asyncHandler(async (req: Request, res: Response) =>
     // Check if location postcode has changed and update coordinates accordingly
     if (updateData.Location && updateData.Location.Postcode) {
       const oldLocation = existingService.Location;
-      
+
       if (oldLocation && oldLocation.Postcode) {
         // Update location if postcode changed
         await updateLocationIfPostcodeChanged(
-          oldLocation.Postcode, 
-          updateData.Location.Postcode, 
+          oldLocation.Postcode,
+          updateData.Location.Postcode,
           updateData.Location
         );
       } else if (!updateData.Location.Location) {
@@ -221,10 +250,18 @@ export const updateService = asyncHandler(async (req: Request, res: Response) =>
       }
     }
 
+    // Denormalise client groups if keys provided
+    const clientGroups = updateData.ClientGroupKeys
+      ? await denormaliseClientGroups(updateData.ClientGroupKeys)
+      : [];
+
     // Update the grouped service
     const updatedService = await GroupedService.findByIdAndUpdate(
-      req.params.id, 
-      updateData, 
+      req.params.id,
+      {
+        ...updateData,
+        ClientGroups: clientGroups
+      },
       { new: true, session }
     );
     
