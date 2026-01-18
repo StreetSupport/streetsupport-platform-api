@@ -92,7 +92,8 @@ export const GroupedServiceSchema = z.object({
   SubCategories: z.array(ServiceSubCategorySchema).min(1, 'At least one subcategory is required'),
   IsTelephoneService: z.boolean().optional().default(false),
   IsAppointmentOnly: z.boolean().optional().default(false),
-  Telephone: z.preprocess(preprocessNullableString, z.string().optional())
+  Telephone: z.preprocess(preprocessNullableString, z.string().optional()),
+  ClientGroupKeys: z.array(z.string()).optional()
 }).refine((data) => {
   // If not open 24/7, not appointment only, and not outreach location, require opening times
   if (!data.IsOpen247 && !data.IsAppointmentOnly && !data.Location.IsOutreachLocation) {

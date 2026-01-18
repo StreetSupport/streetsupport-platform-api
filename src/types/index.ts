@@ -3,6 +3,7 @@ export * from './ICity.js';
 export * from './IFaq.js';
 export * from './IUser.js';
 export * from './ILocationLogo.js';
+export * from './IClientGroup.js';
 
 
 // Service provider related types

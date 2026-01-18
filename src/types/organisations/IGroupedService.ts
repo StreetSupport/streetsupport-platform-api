@@ -3,6 +3,12 @@ import { IOpeningTime } from "./IOpeningTime.js";
 import { ILocation } from "./ILocation.js";
 import { IServiceSubCategory } from "./IServiceSubCategory.js";
 
+export interface IClientGroupRef {
+  Key: string;
+  Name: string;
+  SortPosition: number;
+}
+
 export interface IGroupedService extends Document {
   _id: Types.ObjectId;
   DocumentCreationDate: Date;
@@ -24,4 +30,6 @@ export interface IGroupedService extends Document {
   IsTelephoneService?: boolean;
   IsAppointmentOnly?: boolean;
   Telephone?: string;
+  ClientGroupKeys?: string[];
+  ClientGroups?: IClientGroupRef[];
 }
