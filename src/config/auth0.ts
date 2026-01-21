@@ -5,6 +5,7 @@ dotenv.config();
 const auth0Config = {
   domain: process.env.AUTH0_DOMAIN,
   audience: process.env.AUTH0_AUDIENCE,
+  clientId: process.env.AUTH0_CLIENT_ID,
   managementClientId: process.env.AUTH0_MANAGEMENT_CLIENT_ID,
   managementClientSecret: process.env.AUTH0_MANAGEMENT_CLIENT_SECRET,
   managementAudience: process.env.AUTH0_MANAGEMENT_AUDIENCE,
@@ -17,6 +18,10 @@ if (!auth0Config.domain) {
 
 if (!auth0Config.audience) {
   throw new Error('AUTH0_AUDIENCE is not set in .env file');
+}
+
+if (!auth0Config.clientId) {
+  throw new Error('AUTH0_CLIENT_ID is not set in .env file');
 }
 
 if (!auth0Config.managementClientId) {

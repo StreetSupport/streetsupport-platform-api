@@ -99,13 +99,16 @@ export async function createAuth0User(
   const accessToken = await getAuth0ManagementToken();
 
   // Build create user request - Auth0 will auto-generate user_id
+  // We set email_verified: true because admins control user creation
+  // We set verify_email: false to prevent Auth0 sending verification email
+  // Instead, we send a password change email so users can set their password
   const createUserRequest: CreateAuth0UserRequest = {
     connection: connection,
     email: email,
     name: email, // Use email as name
     password: generateTempPassword(),
-    email_verified: false,
-    verify_email: true,
+    email_verified: true,
+    verify_email: false,
     app_metadata: {
       authorization: {
         roles: authClaims,
@@ -131,6 +134,38 @@ export async function createAuth0User(
 
   const createdUser = await response.json() as Auth0UserResponse;
   return createdUser;
+}
+
+/**
+ * Send password change email to user via Auth0 Authentication API
+ * This allows new users to set their password after account creation
+ * @param email - User email address
+ */
+export async function sendPasswordChangeEmail(email: string): Promise<void> {
+  const domain = auth0Config.domain as string;
+  const clientId = auth0Config.clientId as string;
+  const connection = (auth0Config.userDbConnection as string) || 'Username-Password-Authentication';
+
+  if (!domain || !clientId) {
+    throw new Error('AUTH0_DOMAIN or AUTH0_CLIENT_ID is not configured');
+  }
+
+  const response = await fetch(`https://${domain}/dbconnections/change_password`, {
+    method: HTTP_METHODS.POST,
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      client_id: clientId,
+      email: email,
+      connection: connection,
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Failed to send password change email: ${error}`);
+  }
 }
 
 /**
