@@ -78,6 +78,7 @@ MONGODB_URI=mongodb+srv://...
 # Auth0
 AUTH0_DOMAIN='take it from https://manage.auth0.com/. For example: your-tenant.auth0.com'
 AUTH0_AUDIENCE='take it from https://manage.auth0.com/'
+AUTH0_CLIENT_ID='Application Client ID from https://manage.auth0.com/. Used for password change emails.'
 AUTH0_USER_DB_CONNECTION='take it from https://manage.auth0.com/'
 AUTH0_MANAGEMENT_CLIENT_ID='take it from https://manage.auth0.com/'
 AUTH0_MANAGEMENT_CLIENT_SECRET='take it from https://manage.auth0.com/'

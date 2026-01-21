@@ -4,7 +4,7 @@ import ArchivedUser from '../models/archivedUserModel.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { decryptUserEmail, encryptEmail } from '../utils/encryption.js';
 import { validateUserCreate, validateUserUpdate } from '../schemas/userSchema.js';
-import { createAuth0User, deleteAuth0User, blockAuth0User, unblockAuth0User, updateAuth0UserRoles } from '../services/auth0Service.js';
+import { createAuth0User, deleteAuth0User, blockAuth0User, unblockAuth0User, updateAuth0UserRoles, sendPasswordChangeEmail } from '../services/auth0Service.js';
 import { sendSuccess, sendCreated, sendNotFound, sendBadRequest, sendInternalError, sendPaginatedSuccess, sendForbidden } from '../utils/apiResponses.js';
 import { ROLE_PREFIXES, ROLES } from '../constants/roles.js';
 import Organisation from '../models/organisationModel.js';
@@ -259,6 +259,14 @@ const createUser = asyncHandler(async (req: Request, res: Response) => {
     }
     
     return sendInternalError(res, 'Failed to create user in database');
+  }
+
+  // Send password change email so user can set their password
+  try {
+    await sendPasswordChangeEmail(userData.Email);
+  } catch (error) {
+    console.error('Failed to send password change email:', error);
+    // Non-blocking - user is created, they can use forgot password if email fails
   }
 
   // Return user with decrypted email
