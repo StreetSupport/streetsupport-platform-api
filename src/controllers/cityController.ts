@@ -10,11 +10,11 @@ import mongoose from 'mongoose';
  * @access Private
  */
 export const getCities = asyncHandler(async (req: Request, res: Response) => {
-  const { locations } = req.query; // Optional: comma-separated list of location slugs for filtering
-  
+  const { locations, isPublic } = req.query; // Optional: comma-separated list of location slugs for filtering
+
   // Build query based on location filter
   const query: any = {};
-  
+
   if (locations && typeof locations === 'string') {
     // Filter by specific locations (used for CityAdmin users)
     const locationArray = locations.split(',').map(loc => loc.trim()).filter(Boolean);
@@ -22,7 +22,14 @@ export const getCities = asyncHandler(async (req: Request, res: Response) => {
       query.Key = { $in: locationArray };
     }
   }
-  
+
+  // Filter by IsPublic status
+  if (isPublic === 'true') {
+    query.IsPublic = true;
+  } else if (isPublic === 'false') {
+    query.IsPublic = false;
+  }
+
   const cities = await Cities.find(query).lean();
   return sendSuccess(res, cities);
 });
