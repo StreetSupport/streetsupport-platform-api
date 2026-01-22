@@ -3,6 +3,7 @@ import { asyncHandler } from '../utils/asyncHandler.js';
 import { sendSuccess, sendBadRequest, sendNotFound, sendPaginatedSuccess } from '../utils/apiResponses.js';
 import { validateSwepBanner } from '../schemas/swepBannerSchema.js';
 import SwepBanner from '../models/swepModel.js';
+import Cities from '../models/cityModel.js';
 import { deleteFile } from '../middleware/uploadMiddleware.js';
 
 // @desc    Get all SWEP banners with optional filtering
@@ -23,6 +24,11 @@ export const getSwepBanners = asyncHandler(async (req: Request, res: Response) =
   const query: any = {};
   const conditions: any[] = [];
 
+  // Get public city keys to filter SWEP banners
+  const publicCities = await Cities.find({ IsPublic: true }).select('Key').lean();
+  const publicCityKeys = publicCities.map(city => city.Key);
+  conditions.push({ LocationSlug: { $in: publicCityKeys } });
+
   // Apply search filter
   if (search && typeof search === 'string') {
     conditions.push({
@@ -38,7 +44,9 @@ export const getSwepBanners = asyncHandler(async (req: Request, res: Response) =
   if (locations && typeof locations === 'string') {
     const locationArray = locations.split(',').map(loc => loc.trim()).filter(Boolean);
     if (locationArray.length > 0) {
-      conditions.push({ LocationSlug: { $in: locationArray } });
+      // Intersect with public cities
+      const filteredLocations = locationArray.filter(loc => publicCityKeys.includes(loc));
+      conditions.push({ LocationSlug: { $in: filteredLocations } });
     }
   } else if (location && typeof location === 'string') {
     conditions.push({ LocationSlug: location });
