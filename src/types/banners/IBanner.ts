@@ -2,24 +2,12 @@ import { Document, Types } from "mongoose";
 import { IMediaAsset } from "./IMediaAsset.js";
 import { IBannerBackground } from "./IBannerBackground.js";
 import { ICTAButton } from "./ICTAButton.js";
-import { IDonationGoal } from "./IDonationGoal.js";
-import { IResourceFile } from "./IResourceFile.js";
 
-// Template-specific interfaces
-export interface IGivingCampaign {
-  UrgencyLevel: UrgencyLevel;
-  CampaignEndDate?: Date;
-  DonationGoal?: IDonationGoal;
-}
-
-export interface IPartnershipCharter {
-  PartnerLogos?: IMediaAsset[];
-  CharterType?: CharterType;
-  SignatoriesCount?: number;
-}
-
-export interface IResourceProject {
-  ResourceFile?: IResourceFile;
+export interface IUploadedFile {
+  FileUrl: string;
+  FileName: string;
+  FileSize?: string;
+  FileType?: string;
 }
 
 export interface IBanner extends Document {
@@ -33,31 +21,27 @@ export interface IBanner extends Document {
   Title: string;
   Description?: string;
   Subtitle?: string;
-  TemplateType: BannerTemplateType;
-  
+
   // Media
+  MediaType: MediaType;
+  YouTubeUrl?: string;
   Logo?: IMediaAsset;
   BackgroundImage?: IMediaAsset;
   MainImage?: IMediaAsset;
-  
+  UploadedFile?: IUploadedFile;
+
   // Actions
   CtaButtons?: ICTAButton[];
-  
+
   // Styling
   Background: IBannerBackground;
   TextColour: TextColour;
   LayoutStyle: LayoutStyle;
-  
+
   // Scheduling
   StartDate?: Date;
   EndDate?: Date;
-  BadgeText?: string;
-  
-  // Template-specific fields - using nested objects for better organization
-  GivingCampaign?: IGivingCampaign;
-  PartnershipCharter?: IPartnershipCharter;
-  ResourceProject?: IResourceProject;
-  
+
   // CMS metadata
   IsActive: boolean;
   LocationSlug: string;
@@ -66,11 +50,9 @@ export interface IBanner extends Document {
   TrackingContext?: string;
 }
 
-// Enums for type safety
-export enum BannerTemplateType {
-  GIVING_CAMPAIGN = 'giving-campaign',
-  PARTNERSHIP_CHARTER = 'partnership-charter',
-  RESOURCE_PROJECT = 'resource-project'
+export enum MediaType {
+  IMAGE = 'image',
+  YOUTUBE = 'youtube'
 }
 
 export enum TextColour {
@@ -80,28 +62,5 @@ export enum TextColour {
 
 export enum LayoutStyle {
   SPLIT = 'split',
-  FULL_WIDTH = 'full-width',
-  CARD = 'card'
-}
-
-export enum UrgencyLevel {
-  LOW = 'low',
-  MEDIUM = 'medium',
-  HIGH = 'high',
-  CRITICAL = 'critical'
-}
-
-export enum CharterType {
-  HOMELESS_CHARTER = 'homeless-charter',
-  REAL_CHANGE = 'real-change',
-  ALTERNATIVE_GIVING = 'alternative-giving',
-  PARTNERSHIP = 'partnership'
-}
-
-export enum ResourceType {
-  GUIDE = 'guide',
-  TOOLKIT = 'toolkit',
-  RESEARCH = 'research',
-  TRAINING = 'training',
-  EVENT = 'event'
+  FULL_WIDTH = 'full-width'
 }

@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { asyncHandler } from '../utils/asyncHandler.js';
-import { BackgroundType, BannerTemplateType } from '../types/index.js';
+import { BackgroundType } from '../types/index.js';
 import { validateBanner } from '../schemas/bannerSchema.js';
 import Banner from '../models/bannerModel.js';
 import { deleteFile } from '../middleware/uploadMiddleware.js';
@@ -9,23 +9,22 @@ import { sendSuccess, sendCreated, sendBadRequest, sendNotFound, sendPaginatedSu
 
 // Get all banners with optional filtering
 export const getBanners = asyncHandler(async (req: Request, res: Response) => {
-  const { 
+  const {
     location,
-    locations, // New: comma-separated list of locations for CityAdmin filtering
-    templateType, 
-    isActive, 
+    locations,
+    isActive,
     search,
-    page = 1, 
+    page = 1,
     limit = 9,
     sortBy = 'Priority',
     sortOrder = 'asc'
   } = req.query;
 
   const query: any = {};
-  
+
   // Apply search filter
   if (search && typeof search === 'string') {
-    const searchRegex = new RegExp(search, 'i'); // Case-insensitive search
+    const searchRegex = new RegExp(search, 'i');
     query.$or = [
       { Title: searchRegex },
       { Description: searchRegex },
@@ -34,9 +33,7 @@ export const getBanners = asyncHandler(async (req: Request, res: Response) => {
   }
 
   // Apply location filters
-  // Priority: 'locations' (for CityAdmin bulk filtering) over 'location' (for single filter)
   if (locations && typeof locations === 'string') {
-    // Multiple locations passed from admin side for CityAdmin users
     const locationArray = locations.split(',').map(loc => loc.trim()).filter(Boolean);
     if (locationArray.length > 0) {
       const locationQuery = {
@@ -46,12 +43,11 @@ export const getBanners = asyncHandler(async (req: Request, res: Response) => {
           { LocationSlug: null }
         ]
       };
-      
-      // Combine with search query if it exists
+
       if (query.$or) {
         query.$and = [
-          { $or: query.$or }, // Search conditions
-          locationQuery       // Location conditions
+          { $or: query.$or },
+          locationQuery
         ];
         delete query.$or;
       } else {
@@ -59,7 +55,6 @@ export const getBanners = asyncHandler(async (req: Request, res: Response) => {
       }
     }
   } else if (location && typeof location === 'string') {
-    // Single location filter from UI
     const locationQuery = {
       $or: [
         { LocationSlug: location },
@@ -67,23 +62,18 @@ export const getBanners = asyncHandler(async (req: Request, res: Response) => {
         { LocationSlug: null }
       ]
     };
-    
-    // Combine with search query if it exists
+
     if (query.$or) {
       query.$and = [
-        { $or: query.$or }, // Search conditions
-        locationQuery       // Location conditions
+        { $or: query.$or },
+        locationQuery
       ];
       delete query.$or;
     } else {
       query.$or = locationQuery.$or;
     }
   }
-  
-  if (templateType) {
-    query.TemplateType = templateType;
-  }
-  
+
   if (isActive !== undefined) {
     query.IsActive = isActive === 'true';
   }
@@ -130,7 +120,7 @@ export const createBanner = asyncHandler(async (req: Request, res: Response) => 
 
   // Validate and transform banner data using Zod (final validation after upload)
   const validation = validateBanner(processedData);
-  
+
   if (!validation.success) {
     // Clean up any uploaded files since validation failed
     await cleanupUploadedFiles(processedData);
@@ -138,11 +128,8 @@ export const createBanner = asyncHandler(async (req: Request, res: Response) => 
     return sendBadRequest(res, `Validation failed: ${errorMessages}`);
   }
 
-  // Handle resource project specific logic
-  let finalBannerData = _handleResourceProjectBannerLogic({ ...validation.data });
-  
   // Handle background image specific logic
-  finalBannerData = handleBackgroundImageLogic(finalBannerData);
+  const finalBannerData = handleBackgroundImageLogic({ ...validation.data });
 
   // Add creator information and system fields
   const bannerData = {
@@ -161,9 +148,9 @@ export const createBanner = asyncHandler(async (req: Request, res: Response) => 
 // Update banner
 export const updateBanner = asyncHandler(async (req: Request, res: Response) => {
   const { id } = req.params;
-  
+
   const banner = await Banner.findById(id);
-  
+
   if (!banner) {
     return sendNotFound(res, 'Banner not found');
   }
@@ -173,7 +160,7 @@ export const updateBanner = asyncHandler(async (req: Request, res: Response) => 
 
   // Validate and transform banner data using Zod (final validation after upload)
   const validation = validateBanner(processedData);
-  
+
   if (!validation.success) {
     // Clean up any newly uploaded files since validation failed
     await cleanupUploadedFiles(processedData);
@@ -184,17 +171,8 @@ export const updateBanner = asyncHandler(async (req: Request, res: Response) => 
   // Store old banner data for file cleanup
   const oldBannerData = banner.toObject();
 
-  // Handle template type change from RESOURCE_PROJECT to another type
-  if (oldBannerData.TemplateType === BannerTemplateType.RESOURCE_PROJECT && 
-      validation?.data?.TemplateType !== BannerTemplateType.RESOURCE_PROJECT) {
-    await handleResourceProjectTemplateChange(oldBannerData);
-  }
-
-  // Handle resource project specific logic
-  let finalBannerData = _handleResourceProjectBannerLogic({ ...validation.data });
-  
   // Handle background image specific logic
-  finalBannerData = handleBackgroundImageLogic(finalBannerData);
+  const finalBannerData = handleBackgroundImageLogic({ ...validation.data });
 
   // Preserve existing activation date fields and IsActive (not editable in edit form)
   finalBannerData.StartDate = banner.StartDate;
@@ -312,49 +290,6 @@ export const toggleBannerStatus = asyncHandler(async (req: Request, res: Respons
   return sendSuccess(res, updatedBanner, `Banner ${updatedBanner?.IsActive ? 'activated' : 'deactivated'} successfully`);
 });
 
-// Private helper to handle resource project specific logic
-function _handleResourceProjectBannerLogic(bannerData: any): any {
-  if (bannerData.TemplateType === BannerTemplateType.RESOURCE_PROJECT && bannerData.ResourceProject?.ResourceFile) {
-    const resourceFile = bannerData.ResourceProject.ResourceFile;
-
-    // If a new file was uploaded, its URL is in `Url`. We make this the permanent `FileUrl`.
-    if (resourceFile.Url && !resourceFile.FileUrl) {
-      bannerData.ResourceProject.ResourceFile.FileUrl = resourceFile.Url;
-    }
-
-    // Update the 'Download' CTA button URL to use the file URL
-    const fileUrl = bannerData.ResourceProject.ResourceFile.FileUrl;
-    if (bannerData.CtaButtons && bannerData.CtaButtons.length > 0 && fileUrl) {
-      const downloadButtonIndex = 0;
-      const button = bannerData.CtaButtons[downloadButtonIndex];
-      if (button) {
-        button.Url = fileUrl;
-      }
-    }
-  }
-  return bannerData;
-}
-
-// Private helper to handle template type change from RESOURCE_PROJECT
-// Cleans up resource file and CTA button with blob URL when template type changes
-async function handleResourceProjectTemplateChange(oldBannerData: any): Promise<void> {
-  // Check if old banner had a resource file with a blob URL
-  if (oldBannerData.ResourceProject?.ResourceFile?.FileUrl) {
-    const fileUrl = oldBannerData.ResourceProject.ResourceFile.FileUrl;
-    
-    // Delete the resource file from blob storage if it's a blob URL
-    if (fileUrl.includes('blob.core.windows.net')) {
-      try {
-        await deleteFile(fileUrl);
-        console.log(`Cleaned up resource file during template type change: ${fileUrl}`);
-      } catch (error) {
-        console.error(`Failed to delete resource file ${fileUrl} during template type change:`, error);
-        // Don't throw error - file cleanup failure shouldn't break the update
-      }
-    }
-  }
-}
-
 // Private helper to handle background image logic
 // Automatically populates Background.Value with BackgroundImage URL when Background.Type is 'image'
 function handleBackgroundImageLogic(bannerData: any): any {
@@ -381,113 +316,65 @@ function handleBackgroundImageLogic(bannerData: any): any {
 // Helper function to extract all file URLs from a banner
 function extractFileUrls(banner: any): string[] {
   const urls: string[] = [];
-  
+
   // Main media assets
   if (banner.Logo?.Url) urls.push(banner.Logo.Url);
   if (banner.BackgroundImage?.Url) urls.push(banner.BackgroundImage.Url);
   if (banner.MainImage?.Url) urls.push(banner.MainImage.Url);
-  
-  // Partner logos for partnership charter banners (nested structure)
-  if (banner.PartnershipCharter?.PartnerLogos && Array.isArray(banner.PartnershipCharter.PartnerLogos)) {
-    banner.PartnershipCharter.PartnerLogos.forEach((logo: any) => {
-      if (logo.Url) urls.push(logo.Url);
-    });
-  }
-  
-  // Resource files for resource project banners (nested structure)
-  if (banner.ResourceProject?.ResourceFile && banner.ResourceProject.ResourceFile.FileUrl) {
-    urls.push(banner.ResourceProject.ResourceFile.FileUrl);
-  }
-  
+
+  // Uploaded file (PDFs, images, etc.)
+  if (banner.UploadedFile?.FileUrl) urls.push(banner.UploadedFile.FileUrl);
+
   return urls;
 }
 
 // Helper function to process mixed media fields (existing assets + new files)
 function processMediaFields(req: Request): any {
-  // Start with the clean, pre-validated data and merge the raw body to get file info
-  // Note: I still not sure if it makes sense to use this merging instead of req.body
   const processedData = { ...req.body, ...req.preValidatedData };
-  
-  ['Logo', 'BackgroundImage', 'MainImage' /*, 'AccentGraphic'*/].forEach(field => {
+
+  // Process standard media asset fields (Logo, BackgroundImage, MainImage)
+  ['Logo', 'BackgroundImage', 'MainImage'].forEach(field => {
     const newFileData = processedData[`newfile_${field}`];
-    const newMetadata = processedData[`newmetadata_${field}`] 
-      ? JSON.parse(processedData[`newmetadata_${field}`]) 
+    const newMetadata = processedData[`newmetadata_${field}`]
+      ? JSON.parse(processedData[`newmetadata_${field}`])
       : null;
-    const existingMetadata = processedData[`existing_${field}`] 
-      ? JSON.parse(processedData[`existing_${field}`]) 
+    const existingMetadata = processedData[`existing_${field}`]
+      ? JSON.parse(processedData[`existing_${field}`])
       : null;
 
     let finalAsset = null;
     if (newFileData) {
-      // New file uploaded, merge with its metadata
       finalAsset = {
-        ...(newMetadata || {}), // Contains Position, Opacity, etc.
-        ...newFileData // Contains Url, Filename, Size from upload
+        ...(newMetadata || {}),
+        ...newFileData
       };
     } else if (existingMetadata) {
-      // No new file, use existing metadata
       finalAsset = existingMetadata;
     }
 
-    // If finalAsset is null (removed by user), set to undefined to satisfy Zod's optional schema
-    // Otherwise, assign the processed asset object.
-    processedData[field] = finalAsset;// === null ? undefined : finalAsset;
+    processedData[field] = finalAsset;
   });
 
-
-
-  // Process PartnerLogos array field
-  const existingPartnerLogos = processedData.existing_PartnerLogos
-    ? JSON.parse(processedData.existing_PartnerLogos)
-    : [];
-  const newPartnerLogos = processedData.newfile_PartnerLogos || [];
-  const combinedPartnerLogos = [
-    ...existingPartnerLogos,
-    ...(Array.isArray(newPartnerLogos) ? newPartnerLogos : [newPartnerLogos])
-  ].filter(Boolean);
-
-  if (processedData.PartnershipCharter) {
-    const partnershipCharter = typeof processedData.PartnershipCharter === 'string'
-      ? JSON.parse(processedData.PartnershipCharter)
-      : processedData.PartnershipCharter;
-
-    partnershipCharter.PartnerLogos = combinedPartnerLogos;
-    processedData.PartnershipCharter = partnershipCharter;
-  } else if (combinedPartnerLogos.length > 0) {
-    processedData.PartnershipCharter = { PartnerLogos: combinedPartnerLogos };
-  }
-
-
-
-  // Process ResourceFile
-  const newResourceFileData = processedData.newfile_ResourceFile;
-  const newResourceFileMetadata = processedData.newmetadata_ResourceFile
-    ? JSON.parse(processedData.newmetadata_ResourceFile)
+  // Process UploadedFile (general file upload - PDFs, images, etc.)
+  const newUploadedFileData = processedData.newfile_UploadedFile;
+  const newUploadedFileMetadata = processedData.newmetadata_UploadedFile
+    ? JSON.parse(processedData.newmetadata_UploadedFile)
     : null;
-  const existingResourceFile = processedData.existing_ResourceFile
-    ? JSON.parse(processedData.existing_ResourceFile)
+  const existingUploadedFile = processedData.existing_UploadedFile
+    ? JSON.parse(processedData.existing_UploadedFile)
     : null;
 
-  let finalResourceFile = null;
-  if (newResourceFileData) {
-    finalResourceFile = {
-      ...(newResourceFileMetadata || {}),
-      ...newResourceFileData
+  let finalUploadedFile = null;
+  if (newUploadedFileData) {
+    finalUploadedFile = {
+      ...(newUploadedFileMetadata || {}),
+      ...newUploadedFileData
     };
-  } else if (existingResourceFile) {
-    finalResourceFile = existingResourceFile;
+  } else if (existingUploadedFile) {
+    finalUploadedFile = existingUploadedFile;
   }
 
-  if (processedData.ResourceProject) {
-    const resourceProject = typeof processedData.ResourceProject === 'string'
-      ? JSON.parse(processedData.ResourceProject)
-      : processedData.ResourceProject;
-
-    resourceProject.ResourceFile = finalResourceFile;
-    processedData.ResourceProject = resourceProject;
-  } else if (finalResourceFile) {
-    processedData.ResourceProject = { ResourceFile: finalResourceFile };
-  }
+  processedData.UploadedFile = finalUploadedFile;
 
   // Clean up all temporary form data keys before validation
   Object.keys(processedData).forEach(key => {

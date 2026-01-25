@@ -1,7 +1,6 @@
 import multer from 'multer';
 import { BlobServiceClient } from '@azure/storage-blob';
 import { NextFunction, Request, Response, Express } from 'express';
-import { isValidResourceFileType, SUPPORTED_RESOURCE_FILE_TYPES } from '../types/banners/IResourceFile.js';
 import { validateBannerPreUpload } from '../schemas/bannerSchema.js';
 import { sendBadRequest, sendInternalError } from '../utils/apiResponses.js';
 import path from 'path';
@@ -17,6 +16,25 @@ const BANNERS_CONTAINER_NAME = process.env.AZURE_BANNERS_CONTAINER_NAME || 'bann
 const SWEPS_CONTAINER_NAME = process.env.AZURE_SWEPS_CONTAINER_NAME || 'sweps';
 const RESOURCES_CONTAINER_NAME = process.env.AZURE_RESOURCES_CONTAINER_NAME || 'resources';
 const LOCATION_LOGOS_CONTAINER_NAME = process.env.AZURE_LOCATION_LOGOS_CONTAINER_NAME || 'location-logos';
+
+// Supported file types for uploads (images and documents)
+const SUPPORTED_FILE_TYPES = [
+  // Images
+  'image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/svg+xml',
+  'image/x-xbitmap', 'image/tiff', 'image/vnd.mozilla-apng',
+  'image/svg+xml-compressed', 'image/x-icon', 'image/heif', 'image/heic',
+  'image/avif', 'image/bmp', 'image/pjpeg',
+  // Documents
+  'application/pdf',
+  'application/msword',
+  'application/vnd.ms-excel',
+  'application/vnd.ms-powerpoint',
+  // Audio & Video
+  'audio/mpeg',
+  'video/mp4',
+  // Archives
+  'application/zip'
+];
 
 let blobServiceClient: BlobServiceClient | null = null;
 if (AZURE_STORAGE_CONNECTION_STRING) {
@@ -40,16 +58,7 @@ const upload = multer({
     files: 10 // Maximum 10 files
   },
   fileFilter: (req, file, cb) => {
-    const imageTypes = [
-      'image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/svg+xml',
-      'image/x-xbitmap', 'image/tiff', 'image/jpeg', 'image/vnd.mozilla-apng', 
-      'image/svg+xml-compressed', 'image/x-icon', 'image/heif', 'image/heic', 
-      'image/avif', 'image/bmp', 'image/pjpeg'
-    ];
-    const resourceFileTypes = Object.keys(SUPPORTED_RESOURCE_FILE_TYPES);
-    const allowedMimeTypes = [...new Set([...imageTypes, ...resourceFileTypes])];
-
-    if (allowedMimeTypes.includes(file.mimetype)) {
+    if (SUPPORTED_FILE_TYPES.includes(file.mimetype)) {
       cb(null, true);
     } else {
       cb(new Error(`File type ${file.mimetype} not allowed`));
@@ -146,20 +155,13 @@ async function processUploads(req: Request, res: Response, next: NextFunction) {
             // Store in appropriate field
             if (fieldName === 'newfile_Logo' || fieldName === 'newfile_BackgroundImage' || fieldName === 'newfile_MainImage') {
               uploadedAssets[fieldName] = asset;
-            } else if (fieldName === 'newfile_PartnerLogos') {
-              if (!uploadedAssets[fieldName]) {
-                uploadedAssets[fieldName] = [];
-              }
-              uploadedAssets[fieldName].push(asset);
-            } else if (fieldName === 'newfile_ResourceFile') {
-              // Validate resource file type
-              if (!isValidResourceFileType(file.mimetype)) {
-                throw new Error(`Unsupported resource file type: ${file.mimetype}. Please upload a valid resource file.`);
-              }
-              
-              // Store the uploaded file URL - metadata will be merged in processMediaFields
+            } else if (fieldName === 'newfile_UploadedFile') {
+              // Store the uploaded file URL and metadata
               uploadedAssets[fieldName] = {
                 FileUrl: fileUrl,
+                FileName: file.originalname,
+                FileSize: String(file.size),
+                FileType: file.mimetype
               };
             }
           } catch (error) {
@@ -193,8 +195,7 @@ const handleMultipartData = upload.fields([
   { name: 'newfile_Logo', maxCount: 1 },
   { name: 'newfile_BackgroundImage', maxCount: 1 },
   { name: 'newfile_MainImage', maxCount: 1 },
-  { name: 'newfile_PartnerLogos', maxCount: 5 },
-  { name: 'newfile_ResourceFile', maxCount: 1 }
+  { name: 'newfile_UploadedFile', maxCount: 1 }
 ]);
 
 // Middleware for Banners

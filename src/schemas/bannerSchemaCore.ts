@@ -1,12 +1,9 @@
 import { z } from 'zod';
 import { ValidationResult, createValidationResult } from './validationHelpers.js';
-import { 
-  BannerTemplateType, 
-  TextColour, 
-  LayoutStyle, 
-  UrgencyLevel, 
-  CharterType, 
-  ResourceType,
+import {
+  TextColour,
+  LayoutStyle,
+  MediaType,
   BackgroundType,
   CTAVariant
 } from '../types/index.js';
@@ -46,72 +43,42 @@ export const CTAButtonSchemaCore = z.object({
   External: z.boolean().optional().default(false)
 }).optional();
 
-// Core Donation Goal Schema - shared validation rules
-export const DonationGoalSchemaCore = z.object({
-  // Base numeric types; conditional strictness is applied via cross-field refinements below
-  Target: z.number().min(1, 'Target amount must be non-negative'),
-  Current: z.number().min(0, 'Current amount must be non-negative').optional(),
-  Currency: z.string().length(3, 'Currency must be a 3-letter code').default('GBP').optional()
-}).refine(
-  (data) => {
-    if (data.Current && data.Target) {
-      return data.Current <= data.Target;
-    }
-    return true;
-  },
-  { message: 'Current donation amount cannot exceed target', path: ['Current'] }
-).optional();
-
-// Core Resource File Schema - shared validation rules
-export const ResourceFileSchemaCore = z.object({
+// Uploaded File Schema - for general file attachments (PDFs, images, etc.)
+export const UploadedFileSchemaCore = z.object({
   FileUrl: z.string().min(1, 'File URL is required'),
   FileName: z.string().min(1, 'File name is required'),
-  ResourceType: z.nativeEnum(ResourceType).default(ResourceType.GUIDE),
-  LastUpdated: z.date().default(() => new Date()),
-  FileSize: z.string().min(1, 'File size is required').max(20, 'File size must be 20 characters or less'),
-  FileType: z.string().min(1, 'File type is required').max(10, 'File type must be 10 characters or less')
-});
-
-// Template-specific schemas
-export const GivingCampaignSchemaCore = z.object({
-  UrgencyLevel: z.nativeEnum(UrgencyLevel),
-  CampaignEndDate: z.date().optional(),
-  DonationGoal: DonationGoalSchemaCore,
+  FileSize: z.string().optional(),
+  FileType: z.string().optional()
 }).optional();
 
-export const PartnershipCharterSchemaCore = z.object({
-  PartnerLogos: z.array(MediaAssetSchemaCore).max(5, 'Maximum 5 partner logos allowed').optional(),
-  CharterType: z.nativeEnum(CharterType),
-  SignatoriesCount: z.number().min(0, 'Signatories count must be non-negative').optional(),
-}).optional();
+// YouTube URL validation regex
+export const youtubeUrlRegex = /^https?:\/\/(www\.)?(youtube\.com|youtu\.be)/;
 
-export const ResourceProjectSchemaCore = z.object({
-  ResourceFile: ResourceFileSchemaCore.optional(),
-}).optional();
-
-// Core Banner Schema - shared structure and validation rules
-export const BannerSchemaCore = z.object({
+// Base Banner Schema - without refinements, used for extending in API schemas
+export const BannerSchemaBase = z.object({
   // Core content
-  Title: z.string().min(1, 'Title is required').max(50, 'Title must be 50 characters or less'),
-  Description: z.string().max(200, 'Description must be 200 characters or less').optional(),
+  Title: z.string().min(1, 'Title is required').max(100, 'Title must be 100 characters or less'),
+  Description: z.string().max(500, 'Description must be 500 characters or less').optional(),
   Subtitle: z.string().max(50, 'Subtitle must be 50 characters or less').optional(),
-  TemplateType: z.nativeEnum(BannerTemplateType),
+
+  // Media
+  MediaType: z.nativeEnum(MediaType).default(MediaType.IMAGE),
+  YouTubeUrl: z.string()
+    .refine(
+      (v) => !v || youtubeUrlRegex.test(v),
+      'Must be a valid YouTube URL'
+    )
+    .optional(),
 
   // Actions
   CtaButtons: z.array(CTAButtonSchemaCore)
     .max(3, 'Maximum 3 CTA buttons allowed'),
 
   // Media Assets
-  // We initialize these media properties only after uploading to BlobStorage on the API side
-  // For new uploaded files we add prefix newfile_ (newfile_Logo, newfile_BackgroundImage, newfile_MainImage, newfile_AccentGraphic, newfile_PartnerLogos, newfile_ResourceFile) to original property name, 
-  // and prefix newmetadata_ (newmetadata_AccentGraphic, newmetadata_ResourceFile) to additional metadata. 
-  // or existing media assets (not true, because for existing files we add prefix existing_ to original property name) 
-  // Fields described above aren't files, they contain information about file.
-  // I don't know if we should validate fields with prefixes because they are created automatically for new uploaded files and 
-  // taken from database for existing files.
   Logo: MediaAssetSchemaCore,
   BackgroundImage: MediaAssetSchemaCore,
   MainImage: MediaAssetSchemaCore,
+  UploadedFile: UploadedFileSchemaCore,
 
   // Styling
   Background: BannerBackgroundSchemaCore,
@@ -121,12 +88,6 @@ export const BannerSchemaCore = z.object({
   // Scheduling
   StartDate: z.date().optional(),
   EndDate: z.date().optional(),
-  BadgeText: z.string().max(25, 'Badge text must be 25 characters or less').optional(),
-
-  // Template-specific fields - made optional here, but required by refinements based on TemplateType
-  GivingCampaign: GivingCampaignSchemaCore,
-  PartnershipCharter: PartnershipCharterSchemaCore,
-  ResourceProject: ResourceProjectSchemaCore,
 
   // CMS metadata
   IsActive: z.boolean().default(true),
@@ -134,7 +95,10 @@ export const BannerSchemaCore = z.object({
   LocationName: z.string().optional(),
   Priority: z.number().min(1).max(10, 'Priority must be between 1 and 10').default(1),
   TrackingContext: z.string().optional(),
-}).refine(
+});
+
+// Core Banner Schema with refinements - for validation
+export const BannerSchemaCore = BannerSchemaBase.refine(
   (data) => {
     if (data.StartDate && data.EndDate) {
       return data.StartDate <= data.EndDate;
@@ -144,6 +108,12 @@ export const BannerSchemaCore = z.object({
   {
     message: 'End date must be after start date',
     path: ['EndDate']
+  }
+).refine(
+  (data) => data.MediaType !== MediaType.YOUTUBE || !!data.YouTubeUrl,
+  {
+    message: 'YouTube URL is required when media type is YouTube',
+    path: ['YouTubeUrl']
   }
 );
 
@@ -165,14 +135,14 @@ export function applySharedRefinements<T extends z.ZodTypeAny>(
   refinements: Array<RefinementEntry<z.infer<T>>> = sharedBannerRefinements as unknown as Array<RefinementEntry<z.infer<T>>>
 ): T {
   let refinedSchema = schema;
-  
+
   for (const { refinement, message, path } of refinements) {
     refinedSchema = refinedSchema.refine(refinement, { message, path }) as T;
   }
-  
+
   return refinedSchema;
 }
 
 export type { ValidationResult };
 export { createValidationResult };
-export { BannerTemplateType, TextColour, UrgencyLevel, LayoutStyle, CharterType, ResourceType, BackgroundType, CTAVariant };
+export { TextColour, LayoutStyle, MediaType, BackgroundType, CTAVariant };
