@@ -24,6 +24,4 @@ export * from './organisations/IServiceAddress.js';
 export * from './banners/IBanner.js';
 export * from './banners/IBannerBackground.js';
 export * from './banners/ICTAButton.js';
-export * from './banners/IDonationGoal.js';
 export * from './banners/IMediaAsset.js';
-export * from './banners/IResourceFile.js';
