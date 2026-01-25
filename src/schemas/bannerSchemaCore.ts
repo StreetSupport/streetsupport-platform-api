@@ -58,7 +58,7 @@ export const youtubeUrlRegex = /^https?:\/\/(www\.)?(youtube\.com|youtu\.be)/;
 export const BannerSchemaBase = z.object({
   // Core content
   Title: z.string().min(1, 'Title is required').max(100, 'Title must be 100 characters or less'),
-  Description: z.string().max(500, 'Description must be 500 characters or less').optional(),
+  Description: z.string().max(550, 'Description must be 550 characters or less').optional(),
   Subtitle: z.string().max(50, 'Subtitle must be 50 characters or less').optional(),
 
   // Media
