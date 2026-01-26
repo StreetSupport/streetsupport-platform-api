@@ -34,7 +34,7 @@ export const BannerSchema = new Schema({
 
   // Core content
   Title: { type: String, required: true, maxlength: 100 },
-  Description: { type: String, maxlength: 600 },
+  Description: { type: String, maxlength: 2000 },
   Subtitle: { type: String, maxlength: 50 },
 
   // Media
