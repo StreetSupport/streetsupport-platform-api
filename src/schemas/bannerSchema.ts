@@ -2,6 +2,7 @@ import { z } from 'zod';
 import {
   MediaAssetSchemaCore,
   BannerBackgroundSchemaCore,
+  BannerBorderSchemaCore,
   CTAButtonSchemaCore,
   UploadedFileSchemaCore,
   BannerSchemaBase,
@@ -31,6 +32,7 @@ export const UploadedFileSchema = UploadedFileSchemaCore;
 const BannerApiBaseSchema = BannerSchemaBase.omit({
   CtaButtons: true,
   Background: true,
+  Border: true,
   UploadedFile: true,
   // Primitives that need preprocessing
   IsActive: true,
@@ -48,6 +50,7 @@ const BannerApiBaseSchema = BannerSchemaBase.omit({
     z.array(CTAButtonSchema).max(3, 'Maximum 3 CTA buttons allowed').optional()
   ).optional(),
   Background: z.preprocess(preprocessJSON, BannerBackgroundSchema),
+  Border: z.preprocess(preprocessOptionalObject, BannerBorderSchemaCore).optional(),
   UploadedFile: z.preprocess(preprocessOptionalObject, UploadedFileSchemaCore).optional(),
 
   // Audit fields (may come from form data during edits)
