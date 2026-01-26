@@ -126,3 +126,12 @@ export const preprocessNullableObject = (val: unknown) => {
   if (val === null || val === undefined) return {};
   return preprocessJSON(val);
 };
+
+/**
+ * Returns undefined for null/undefined, otherwise parses JSON
+ * Used for truly optional object fields that should remain undefined when not provided
+ */
+export const preprocessOptionalObject = (val: unknown) => {
+  if (val === null || val === undefined) return undefined;
+  return preprocessJSON(val);
+};
