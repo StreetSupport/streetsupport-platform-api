@@ -23,5 +23,6 @@ export * from './organisations/IServiceAddress.js';
 // Banner related types
 export * from './banners/IBanner.js';
 export * from './banners/IBannerBackground.js';
+export * from './banners/IBannerBorder.js';
 export * from './banners/ICTAButton.js';
 export * from './banners/IMediaAsset.js';

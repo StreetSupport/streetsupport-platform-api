@@ -4,6 +4,7 @@ import {
   MediaType,
   TextColour,
   BannerBackgroundSchema,
+  BannerBorderSchema,
   CTAButtonSchema,
   MediaAssetSchema
 } from "../types/index.js";
@@ -33,7 +34,7 @@ export const BannerSchema = new Schema({
 
   // Core content
   Title: { type: String, required: true, maxlength: 100 },
-  Description: { type: String, maxlength: 550 },
+  Description: { type: String, maxlength: 600 },
   Subtitle: { type: String, maxlength: 50 },
 
   // Media
@@ -69,6 +70,7 @@ export const BannerSchema = new Schema({
 
   // Styling
   Background: { type: BannerBackgroundSchema, required: true },
+  Border: { type: BannerBorderSchema },
   TextColour: { type: String, enum: Object.values(TextColour), required: true },
   LayoutStyle: { type: String, enum: Object.values(LayoutStyle), required: true },
 

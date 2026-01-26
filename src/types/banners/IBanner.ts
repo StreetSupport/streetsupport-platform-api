@@ -1,6 +1,7 @@
 import { Document, Types } from "mongoose";
 import { IMediaAsset } from "./IMediaAsset.js";
 import { IBannerBackground } from "./IBannerBackground.js";
+import { IBannerBorder } from "./IBannerBorder.js";
 import { ICTAButton } from "./ICTAButton.js";
 
 export interface IUploadedFile {
@@ -35,6 +36,7 @@ export interface IBanner extends Document {
 
   // Styling
   Background: IBannerBackground;
+  Border?: IBannerBorder;
   TextColour: TextColour;
   LayoutStyle: LayoutStyle;
 

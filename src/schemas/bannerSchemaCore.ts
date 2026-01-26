@@ -23,11 +23,20 @@ export const MediaAssetSchemaCore = z.object({
 export const BannerBackgroundSchemaCore = z.object({
   Type: z.nativeEnum(BackgroundType),
   Value: z.string().min(1, 'Background value is required'),
+  GradientStartColour: z.string().optional(),
+  GradientEndColour: z.string().optional(),
+  GradientDirection: z.string().optional(),
   Overlay: z.object({
     Colour: z.string().optional(),
     Opacity: z.number().min(0).max(1).optional()
   }).optional()
 });
+
+// Core Banner Border Schema - shared validation rules
+export const BannerBorderSchemaCore = z.object({
+  ShowBorder: z.boolean().default(false),
+  Colour: z.string().default('#f8c77c')
+}).optional();
 
 // Core CTA Button Schema - shared validation rules
 export const CTAButtonSchemaCore = z.object({
@@ -58,7 +67,7 @@ export const youtubeUrlRegex = /^https?:\/\/(www\.)?(youtube\.com|youtu\.be)/;
 export const BannerSchemaBase = z.object({
   // Core content
   Title: z.string().min(1, 'Title is required').max(100, 'Title must be 100 characters or less'),
-  Description: z.string().max(550, 'Description must be 550 characters or less').optional(),
+  Description: z.string().max(600, 'Description must be 600 characters or less').optional(),
   Subtitle: z.string().max(50, 'Subtitle must be 50 characters or less').optional(),
 
   // Media
@@ -82,6 +91,7 @@ export const BannerSchemaBase = z.object({
 
   // Styling
   Background: BannerBackgroundSchemaCore,
+  Border: BannerBorderSchemaCore,
   TextColour: z.nativeEnum(TextColour),
   LayoutStyle: z.nativeEnum(LayoutStyle),
 
