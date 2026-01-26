@@ -58,7 +58,7 @@ export const UploadedFileSchemaCore = z.object({
   FileName: z.string().min(1, 'File name is required'),
   FileSize: z.string().optional(),
   FileType: z.string().optional()
-}).optional();
+}).nullable().optional();
 
 // YouTube URL validation regex
 export const youtubeUrlRegex = /^https?:\/\/(www\.)?(youtube\.com|youtu\.be)/;
@@ -67,7 +67,7 @@ export const youtubeUrlRegex = /^https?:\/\/(www\.)?(youtube\.com|youtu\.be)/;
 export const BannerSchemaBase = z.object({
   // Core content
   Title: z.string().min(1, 'Title is required').max(100, 'Title must be 100 characters or less'),
-  Description: z.string().max(600, 'Description must be 600 characters or less').optional(),
+  Description: z.string().max(2000, 'Description must be 2000 characters or less').optional(),
   Subtitle: z.string().max(50, 'Subtitle must be 50 characters or less').optional(),
 
   // Media
