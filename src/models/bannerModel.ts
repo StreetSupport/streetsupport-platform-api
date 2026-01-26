@@ -1,33 +1,20 @@
-import { 
-  BannerTemplateType, 
-  CharterType, 
-  IBanner, 
-  LayoutStyle, 
-  TextColour, 
-  UrgencyLevel,
+import {
+  IBanner,
+  LayoutStyle,
+  MediaType,
+  TextColour,
   BannerBackgroundSchema,
+  BannerBorderSchema,
   CTAButtonSchema,
-  DonationGoalSchema,
-  MediaAssetSchema,
-  ResourceFileSchema
+  MediaAssetSchema
 } from "../types/index.js";
 import mongoose, { Schema } from 'mongoose';
 
-// Template-specific nested schemas
-const GivingCampaignSchema = new Schema({
-  UrgencyLevel: { type: String, enum: Object.values(UrgencyLevel), required: true },
-  CampaignEndDate: { type: Date },
-  DonationGoal: DonationGoalSchema
-}, { _id: false });
-
-const PartnershipCharterSchema = new Schema({
-  PartnerLogos: [MediaAssetSchema],
-  CharterType: { type: String, enum: Object.values(CharterType) },
-  SignatoriesCount: { type: Number, min: 0 }
-}, { _id: false });
-
-const ResourceProjectSchema = new Schema({
-  ResourceFile: ResourceFileSchema
+const UploadedFileSchema = new Schema({
+  FileUrl: { type: String, required: true },
+  FileName: { type: String, required: true },
+  FileSize: { type: String },
+  FileType: { type: String }
 }, { _id: false });
 
 // Main Banner Schema
@@ -46,21 +33,28 @@ export const BannerSchema = new Schema({
   },
 
   // Core content
-  Title: { type: String, required: true, maxlength: 50 },
-  Description: { type: String, maxlength: 200 },
+  Title: { type: String, required: true, maxlength: 100 },
+  Description: { type: String, maxlength: 600 },
   Subtitle: { type: String, maxlength: 50 },
-  
-  // Template type
-  TemplateType: { 
-    type: String, 
-    enum: Object.values(BannerTemplateType), 
-    required: true 
-  },
-  
+
   // Media
+  MediaType: {
+    type: String,
+    enum: Object.values(MediaType),
+    default: 'image'
+  },
+  YouTubeUrl: {
+    type: String,
+    trim: true,
+    validate: {
+      validator: (v: string) => !v || /^https?:\/\/(www\.)?(youtube\.com|youtu\.be)/.test(v),
+      message: 'Must be a valid YouTube URL'
+    }
+  },
   Logo: MediaAssetSchema,
   BackgroundImage: MediaAssetSchema,
-  MainImage: MediaAssetSchema, // Separate image for split layout (not background)
+  MainImage: MediaAssetSchema,
+  UploadedFile: UploadedFileSchema,
 
   // Actions
   CtaButtons: {
@@ -73,33 +67,28 @@ export const BannerSchema = new Schema({
       message: 'Must have not more than 3 CTA buttons'
     }
   },
-  
+
   // Styling
   Background: { type: BannerBackgroundSchema, required: true },
+  Border: { type: BannerBorderSchema },
   TextColour: { type: String, enum: Object.values(TextColour), required: true },
   LayoutStyle: { type: String, enum: Object.values(LayoutStyle), required: true },
 
-  // Optional features
+  // Scheduling
   StartDate: { type: Date },
   EndDate: { type: Date },
-  BadgeText: { type: String, maxlength: 50 },
-  
-  // Template-specific fields - using nested objects
-  GivingCampaign: GivingCampaignSchema,
-  PartnershipCharter: PartnershipCharterSchema,
-  ResourceProject: ResourceProjectSchema,
-  
+
   // CMS metadata
   IsActive: { type: Boolean, default: true },
   LocationSlug: { type: String, required: true },
   LocationName: { type: String, required: true },
   Priority: { type: Number, min: 1, max: 10, default: 5 },
-  
+
   // Analytics
   TrackingContext: { type: String },
   AnalyticsId: { type: String }
 }, {
-  collection: 'Banners', 
+  collection: 'Banners',
   versionKey: false,
   toJSON: { virtuals: true },
   toObject: { virtuals: true }
@@ -108,7 +97,6 @@ export const BannerSchema = new Schema({
 // Indexes for performance
 BannerSchema.index({ IsActive: 1, Priority: -1, 'DocumentCreationDate': -1 });
 BannerSchema.index({ LocationSlug: 1, IsActive: 1 });
-BannerSchema.index({ TemplateType: 1, IsActive: 1 });
 BannerSchema.index({ CreatedBy: 1 });
 
 // Create and export the model
