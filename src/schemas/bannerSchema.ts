@@ -16,7 +16,8 @@ import {
   preprocessBoolean,
   preprocessDate,
   preprocessJSON,
-  preprocessNullableObject
+  preprocessNullableObject,
+  preprocessOptionalObject
 } from './validationHelpers.js';
 import { LayoutStyle, TextColour, MediaType, BackgroundType } from '../types/index.js';
 
@@ -47,7 +48,7 @@ const BannerApiBaseSchema = BannerSchemaBase.omit({
     z.array(CTAButtonSchema).max(3, 'Maximum 3 CTA buttons allowed').optional()
   ).optional(),
   Background: z.preprocess(preprocessJSON, BannerBackgroundSchema),
-  UploadedFile: z.preprocess(preprocessNullableObject, UploadedFileSchemaCore).optional(),
+  UploadedFile: z.preprocess(preprocessOptionalObject, UploadedFileSchemaCore).optional(),
 
   // Audit fields (may come from form data during edits)
   CreatedBy: z.string().optional(),
@@ -77,7 +78,7 @@ const BannerApiBaseSchema = BannerSchemaBase.omit({
 export const BannerPreUploadApiSchema = z.object({
   // Core content
   Title: z.string().min(1, 'Title is required').max(100, 'Title must be 100 characters or less'),
-  Description: z.string().max(550, 'Description must be 550 characters or less').optional(),
+  Description: z.string().max(2000, 'Description must be 2000 characters or less').optional(),
   Subtitle: z.string().max(50, 'Subtitle must be 50 characters or less').optional(),
 
   // Media
