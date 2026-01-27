@@ -396,7 +396,7 @@ export const requireOrganisationAccess = asyncHandler(async (req: Request, res: 
 
   // For operations on specific organisations, check access based on role
   const organisationId = req.params.id;
-  if (organisationId && (req.method === HTTP_METHODS.GET || req.method === HTTP_METHODS.PUT || req.method === HTTP_METHODS.PATCH || req.method === HTTP_METHODS.DELETE)) {
+  if (organisationId && (req.method === HTTP_METHODS.GET || req.method === HTTP_METHODS.POST || req.method === HTTP_METHODS.PUT || req.method === HTTP_METHODS.PATCH || req.method === HTTP_METHODS.DELETE)) {
     const organisation = await Organisation.findById(organisationId).lean();
     
     if (!organisation) {
