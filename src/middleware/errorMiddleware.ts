@@ -30,7 +30,7 @@ export const errorHandler: ErrorRequestHandler = (err, req, res, next) => {
   if (err.name === 'ValidationError') {
     return res.status(400).json({
       success: false,
-      error: process.env.NODE_ENV !== 'production' ? 'Validation Error' : err.message,
+      error: err.message,
       status: 400,
       code: 'validation_error'
     });
