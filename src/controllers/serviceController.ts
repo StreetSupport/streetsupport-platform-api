@@ -227,9 +227,11 @@ export const updateService = asyncHandler(async (req: Request, res: Response) =>
     }
 
     // Prepare update data
+    // Use existing CreatedBy if available, otherwise fall back to current user
+    // (handles legacy services created before CreatedBy was required)
     const updateData = {
       ...validation.data,
-      CreatedBy: existingService.CreatedBy,
+      CreatedBy: existingService.CreatedBy || req.user?._id || req.body?.CreatedBy || 'system',
       DocumentModifiedDate: new Date()
     };
 
