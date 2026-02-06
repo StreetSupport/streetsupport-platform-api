@@ -112,6 +112,9 @@ export const BannerPreUploadApiSchema = z.object({
   Background: z.preprocess(preprocessJSON, z.object({
     Type: z.nativeEnum(BackgroundType),
     Value: z.string().min(1, 'Background value is required'),
+    GradientStartColour: z.string().optional(),
+    GradientEndColour: z.string().optional(),
+    GradientDirection: z.string().optional(),
     Overlay: z.object({
       Colour: z.string().optional(),
       Opacity: z.preprocess(preprocessNumber, z.number().min(0).max(1)).optional()
