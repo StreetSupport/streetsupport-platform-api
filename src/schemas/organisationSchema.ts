@@ -79,7 +79,8 @@ export const OrganisationSchema = z.object({
   Facebook: z.preprocess(preprocessNullableString, z.string().url('Invalid Facebook URL').optional().or(z.literal(''))),
   Twitter: z.preprocess(preprocessNullableString, z.string().url('Invalid Twitter URL').optional().or(z.literal(''))),
   Bluesky: z.preprocess(preprocessNullableString, z.string().url('Invalid Bluesky URL').optional().or(z.literal(''))),
-  
+  Instagram: z.preprocess(preprocessNullableString, z.string().url('Invalid Instagram URL').optional().or(z.literal(''))),
+
   // Locations
   Addresses: z.preprocess(preprocessJSON, z.array(AddressSchema).optional().default([])),
 
