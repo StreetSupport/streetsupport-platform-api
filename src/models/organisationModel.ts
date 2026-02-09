@@ -73,6 +73,10 @@ const organisationSchema = new Schema<IOrganisation>({
     type: String,
     required: false,
   },
+  Instagram: {
+    type: String,
+    required: false,
+  },
   Addresses: [AddressSchema],
   Notes: {
     type: [NoteSchema],
