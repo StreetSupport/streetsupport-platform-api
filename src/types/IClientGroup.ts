@@ -1,7 +1,7 @@
-import { Document } from "mongoose";
+import { Document, Types } from "mongoose";
 
 export interface IClientGroup extends Document {
-  _id: string;
+  _id: Types.ObjectId;
   Key: string;
   Name: string;
   SortPosition: number;
