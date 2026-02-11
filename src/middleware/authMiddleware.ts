@@ -259,7 +259,7 @@ export const authenticate = asyncHandler(async (req: Request, res: Response, nex
     return sendUnauthorized(res, 'User account is deactivated');
   }
 
-  req.user = user;
+  req.user = user as unknown as IUser;
   next();
 });
 
