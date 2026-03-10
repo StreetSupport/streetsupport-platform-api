@@ -81,6 +81,12 @@ const BannerApiBaseSchema = BannerSchemaBase.omit({
     message: 'Media type is required for split and full-width layouts',
     path: ['MediaType']
   }
+).refine(
+  (data) => data.LayoutStyle !== LayoutStyle.COMPACT || (data.CtaButtons?.length ?? 0) <= 2,
+  {
+    message: 'Compact banners can have a maximum of 2 buttons',
+    path: ['CtaButtons']
+  }
 );
 
 // Pre-upload validation schema - validates non-file fields before upload (API-specific)
@@ -139,6 +145,12 @@ export const BannerPreUploadApiSchema = z.object({
   {
     message: 'Media type is required for split and full-width layouts',
     path: ['MediaType']
+  }
+).refine(
+  (data) => data.LayoutStyle !== LayoutStyle.COMPACT || (data.CtaButtons?.length ?? 0) <= 2,
+  {
+    message: 'Compact banners can have a maximum of 2 buttons',
+    path: ['CtaButtons']
   }
 );
 
