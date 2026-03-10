@@ -131,6 +131,12 @@ export const BannerSchemaCore = BannerSchemaBase.refine(
     message: 'Media type is required for split and full-width layouts',
     path: ['MediaType']
   }
+).refine(
+  (data) => data.LayoutStyle !== LayoutStyle.COMPACT || (data.CtaButtons?.length ?? 0) <= 2,
+  {
+    message: 'Compact banners can have a maximum of 2 buttons',
+    path: ['CtaButtons']
+  }
 );
 
 // Strong types for shared refinements and validation utilities
