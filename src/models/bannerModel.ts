@@ -41,7 +41,6 @@ export const BannerSchema = new Schema({
   MediaType: {
     type: String,
     enum: Object.values(MediaType),
-    default: 'image'
   },
   YouTubeUrl: {
     type: String,
