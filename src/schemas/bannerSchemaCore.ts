@@ -71,7 +71,7 @@ export const BannerSchemaBase = z.object({
   Subtitle: z.string().max(50, 'Subtitle must be 50 characters or less').optional(),
 
   // Media
-  MediaType: z.nativeEnum(MediaType).default(MediaType.IMAGE),
+  MediaType: z.nativeEnum(MediaType).optional(),
   YouTubeUrl: z.string()
     .refine(
       (v) => !v || youtubeUrlRegex.test(v),
@@ -120,10 +120,16 @@ export const BannerSchemaCore = BannerSchemaBase.refine(
     path: ['EndDate']
   }
 ).refine(
-  (data) => data.MediaType !== MediaType.YOUTUBE || !!data.YouTubeUrl,
+  (data) => !data.MediaType || data.MediaType !== MediaType.YOUTUBE || !!data.YouTubeUrl,
   {
     message: 'YouTube URL is required when media type is YouTube',
     path: ['YouTubeUrl']
+  }
+).refine(
+  (data) => data.LayoutStyle === LayoutStyle.COMPACT || data.MediaType !== undefined,
+  {
+    message: 'Media type is required for split and full-width layouts',
+    path: ['MediaType']
   }
 );
 
